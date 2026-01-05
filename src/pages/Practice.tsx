@@ -37,7 +37,7 @@ const Practice = () => {
     // Transition to active after morph completes
     setTimeout(() => {
       setSessionState("active");
-    }, 700);
+    }, 1500);
   };
 
   const handleEndCall = () => {

@@ -16,7 +16,7 @@ const StartPracticeButton = ({
       onClick={onClick}
       disabled={isConnecting || isMorphing}
       className={cn(
-        "bg-accent transition-all duration-700 ease-in-out flex items-center justify-center",
+        "bg-accent transition-all duration-[1500ms] ease-in-out flex items-center justify-center",
         isMorphing
           ? "w-56 h-56 rounded-full"
           : "w-80 h-48 rounded-3xl hover:scale-105"
