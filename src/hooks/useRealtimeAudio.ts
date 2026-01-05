@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 interface UseRealtimeAudioOptions {
@@ -16,115 +15,33 @@ export const useRealtimeAudio = (options: UseRealtimeAudioOptions = {}) => {
   const [isMuted, setIsMuted] = useState(false);
   const [sessionTime, setSessionTime] = useState(0);
 
-  const wsRef = useRef<WebSocket | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
+  const pcRef = useRef<RTCPeerConnection | null>(null);
+  const dcRef = useRef<RTCDataChannel | null>(null);
+  const audioElRef = useRef<HTMLAudioElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const processorRef = useRef<ScriptProcessorNode | null>(null);
-  const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
-  const audioQueueRef = useRef<Uint8Array[]>([]);
-  const isPlayingRef = useRef(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-
-  const encodeAudioForAPI = useCallback((float32Array: Float32Array): string => {
-    const int16Array = new Int16Array(float32Array.length);
-    for (let i = 0; i < float32Array.length; i++) {
-      const s = Math.max(-1, Math.min(1, float32Array[i]));
-      int16Array[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
-    }
-    const uint8Array = new Uint8Array(int16Array.buffer);
-    let binary = "";
-    const chunkSize = 0x8000;
-    for (let i = 0; i < uint8Array.length; i += chunkSize) {
-      const chunk = uint8Array.subarray(i, Math.min(i + chunkSize, uint8Array.length));
-      binary += String.fromCharCode.apply(null, Array.from(chunk));
-    }
-    return btoa(binary);
-  }, []);
-
-  const createWavFromPCM = useCallback((pcmData: Uint8Array): Uint8Array => {
-    const int16Data = new Int16Array(pcmData.length / 2);
-    for (let i = 0; i < pcmData.length; i += 2) {
-      int16Data[i / 2] = (pcmData[i + 1] << 8) | pcmData[i];
-    }
-
-    const sampleRate = 24000;
-    const numChannels = 1;
-    const bitsPerSample = 16;
-    const wavHeader = new ArrayBuffer(44);
-    const view = new DataView(wavHeader);
-
-    const writeString = (offset: number, str: string) => {
-      for (let i = 0; i < str.length; i++) {
-        view.setUint8(offset + i, str.charCodeAt(i));
-      }
-    };
-
-    writeString(0, "RIFF");
-    view.setUint32(4, 36 + int16Data.byteLength, true);
-    writeString(8, "WAVE");
-    writeString(12, "fmt ");
-    view.setUint32(16, 16, true);
-    view.setUint16(20, 1, true);
-    view.setUint16(22, numChannels, true);
-    view.setUint32(24, sampleRate, true);
-    view.setUint32(28, sampleRate * numChannels * (bitsPerSample / 8), true);
-    view.setUint16(32, numChannels * (bitsPerSample / 8), true);
-    view.setUint16(34, bitsPerSample, true);
-    writeString(36, "data");
-    view.setUint32(40, int16Data.byteLength, true);
-
-    const wavArray = new Uint8Array(wavHeader.byteLength + int16Data.byteLength);
-    wavArray.set(new Uint8Array(wavHeader), 0);
-    wavArray.set(new Uint8Array(int16Data.buffer), wavHeader.byteLength);
-    return wavArray;
-  }, []);
-
-  const playNextAudio = useCallback(async () => {
-    if (audioQueueRef.current.length === 0) {
-      isPlayingRef.current = false;
-      setIsSpeaking(false);
-      options.onSpeakingChange?.(false);
-      return;
-    }
-
-    isPlayingRef.current = true;
-    setIsSpeaking(true);
-    options.onSpeakingChange?.(true);
-
-    const audioData = audioQueueRef.current.shift()!;
-
-    try {
-      if (!audioContextRef.current) {
-        audioContextRef.current = new AudioContext({ sampleRate: 24000 });
-      }
-      const wavData = createWavFromPCM(audioData);
-      const arrayBuffer = wavData.buffer.slice(0) as ArrayBuffer;
-      const audioBuffer = await audioContextRef.current.decodeAudioData(arrayBuffer);
-      const source = audioContextRef.current.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(audioContextRef.current.destination);
-      source.onended = () => playNextAudio();
-      source.start(0);
-    } catch (error) {
-      console.error("Error playing audio:", error);
-      playNextAudio();
-    }
-  }, [createWavFromPCM, options]);
-
-  const addToAudioQueue = useCallback(
-    (audioData: Uint8Array) => {
-      audioQueueRef.current.push(audioData);
-      if (!isPlayingRef.current) {
-        playNextAudio();
-      }
-    },
-    [playNextAudio]
-  );
 
   const connect = useCallback(async () => {
     setIsConnecting(true);
 
     try {
+      // Create peer connection
+      const pc = new RTCPeerConnection();
+      pcRef.current = pc;
+
+      // Set up audio element for remote audio
+      const audioEl = document.createElement("audio");
+      audioEl.autoplay = true;
+      audioElRef.current = audioEl;
+      
+      pc.ontrack = (e) => {
+        console.log("Received remote track");
+        audioEl.srcObject = e.streams[0];
+        setIsSpeaking(true);
+        options.onSpeakingChange?.(true);
+      };
+
+      // Get local audio and add to peer connection
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           sampleRate: 24000,
@@ -135,145 +52,109 @@ export const useRealtimeAudio = (options: UseRealtimeAudioOptions = {}) => {
         },
       });
       streamRef.current = stream;
+      pc.addTrack(stream.getTracks()[0]);
 
-      const { data, error } = await supabase.functions.invoke("realtime-session");
-      if (error || !data?.client_secret?.value) {
-        throw new Error("No se pudo obtener el token de sesión");
-      }
+      // Set up data channel for events
+      const dc = pc.createDataChannel("oai-events");
+      dcRef.current = dc;
 
-      const ephemeralKey = data.client_secret.value;
-      const ws = new WebSocket(
-        `wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17`
-      );
-
-      ws.onopen = () => {
-        console.log("WebSocket connected, authenticating...");
-        // Send authentication
-        ws.send(JSON.stringify({
-          type: "session.update",
-          session: {
-            modalities: ["text", "audio"],
-            instructions: `Eres un cliente potencial que está considerando contratar los servicios funerarios de Capillas Señoriales. Tu nombre es María González.
-
-Comportamiento:
-- Actúa como alguien que está explorando opciones para un plan funerario
-- Haz preguntas sobre precios, servicios, planes de pago
-- A veces muestra objeciones comunes: "es muy caro", "necesito pensarlo", "voy a comparar con otros"
-- Sé cortés pero firme cuando tengas dudas
-- Responde en español naturalmente
-
-Objetivo: Ayudar al asesor a practicar técnicas de venta efectivas y manejo de objeciones.`,
-            voice: "alloy",
-            input_audio_format: "pcm16",
-            output_audio_format: "pcm16",
-            input_audio_transcription: { model: "whisper-1" },
-            turn_detection: {
-              type: "server_vad",
-              threshold: 0.5,
-              prefix_padding_ms: 300,
-              silence_duration_ms: 1000,
-            },
-            temperature: 0.8,
-          },
-        }));
-      };
-
-      ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        console.log("Received:", data.type);
-
-        if (data.type === "session.created" || data.type === "session.updated") {
-          console.log("Session ready");
-          setIsConnected(true);
-          setIsConnecting(false);
-
-          // Start audio recording
-          const audioCtx = new AudioContext({ sampleRate: 24000 });
-          audioContextRef.current = audioCtx;
-          const source = audioCtx.createMediaStreamSource(stream);
-          sourceRef.current = source;
-          const processor = audioCtx.createScriptProcessor(4096, 1, 1);
-          processorRef.current = processor;
-
-          processor.onaudioprocess = (e) => {
-            if (!isMuted && ws.readyState === WebSocket.OPEN) {
-              const inputData = e.inputBuffer.getChannelData(0);
-              const encoded = encodeAudioForAPI(new Float32Array(inputData));
-              ws.send(JSON.stringify({
-                type: "input_audio_buffer.append",
-                audio: encoded,
-              }));
-            }
-          };
-
-          source.connect(processor);
-          processor.connect(audioCtx.destination);
-
-          // Start timer
-          timerRef.current = setInterval(() => {
-            setSessionTime((prev) => prev + 1);
-          }, 1000);
-
-          toast({
-            title: "Conectado",
-            description: "Puedes comenzar a practicar",
-          });
-        }
-
-        if (data.type === "response.audio.delta" && data.delta) {
-          const binaryString = atob(data.delta);
-          const bytes = new Uint8Array(binaryString.length);
-          for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-          }
-          addToAudioQueue(bytes);
-        }
-
-        if (data.type === "response.audio_transcript.done") {
-          options.onTranscript?.(data.transcript || "", false);
-        }
-
-        if (data.type === "conversation.item.input_audio_transcription.completed") {
-          options.onTranscript?.(data.transcript || "", true);
-        }
-
-        if (data.type === "error") {
-          console.error("API error:", data.error);
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: data.error?.message || "Error en la conexión",
-          });
-        }
-      };
-
-      ws.onerror = (error) => {
-        console.error("WebSocket error:", error);
+      dc.onopen = () => {
+        console.log("Data channel opened");
+        setIsConnected(true);
         setIsConnecting(false);
+
+        // Start timer
+        timerRef.current = setInterval(() => {
+          setSessionTime((prev) => prev + 1);
+        }, 1000);
+
         toast({
-          variant: "destructive",
-          title: "Error de conexión",
-          description: "No se pudo conectar con el servicio de voz",
+          title: "Conectado",
+          description: "Puedes comenzar a practicar",
         });
       };
 
-      ws.onclose = () => {
-        console.log("WebSocket closed");
-        setIsConnected(false);
-        setIsConnecting(false);
+      dc.onmessage = (e) => {
+        const event = JSON.parse(e.data);
+        console.log("Received event:", event.type);
+
+        if (event.type === "response.audio.delta") {
+          setIsSpeaking(true);
+          options.onSpeakingChange?.(true);
+        }
+
+        if (event.type === "response.audio.done") {
+          setIsSpeaking(false);
+          options.onSpeakingChange?.(false);
+        }
+
+        if (event.type === "response.audio_transcript.done") {
+          options.onTranscript?.(event.transcript || "", false);
+        }
+
+        if (event.type === "conversation.item.input_audio_transcription.completed") {
+          options.onTranscript?.(event.transcript || "", true);
+        }
+
+        if (event.type === "error") {
+          console.error("API error:", event.error);
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: event.error?.message || "Error en la conexión",
+          });
+        }
       };
 
-      wsRef.current = ws;
+      dc.onerror = (error) => {
+        console.error("Data channel error:", error);
+      };
+
+      // Create offer and set local description
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      console.log("Sending SDP to edge function...");
+
+      // Send SDP to our edge function
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/realtime-session`,
+        {
+          method: "POST",
+          body: offer.sdp,
+          headers: {
+            "Content-Type": "application/sdp",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Edge function error:", errorText);
+        throw new Error("No se pudo establecer la sesión");
+      }
+
+      const answerSdp = await response.text();
+      console.log("Received SDP answer");
+
+      const answer: RTCSessionDescriptionInit = {
+        type: "answer",
+        sdp: answerSdp,
+      };
+      await pc.setRemoteDescription(answer);
+      console.log("WebRTC connection established");
+
     } catch (error) {
       console.error("Connection error:", error);
       setIsConnecting(false);
+      setIsConnected(false);
       toast({
         variant: "destructive",
         title: "Error",
         description: error instanceof Error ? error.message : "Error al conectar",
       });
     }
-  }, [encodeAudioForAPI, addToAudioQueue, isMuted, toast, options]);
+  }, [toast, options]);
 
   const disconnect = useCallback(() => {
     if (timerRef.current) {
@@ -281,14 +162,14 @@ Objetivo: Ayudar al asesor a practicar técnicas de venta efectivas y manejo de 
       timerRef.current = null;
     }
 
-    if (processorRef.current) {
-      processorRef.current.disconnect();
-      processorRef.current = null;
+    if (dcRef.current) {
+      dcRef.current.close();
+      dcRef.current = null;
     }
 
-    if (sourceRef.current) {
-      sourceRef.current.disconnect();
-      sourceRef.current = null;
+    if (pcRef.current) {
+      pcRef.current.close();
+      pcRef.current = null;
     }
 
     if (streamRef.current) {
@@ -296,13 +177,11 @@ Objetivo: Ayudar al asesor a practicar técnicas de venta efectivas y manejo de 
       streamRef.current = null;
     }
 
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
+    if (audioElRef.current) {
+      audioElRef.current.srcObject = null;
+      audioElRef.current = null;
     }
 
-    audioQueueRef.current = [];
-    isPlayingRef.current = false;
     setIsConnected(false);
     setIsSpeaking(false);
 
@@ -313,13 +192,20 @@ Objetivo: Ayudar al asesor a practicar técnicas de venta efectivas y manejo de 
   }, [sessionTime, toast]);
 
   const toggleMute = useCallback(() => {
-    setIsMuted((prev) => !prev);
-  }, []);
+    if (streamRef.current) {
+      const audioTrack = streamRef.current.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = isMuted;
+        setIsMuted(!isMuted);
+      }
+    }
+  }, [isMuted]);
 
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
-      if (wsRef.current) wsRef.current.close();
+      if (dcRef.current) dcRef.current.close();
+      if (pcRef.current) pcRef.current.close();
       if (streamRef.current) streamRef.current.getTracks().forEach((t) => t.stop());
     };
   }, []);
