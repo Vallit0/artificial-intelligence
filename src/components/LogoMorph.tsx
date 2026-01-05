@@ -15,15 +15,14 @@ const LogoMorph = ({ isMorphing, isConnecting, onClick }: LogoMorphProps) => {
     >
       {/* Container for the logo */}
       <div className="relative w-64 h-80 flex flex-col items-center justify-center">
-        {/* Circle - primary green, stays in place */}
+        {/* Circle - accent green, stays in place */}
         <div
           className={cn(
-            "absolute rounded-full bg-primary transition-all duration-[1500ms] ease-in-out",
+            "absolute rounded-full bg-accent transition-all duration-[1500ms] ease-in-out",
             isMorphing
-              ? "w-56 h-56 shadow-2xl"
-              : "w-44 h-44 group-hover:scale-105 group-hover:shadow-lg"
+              ? "w-56 h-56 shadow-2xl top-0"
+              : "w-44 h-44 top-8 group-hover:scale-105 group-hover:shadow-lg"
           )}
-          style={{ top: isMorphing ? "0" : "10px" }}
         />
 
         {/* Triangle - olive/accent green, flies up when morphing */}
