@@ -4,12 +4,10 @@ import VoiceControls from "@/components/VoiceControls";
 import StartPracticeButton from "@/components/StartPracticeButton";
 import FeedbackScreen from "@/components/FeedbackScreen";
 import { useRealtimeAudio } from "@/hooks/useRealtimeAudio";
-import { useNavigate } from "react-router-dom";
 
 type SessionState = "idle" | "morphing" | "active" | "feedback";
 
 const Practice = () => {
-  const navigate = useNavigate();
   const [sessionState, setSessionState] = useState<SessionState>("idle");
 
   const handleTranscript = useCallback((text: string, isUser: boolean) => {
@@ -47,7 +45,8 @@ const Practice = () => {
 
   const handleFeedbackSubmit = (rating: number) => {
     console.log("Rating submitted:", rating);
-    navigate("/");
+    // Reset to idle state
+    setSessionState("idle");
   };
 
   if (sessionState === "feedback") {
