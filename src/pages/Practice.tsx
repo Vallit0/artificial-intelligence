@@ -1,16 +1,19 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import VoiceOrb from "@/components/VoiceOrb";
 import VoiceControls from "@/components/VoiceControls";
-import StartPracticeButton from "@/components/StartPracticeButton";
+import LogoMorph from "@/components/LogoMorph";
 import FeedbackScreen from "@/components/FeedbackScreen";
 import PracticeTimer from "@/components/PracticeTimer";
 import UserMenu from "@/components/UserMenu";
 import { useRealtimeAudio } from "@/hooks/useRealtimeAudio";
+import { usePracticeSessions } from "@/hooks/usePracticeSessions";
 
 type SessionState = "idle" | "morphing" | "active" | "feedback";
 
 const Practice = () => {
   const [sessionState, setSessionState] = useState<SessionState>("idle");
+  const sessionDurationRef = useRef<number>(0);
+  const { savePracticeSession } = usePracticeSessions();
 
   const handleTranscript = useCallback((text: string, isUser: boolean) => {
     console.log(isUser ? "User:" : "Agent:", text);
@@ -29,6 +32,9 @@ const Practice = () => {
     onTranscript: handleTranscript,
   });
 
+  // Keep track of session duration
+  sessionDurationRef.current = sessionTime;
+
   const handleStart = async () => {
     setSessionState("morphing");
     
@@ -46,14 +52,23 @@ const Practice = () => {
     setSessionState("feedback");
   };
 
-  const handleFeedbackSubmit = (rating: number) => {
-    console.log("Rating submitted:", rating);
+  const handleFeedbackSubmit = async (rating: number) => {
+    // Save practice session to database
+    await savePracticeSession(sessionDurationRef.current, rating);
+    console.log("Session saved:", sessionDurationRef.current, "seconds, rating:", rating);
+    
     // Reset to idle state
     setSessionState("idle");
   };
 
   if (sessionState === "feedback") {
-    return <FeedbackScreen agentName="María" onSubmit={handleFeedbackSubmit} />;
+    return (
+      <FeedbackScreen
+        agentName="María"
+        onSubmit={handleFeedbackSubmit}
+        sessionDuration={sessionDurationRef.current}
+      />
+    );
   }
 
   return (
@@ -63,19 +78,11 @@ const Practice = () => {
         <UserMenu />
       </div>
 
-      {sessionState === "idle" && (
-        <StartPracticeButton
+      {(sessionState === "idle" || sessionState === "morphing") && (
+        <LogoMorph
           onClick={handleStart}
           isConnecting={isConnecting}
-          isMorphing={false}
-        />
-      )}
-
-      {sessionState === "morphing" && (
-        <StartPracticeButton
-          onClick={() => {}}
-          isConnecting={true}
-          isMorphing={true}
+          isMorphing={sessionState === "morphing"}
         />
       )}
 

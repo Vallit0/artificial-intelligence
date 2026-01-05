@@ -1,14 +1,15 @@
 import { useState } from "react";
-import { Star } from "lucide-react";
+import { Star, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface FeedbackScreenProps {
   agentName: string;
   onSubmit: (rating: number) => void;
+  sessionDuration?: number;
 }
 
-const FeedbackScreen = ({ agentName, onSubmit }: FeedbackScreenProps) => {
+const FeedbackScreen = ({ agentName, onSubmit, sessionDuration }: FeedbackScreenProps) => {
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
 
@@ -18,11 +19,24 @@ const FeedbackScreen = ({ agentName, onSubmit }: FeedbackScreenProps) => {
     }
   };
 
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background px-6 animate-fade-in">
-      <h1 className="text-2xl font-semibold text-primary mb-16">
+      <h1 className="text-2xl font-semibold text-primary mb-4">
         Gracias por hablar con {agentName}
       </h1>
+
+      {sessionDuration !== undefined && sessionDuration > 0 && (
+        <div className="flex items-center gap-2 text-muted-foreground mb-12">
+          <Clock className="w-4 h-4" />
+          <span>Duración: {formatDuration(sessionDuration)}</span>
+        </div>
+      )}
 
       <div className="bg-accent rounded-3xl p-12 w-full max-w-md">
         <h2 className="text-xl font-semibold text-foreground text-center mb-8">
