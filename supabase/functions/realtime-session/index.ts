@@ -6,6 +6,34 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const SYSTEM_INSTRUCTIONS = `Eres María González, una mujer de 52 años que vive en Guadalajara, Jalisco. Tu esposo Carlos falleció hace 3 meses y ahora estás considerando adquirir un plan funerario para ti y tu familia.
+
+CONTEXTO PERSONAL:
+- Tienes 2 hijos adultos (Roberto de 28 y Sofía de 25)
+- Trabajas como contadora en una empresa mediana
+- Tu ingreso mensual es de aproximadamente $25,000 pesos
+- La experiencia reciente con los gastos funerarios de tu esposo (costó más de $80,000) te dejó preocupada
+- Quieres evitar que tus hijos pasen por el mismo estrés financiero
+
+COMPORTAMIENTO EN LA LLAMADA:
+- Eres amable pero cautelosa con vendedores
+- Haces preguntas sobre precios, qué incluye el servicio, formas de pago
+- Tus objeciones principales son:
+  * "Es mucho dinero de golpe"
+  * "Necesito consultarlo con mis hijos"
+  * "¿Y si la empresa cierra antes de que yo fallezca?"
+  * "Déjeme pensarlo y le llamo después"
+- Si el asesor maneja bien tus objeciones, puedes mostrar interés genuino
+- Si el asesor es muy agresivo o no responde bien, te cierras
+
+INFORMACIÓN QUE PUEDES DAR SI TE PREGUNTAN:
+- Buscas un plan que cubra a ti y posiblemente a tus hijos
+- Prefieres pagos mensuales a un solo pago grande
+- Te interesa saber qué pasa si te mudas de ciudad
+- Quieres saber si el plan incluye traslados
+
+IMPORTANTE: Habla de manera natural, como una persona real. Usa expresiones coloquiales mexicanas. No seas demasiado fácil ni demasiado difícil de convencer.`;
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -23,21 +51,27 @@ serve(async (req) => {
     // Client sends SDP for WebRTC connection
     if (contentType.includes("application/sdp") || contentType.includes("text/plain")) {
       const sdp = await req.text();
-      console.log("Received SDP, getting ephemeral token first...");
+      console.log("Received SDP, getting ephemeral token...");
       
-      // Step 1: Get ephemeral token using the published prompt
+      // Step 1: Get ephemeral token with detailed instructions
       const sessionResponse = await fetch("https://api.openai.com/v1/realtime/sessions", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${OPENAI_API_KEY}`,
           "Content-Type": "application/json",
-          "OpenAI-Beta": "realtime=v1",
         },
         body: JSON.stringify({
           model: "gpt-4o-realtime-preview-2024-12-17",
-          prompt: {
-            id: "pmpt_695b183871008196aa1cb912d084d760012b40cd18369673",
-            version: "2"
+          voice: "shimmer",
+          instructions: SYSTEM_INSTRUCTIONS,
+          input_audio_transcription: {
+            model: "whisper-1"
+          },
+          turn_detection: {
+            type: "server_vad",
+            threshold: 0.5,
+            prefix_padding_ms: 300,
+            silence_duration_ms: 800
           }
         }),
       });
@@ -45,14 +79,14 @@ serve(async (req) => {
       if (!sessionResponse.ok) {
         const errorText = await sessionResponse.text();
         console.error("Session API error:", sessionResponse.status, errorText);
-        throw new Error(`Session API error: ${sessionResponse.status}`);
+        throw new Error(`Session API error: ${sessionResponse.status} - ${errorText}`);
       }
 
       const sessionData = await sessionResponse.json();
       const ephemeralKey = sessionData.client_secret?.value;
       
       if (!ephemeralKey) {
-        console.error("No ephemeral key in response:", sessionData);
+        console.error("No ephemeral key in response:", JSON.stringify(sessionData));
         throw new Error("Failed to get ephemeral key");
       }
       
@@ -88,34 +122,8 @@ serve(async (req) => {
       });
     }
 
-    // Fallback: just return ephemeral token
-    console.log("Returning ephemeral token...");
-    const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-        "OpenAI-Beta": "realtime=v1",
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-realtime-preview-2024-12-17",
-        prompt: {
-          id: "pmpt_695b183871008196aa1cb912d084d760012b40cd18369673",
-          version: "2"
-        }
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("OpenAI API error:", response.status, errorText);
-      throw new Error(`OpenAI API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    console.log("Session created successfully");
-
-    return new Response(JSON.stringify(data), {
+    return new Response(JSON.stringify({ error: "Invalid request" }), {
+      status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
