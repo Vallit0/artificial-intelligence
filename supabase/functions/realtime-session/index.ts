@@ -6,6 +6,31 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const sessionConfig = {
+  type: "realtime",
+  model: "gpt-4o-realtime-preview-2024-12-17",
+  voice: "alloy",
+  instructions: `Eres un cliente potencial que está considerando contratar los servicios funerarios de Capillas Señoriales. Tu nombre es María González.
+
+Comportamiento:
+- Actúa como alguien que está explorando opciones para un plan funerario
+- Haz preguntas sobre precios, servicios, planes de pago
+- A veces muestra objeciones comunes: "es muy caro", "necesito pensarlo", "voy a comparar con otros"
+- Sé cortés pero firme cuando tengas dudas
+- Responde en español naturalmente
+
+Objetivo: Ayudar al asesor a practicar técnicas de venta efectivas y manejo de objeciones.`,
+  input_audio_format: "pcm16",
+  output_audio_format: "pcm16",
+  input_audio_transcription: { model: "whisper-1" },
+  turn_detection: {
+    type: "server_vad",
+    threshold: 0.5,
+    prefix_padding_ms: 300,
+    silence_duration_ms: 1000,
+  },
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -17,26 +42,53 @@ serve(async (req) => {
       throw new Error('OPENAI_API_KEY is not set');
     }
 
-    // Request an ephemeral token from OpenAI for WebRTC
-    const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
+    console.log("Received request, checking content type...");
+    const contentType = req.headers.get("content-type") || "";
+    
+    // Unified interface: client sends SDP
+    if (contentType.includes("application/sdp") || contentType.includes("text/plain")) {
+      const sdp = await req.text();
+      console.log("Received SDP, forwarding to OpenAI...");
+      
+      const fd = new FormData();
+      fd.set("sdp", sdp);
+      fd.set("session", JSON.stringify(sessionConfig));
+
+      const response = await fetch("https://api.openai.com/v1/realtime/calls", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${OPENAI_API_KEY}`,
+        },
+        body: fd,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("OpenAI API error:", response.status, errorText);
+        throw new Error(`OpenAI API error: ${response.status}`);
+      }
+
+      const answerSdp = await response.text();
+      console.log("Got SDP answer from OpenAI");
+
+      return new Response(answerSdp, {
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/sdp' 
+        },
+      });
+    }
+
+    // Fallback: ephemeral token approach
+    console.log("Using ephemeral token approach...");
+    const response = await fetch("https://api.openai.com/v1/realtime/client_secrets", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-realtime-preview-2024-12-17",
-        voice: "alloy",
-        instructions: `Eres un cliente potencial que está considerando contratar los servicios funerarios de Capillas Señoriales. Tu nombre es María González.
-
-Comportamiento:
-- Actúa como alguien que está explorando opciones para un plan funerario
-- Haz preguntas sobre precios, servicios, planes de pago
-- A veces muestra objeciones comunes: "es muy caro", "necesito pensarlo", "voy a comparar con otros"
-- Sé cortés pero firme cuando tengas dudas
-- Responde en español naturalmente
-
-Objetivo: Ayudar al asesor a practicar técnicas de venta efectivas y manejo de objeciones.`
+        session: sessionConfig,
       }),
     });
 
@@ -47,7 +99,7 @@ Objetivo: Ayudar al asesor a practicar técnicas de venta efectivas y manejo de 
     }
 
     const data = await response.json();
-    console.log("Session created:", data);
+    console.log("Session created successfully");
 
     return new Response(JSON.stringify(data), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
