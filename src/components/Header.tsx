@@ -16,7 +16,7 @@ const Header = () => {
       <div className="container mx-auto px-6 py-4 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
           <span className="text-xl font-bold text-foreground">
-            Capillas Señoriales
+            Corporación Señoriales
           </span>
         </Link>
 
