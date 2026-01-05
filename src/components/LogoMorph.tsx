@@ -15,18 +15,18 @@ const LogoMorph = ({ isMorphing, isConnecting, onClick }: LogoMorphProps) => {
     >
       {/* Container for the logo */}
       <div className="relative w-64 h-80 flex flex-col items-center justify-center">
-        {/* Circle - stays in place */}
+        {/* Circle - primary green, stays in place */}
         <div
           className={cn(
-            "absolute rounded-full bg-secondary transition-all duration-[1500ms] ease-in-out",
+            "absolute rounded-full bg-primary transition-all duration-[1500ms] ease-in-out",
             isMorphing
               ? "w-56 h-56 shadow-2xl"
-              : "w-48 h-48 group-hover:scale-105 group-hover:shadow-lg"
+              : "w-44 h-44 group-hover:scale-105 group-hover:shadow-lg"
           )}
-          style={{ top: 0 }}
+          style={{ top: isMorphing ? "0" : "10px" }}
         />
 
-        {/* Triangle - flies up when morphing */}
+        {/* Triangle - olive/accent green, flies up when morphing */}
         <div
           className={cn(
             "absolute transition-all duration-[1500ms] ease-in-out",
@@ -34,30 +34,31 @@ const LogoMorph = ({ isMorphing, isConnecting, onClick }: LogoMorphProps) => {
               ? "opacity-0 -translate-y-96"
               : "opacity-100 translate-y-0"
           )}
-          style={{ top: "90px" }}
+          style={{ top: "80px" }}
         >
-          {/* Triangle SVG */}
+          {/* Triangle SVG - matching the reference logo style */}
           <svg
-            width="160"
-            height="140"
-            viewBox="0 0 160 140"
+            width="180"
+            height="130"
+            viewBox="0 0 180 130"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
             className="transition-transform duration-300 group-hover:translate-y-1"
           >
+            {/* Main triangle body - olive color */}
             <path
-              d="M80 0 L160 140 L0 140 Z"
+              d="M90 10 L175 125 L5 125 Z"
               className="fill-accent"
             />
-            {/* White border line at top of triangle */}
+            {/* White diagonal lines at top to create separation effect */}
             <path
-              d="M80 0 L25 100"
+              d="M90 10 L35 75"
               stroke="hsl(var(--background))"
               strokeWidth="6"
               strokeLinecap="round"
             />
             <path
-              d="M80 0 L135 100"
+              d="M90 10 L145 75"
               stroke="hsl(var(--background))"
               strokeWidth="6"
               strokeLinecap="round"
