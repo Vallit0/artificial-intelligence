@@ -68,10 +68,8 @@ export const useRealtimeAudio = (options: UseRealtimeAudioOptions = {}) => {
           setSessionTime((prev) => prev + 1);
         }, 1000);
 
-        toast({
-          title: "Conectado",
-          description: "Puedes comenzar a practicar",
-        });
+        // Make AI speak first
+        dc.send(JSON.stringify({ type: "response.create" }));
       };
 
       dc.onmessage = (e) => {
