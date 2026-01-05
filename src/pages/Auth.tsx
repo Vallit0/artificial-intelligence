@@ -102,9 +102,9 @@ const Auth = () => {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">
-            Capillas Señoriales
+            Bienvenido Artista
           </h1>
-          <p className="text-muted-foreground">Plataforma de entrenamiento en ventas</p>
+          <p className="text-muted-foreground">Corporación Señoriales</p>
         </div>
 
         <div className="bg-card border border-border rounded-2xl p-8 shadow-lg">
