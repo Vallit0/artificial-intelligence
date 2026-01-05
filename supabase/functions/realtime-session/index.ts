@@ -9,7 +9,6 @@ const corsHeaders = {
 const sessionConfig = {
   type: "realtime",
   model: "gpt-4o-realtime-preview-2024-12-17",
-  voice: "alloy",
   instructions: `Eres un cliente potencial que está considerando contratar los servicios funerarios de Capillas Señoriales. Tu nombre es María González.
 
 Comportamiento:
@@ -20,15 +19,9 @@ Comportamiento:
 - Responde en español naturalmente
 
 Objetivo: Ayudar al asesor a practicar técnicas de venta efectivas y manejo de objeciones.`,
-  input_audio_format: "pcm16",
-  output_audio_format: "pcm16",
-  input_audio_transcription: { model: "whisper-1" },
-  turn_detection: {
-    type: "server_vad",
-    threshold: 0.5,
-    prefix_padding_ms: 300,
-    silence_duration_ms: 1000,
-  },
+  audio: {
+    output: { voice: "alloy" }
+  }
 };
 
 serve(async (req) => {
