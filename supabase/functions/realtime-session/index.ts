@@ -6,14 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const sessionConfig = {
-  model: "gpt-4o-realtime-preview-2024-12-17",
-  prompt: {
-    id: "pmpt_695b183871008196aa1cb912d084d760012b40cd18369673",
-    version: "2"
-  }
-};
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -28,30 +20,64 @@ serve(async (req) => {
     console.log("Received request, checking content type...");
     const contentType = req.headers.get("content-type") || "";
     
-    // Unified interface: client sends SDP
+    // Client sends SDP for WebRTC connection
     if (contentType.includes("application/sdp") || contentType.includes("text/plain")) {
       const sdp = await req.text();
-      console.log("Received SDP, forwarding to OpenAI...");
+      console.log("Received SDP, getting ephemeral token first...");
       
-      const fd = new FormData();
-      fd.set("sdp", sdp);
-      fd.set("session", JSON.stringify(sessionConfig));
-
-      const response = await fetch("https://api.openai.com/v1/realtime/calls", {
+      // Step 1: Get ephemeral token using the published prompt
+      const sessionResponse = await fetch("https://api.openai.com/v1/realtime/sessions", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+          "OpenAI-Beta": "realtime=v1",
         },
-        body: fd,
+        body: JSON.stringify({
+          model: "gpt-4o-realtime-preview-2024-12-17",
+          prompt: {
+            id: "pmpt_695b183871008196aa1cb912d084d760012b40cd18369673",
+            version: "2"
+          }
+        }),
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("OpenAI API error:", response.status, errorText);
-        throw new Error(`OpenAI API error: ${response.status}`);
+      if (!sessionResponse.ok) {
+        const errorText = await sessionResponse.text();
+        console.error("Session API error:", sessionResponse.status, errorText);
+        throw new Error(`Session API error: ${sessionResponse.status}`);
       }
 
-      const answerSdp = await response.text();
+      const sessionData = await sessionResponse.json();
+      const ephemeralKey = sessionData.client_secret?.value;
+      
+      if (!ephemeralKey) {
+        console.error("No ephemeral key in response:", sessionData);
+        throw new Error("Failed to get ephemeral key");
+      }
+      
+      console.log("Got ephemeral key, connecting to realtime...");
+
+      // Step 2: Use ephemeral key to establish WebRTC connection
+      const realtimeResponse = await fetch(
+        "https://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${ephemeralKey}`,
+            "Content-Type": "application/sdp",
+          },
+          body: sdp,
+        }
+      );
+
+      if (!realtimeResponse.ok) {
+        const errorText = await realtimeResponse.text();
+        console.error("Realtime API error:", realtimeResponse.status, errorText);
+        throw new Error(`Realtime API error: ${realtimeResponse.status}`);
+      }
+
+      const answerSdp = await realtimeResponse.text();
       console.log("Got SDP answer from OpenAI");
 
       return new Response(answerSdp, {
@@ -62,16 +88,21 @@ serve(async (req) => {
       });
     }
 
-    // Fallback: ephemeral token approach
-    console.log("Using ephemeral token approach...");
-    const response = await fetch("https://api.openai.com/v1/realtime/client_secrets", {
+    // Fallback: just return ephemeral token
+    console.log("Returning ephemeral token...");
+    const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
+        "OpenAI-Beta": "realtime=v1",
       },
       body: JSON.stringify({
-        session: sessionConfig,
+        model: "gpt-4o-realtime-preview-2024-12-17",
+        prompt: {
+          id: "pmpt_695b183871008196aa1cb912d084d760012b40cd18369673",
+          version: "2"
+        }
       }),
     });
 
