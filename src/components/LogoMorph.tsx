@@ -44,23 +44,21 @@ const LogoMorph = ({ isMorphing, isConnecting, onClick }: LogoMorphProps) => {
             xmlns="http://www.w3.org/2000/svg"
             className="transition-transform duration-300 group-hover:translate-y-1"
           >
-            {/* Main triangle body - olive color */}
+            {/* Main triangle body */}
             <path
               d="M90 10 L175 125 L5 125 Z"
               className="fill-accent"
             />
-            {/* White diagonal lines at top to create separation effect */}
+            {/* White diagonal lines from peak to corners */}
             <path
-              d="M90 10 L35 75"
+              d="M90 10 L5 125"
               stroke="hsl(var(--background))"
               strokeWidth="6"
-              strokeLinecap="round"
             />
             <path
-              d="M90 10 L145 75"
+              d="M90 10 L175 125"
               stroke="hsl(var(--background))"
               strokeWidth="6"
-              strokeLinecap="round"
             />
           </svg>
         </div>
