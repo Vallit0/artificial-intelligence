@@ -4,6 +4,7 @@ import VoiceControls from "@/components/VoiceControls";
 import StartPracticeButton from "@/components/StartPracticeButton";
 import FeedbackScreen from "@/components/FeedbackScreen";
 import PracticeTimer from "@/components/PracticeTimer";
+import UserMenu from "@/components/UserMenu";
 import { useRealtimeAudio } from "@/hooks/useRealtimeAudio";
 
 type SessionState = "idle" | "morphing" | "active" | "feedback";
@@ -56,7 +57,12 @@ const Practice = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center relative">
+      {/* User menu - always visible */}
+      <div className="absolute top-6 right-6">
+        <UserMenu />
+      </div>
+
       {sessionState === "idle" && (
         <StartPracticeButton
           onClick={handleStart}
