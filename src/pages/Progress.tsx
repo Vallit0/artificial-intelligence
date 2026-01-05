@@ -1,17 +1,35 @@
-import Header from "@/components/Header";
+import { useNavigate } from "react-router-dom";
 import PracticeTimer from "@/components/PracticeTimer";
-import { Award, Clock, TrendingUp } from "lucide-react";
+import UserMenu from "@/components/UserMenu";
+import { Button } from "@/components/ui/button";
+import { Award, Clock, TrendingUp, ArrowLeft } from "lucide-react";
 
 const Progress = () => {
+  const navigate = useNavigate();
+  
   // This would come from the database in the full implementation
   const totalPracticeTime = 3600; // 1 hour in seconds for demo
   const targetTime = 7200; // 2 hours
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      {/* Header */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
+        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("/")}
+            className="gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Volver a practicar
+          </Button>
+          <UserMenu />
+        </div>
+      </header>
 
-      <main className="pt-32 pb-20 px-6">
+      <main className="pt-24 pb-20 px-6">
         <div className="container mx-auto max-w-4xl">
           <h1 className="text-3xl font-bold text-foreground mb-2">Tu Progreso</h1>
           <p className="text-muted-foreground mb-8">
@@ -44,13 +62,13 @@ const Progress = () => {
               </div>
 
               <div className="bg-muted/50 rounded-xl p-4 text-center">
-                <TrendingUp className="w-6 h-6 text-secondary mx-auto mb-2" />
+                <TrendingUp className="w-6 h-6 text-primary mx-auto mb-2" />
                 <p className="text-2xl font-bold text-foreground">5</p>
                 <p className="text-sm text-muted-foreground">Sesiones completadas</p>
               </div>
 
               <div className="bg-muted/50 rounded-xl p-4 text-center">
-                <Award className="w-6 h-6 text-olive-dark mx-auto mb-2" />
+                <Award className="w-6 h-6 text-primary mx-auto mb-2" />
                 <p className="text-2xl font-bold text-foreground">
                   {Math.round((totalPracticeTime / targetTime) * 100)}%
                 </p>

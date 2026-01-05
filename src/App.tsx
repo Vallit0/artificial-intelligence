@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import Practice from "./pages/Practice";
+import Progress from "./pages/Progress";
 import Auth from "./pages/Auth";
 
 const queryClient = new QueryClient();
@@ -52,6 +53,14 @@ const AppRoutes = () => (
       element={
         <ProtectedRoute>
           <Practice />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/progress"
+      element={
+        <ProtectedRoute>
+          <Progress />
         </ProtectedRoute>
       }
     />
