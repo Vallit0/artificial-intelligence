@@ -7,20 +7,10 @@ const corsHeaders = {
 };
 
 const sessionConfig = {
-  type: "realtime",
   model: "gpt-4o-realtime-preview-2024-12-17",
-  instructions: `Eres un cliente potencial que está considerando contratar los servicios funerarios de Capillas Señoriales. Tu nombre es María González.
-
-Comportamiento:
-- Actúa como alguien que está explorando opciones para un plan funerario
-- Haz preguntas sobre precios, servicios, planes de pago
-- A veces muestra objeciones comunes: "es muy caro", "necesito pensarlo", "voy a comparar con otros"
-- Sé cortés pero firme cuando tengas dudas
-- Responde en español naturalmente
-
-Objetivo: Ayudar al asesor a practicar técnicas de venta efectivas y manejo de objeciones.`,
-  audio: {
-    output: { voice: "alloy" }
+  prompt: {
+    id: "pmpt_695b183871008196aa1cb912d084d760012b40cd18369673",
+    version: "2"
   }
 };
 
