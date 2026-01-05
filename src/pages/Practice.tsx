@@ -3,6 +3,7 @@ import VoiceOrb from "@/components/VoiceOrb";
 import VoiceControls from "@/components/VoiceControls";
 import StartPracticeButton from "@/components/StartPracticeButton";
 import FeedbackScreen from "@/components/FeedbackScreen";
+import PracticeTimer from "@/components/PracticeTimer";
 import { useRealtimeAudio } from "@/hooks/useRealtimeAudio";
 
 type SessionState = "idle" | "morphing" | "active" | "feedback";
@@ -19,6 +20,7 @@ const Practice = () => {
     isConnecting,
     isSpeaking,
     isMuted,
+    sessionTime,
     connect,
     disconnect,
     toggleMute,
@@ -73,6 +75,8 @@ const Practice = () => {
 
       {sessionState === "active" && (
         <div className="flex flex-col items-center gap-16 animate-fade-in">
+          <PracticeTimer totalSeconds={sessionTime} className="mb-4" />
+          
           <VoiceOrb isSpeaking={isSpeaking} isListening={!isMuted} />
 
           <VoiceControls
