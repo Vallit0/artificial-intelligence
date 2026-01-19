@@ -1,5 +1,5 @@
 import { useConversation } from "@elevenlabs/react";
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface UseElevenLabsConversationOptions {
@@ -13,11 +13,14 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
   
   const [isConnecting, setIsConnecting] = useState(false);
   const [sessionTime, setSessionTime] = useState(0);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isConnectedRef = useRef(false);
 
   const conversation = useConversation({
     onConnect: () => {
       console.log("Connected to ElevenLabs agent");
+      isConnectedRef.current = true;
+      setIsConnecting(false);
       // Start session timer
       timerRef.current = setInterval(() => {
         setSessionTime((prev) => prev + 1);
@@ -25,6 +28,7 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     },
     onDisconnect: () => {
       console.log("Disconnected from ElevenLabs agent");
+      isConnectedRef.current = false;
       // Stop timer
       if (timerRef.current) {
         clearInterval(timerRef.current);
@@ -34,7 +38,7 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     onMessage: (message) => {
       console.log("Message from agent:", message);
       
-      // Handle transcriptions - cast to unknown first then to our expected structure
+      // Handle transcriptions
       const msg = message as unknown as { 
         user_transcription_event?: { user_transcript?: string };
         agent_response_event?: { agent_response?: string };
@@ -57,6 +61,11 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
   });
 
   const connect = useCallback(async () => {
+    if (isConnectedRef.current || isConnecting) {
+      console.log("Already connected or connecting, skipping");
+      return;
+    }
+    
     setIsConnecting(true);
     setSessionTime(0);
 
@@ -64,7 +73,7 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
       // Request microphone permission
       await navigator.mediaDevices.getUserMedia({ audio: true });
 
-      // Get token from edge function with scenario
+      // Get signed URL from edge function with scenario
       const { data, error } = await supabase.functions.invoke(
         "elevenlabs-conversation-token",
         {
@@ -83,47 +92,37 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
       }
 
       // Start the conversation with WebSocket using signed URL
+      console.log("Starting session with signed URL...");
       await conversation.startSession({
         signedUrl: data.signedUrl,
       });
 
-      setIsConnecting(false);
+      console.log("Session started successfully");
     } catch (error) {
       console.error("Failed to start conversation:", error);
       onError?.(error instanceof Error ? error.message : "Failed to connect");
       setIsConnecting(false);
     }
-  }, [conversation, onError, scenarioId]);
+  }, [conversation, onError, scenarioId, isConnecting]);
 
   const disconnect = useCallback(async () => {
+    console.log("Disconnect called");
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
     await conversation.endSession();
     setSessionTime(0);
-  }, [conversation]);
-
-  const toggleMute = useCallback(() => {
-    // ElevenLabs SDK doesn't have a direct mute toggle
-    // We would need to stop/start the audio track
-    console.log("Mute toggle not directly supported by ElevenLabs SDK");
-  }, []);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-      conversation.endSession();
-    };
   }, [conversation]);
 
   return {
     isConnected: conversation.status === "connected",
     isConnecting,
     isSpeaking: conversation.isSpeaking,
-    isMuted: false, // ElevenLabs doesn't expose this directly
+    isMuted: false,
     sessionTime,
     connect,
     disconnect,
-    toggleMute,
+    toggleMute: () => console.log("Mute not supported"),
   };
 };
