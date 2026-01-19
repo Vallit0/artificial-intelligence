@@ -33,16 +33,17 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     onMessage: (message) => {
       console.log("Message from agent:", message);
       
-      // Handle transcriptions
-      if (message.type === "user_transcript" && onTranscript) {
-        const transcript = (message as any).user_transcription_event?.user_transcript;
+      // Handle transcriptions - check message structure
+      const msg = message as Record<string, unknown>;
+      if (msg.user_transcription_event && onTranscript) {
+        const transcript = (msg.user_transcription_event as Record<string, unknown>)?.user_transcript as string;
         if (transcript) {
           onTranscript(transcript, true);
         }
       }
       
-      if (message.type === "agent_response" && onTranscript) {
-        const response = (message as any).agent_response_event?.agent_response;
+      if (msg.agent_response_event && onTranscript) {
+        const response = (msg.agent_response_event as Record<string, unknown>)?.agent_response as string;
         if (response) {
           onTranscript(response, false);
         }
@@ -50,7 +51,8 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     },
     onError: (error) => {
       console.error("ElevenLabs conversation error:", error);
-      onError?.(error.message || "Connection error");
+      const errorMessage = typeof error === 'string' ? error : (error as Error)?.message || "Connection error";
+      onError?.(errorMessage);
       setIsConnecting(false);
     },
   });
