@@ -76,14 +76,15 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
         throw new Error(error.message || "Failed to get conversation token");
       }
 
-      if (!data?.token) {
-        throw new Error("No token received from server");
+      console.log("Edge function response:", data);
+
+      if (!data?.signedUrl) {
+        throw new Error("No signed URL received from server");
       }
 
-      // Start the conversation with WebRTC
+      // Start the conversation with WebSocket using signed URL
       await conversation.startSession({
-        conversationToken: data.token,
-        connectionType: "webrtc",
+        signedUrl: data.signedUrl,
       });
 
       setIsConnecting(false);
