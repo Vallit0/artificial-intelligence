@@ -3,12 +3,13 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface UseElevenLabsConversationOptions {
+  scenarioId?: string | null;
   onTranscript?: (text: string, isUser: boolean) => void;
   onError?: (error: string) => void;
 }
 
 export const useElevenLabsConversation = (options: UseElevenLabsConversationOptions = {}) => {
-  const { onTranscript, onError } = options;
+  const { scenarioId, onTranscript, onError } = options;
   
   const [isConnecting, setIsConnecting] = useState(false);
   const [sessionTime, setSessionTime] = useState(0);
@@ -33,20 +34,18 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     onMessage: (message) => {
       console.log("Message from agent:", message);
       
-      // Handle transcriptions - check message structure
-      const msg = message as Record<string, unknown>;
-      if (msg.user_transcription_event && onTranscript) {
-        const transcript = (msg.user_transcription_event as Record<string, unknown>)?.user_transcript as string;
-        if (transcript) {
-          onTranscript(transcript, true);
-        }
+      // Handle transcriptions - cast to unknown first then to our expected structure
+      const msg = message as unknown as { 
+        user_transcription_event?: { user_transcript?: string };
+        agent_response_event?: { agent_response?: string };
+      };
+      
+      if (msg.user_transcription_event?.user_transcript && onTranscript) {
+        onTranscript(msg.user_transcription_event.user_transcript, true);
       }
       
-      if (msg.agent_response_event && onTranscript) {
-        const response = (msg.agent_response_event as Record<string, unknown>)?.agent_response as string;
-        if (response) {
-          onTranscript(response, false);
-        }
+      if (msg.agent_response_event?.agent_response && onTranscript) {
+        onTranscript(msg.agent_response_event.agent_response, false);
       }
     },
     onError: (error) => {
@@ -65,9 +64,12 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
       // Request microphone permission
       await navigator.mediaDevices.getUserMedia({ audio: true });
 
-      // Get token from edge function
+      // Get token from edge function with scenario
       const { data, error } = await supabase.functions.invoke(
-        "elevenlabs-conversation-token"
+        "elevenlabs-conversation-token",
+        {
+          body: { scenario_id: scenarioId },
+        }
       );
 
       if (error) {
@@ -90,7 +92,7 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
       onError?.(error instanceof Error ? error.message : "Failed to connect");
       setIsConnecting(false);
     }
-  }, [conversation, onError]);
+  }, [conversation, onError, scenarioId]);
 
   const disconnect = useCallback(async () => {
     await conversation.endSession();

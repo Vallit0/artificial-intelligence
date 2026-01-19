@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import Scenarios from "./pages/Scenarios";
 import Practice from "./pages/Practice";
 import Progress from "./pages/Progress";
 import Auth from "./pages/Auth";
@@ -50,6 +51,14 @@ const AppRoutes = () => (
   <Routes>
     <Route
       path="/"
+      element={
+        <ProtectedRoute>
+          <Scenarios />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/practice"
       element={
         <ProtectedRoute>
           <Practice />

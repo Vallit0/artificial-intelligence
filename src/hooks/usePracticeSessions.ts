@@ -14,7 +14,7 @@ interface UsePracticeSessionsReturn {
   sessions: PracticeSession[];
   totalPracticeTime: number;
   isLoading: boolean;
-  savePracticeSession: (durationSeconds: number, rating?: number) => Promise<void>;
+  savePracticeSession: (durationSeconds: number, rating?: number, scenarioId?: string) => Promise<void>;
   refetch: () => Promise<void>;
 }
 
@@ -52,7 +52,7 @@ export const usePracticeSessions = (): UsePracticeSessionsReturn => {
   }, [fetchSessions]);
 
   const savePracticeSession = useCallback(
-    async (durationSeconds: number, rating?: number) => {
+    async (durationSeconds: number, rating?: number, scenarioId?: string) => {
       if (!user) return;
 
       try {
@@ -60,6 +60,7 @@ export const usePracticeSessions = (): UsePracticeSessionsReturn => {
           user_id: user.id,
           duration_seconds: durationSeconds,
           rating: rating ?? null,
+          scenario_id: scenarioId ?? null,
         });
 
         if (error) throw error;
