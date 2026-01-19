@@ -57,16 +57,17 @@ const Practice = () => {
   // Keep track of session duration
   sessionDurationRef.current = sessionTime;
 
+  // Transition to active when connected
+  useEffect(() => {
+    if (isConnected && sessionState === "morphing") {
+      setSessionState("active");
+    }
+  }, [isConnected, sessionState]);
+
   const handleStart = async () => {
     setSessionState("morphing");
-    
-    // Start connection during morph animation
+    // Start connection - will transition to active when connected
     connect();
-    
-    // Transition to active after morph completes
-    setTimeout(() => {
-      setSessionState("active");
-    }, 1500);
   };
 
   const handleEndCall = () => {
