@@ -26,6 +26,8 @@ serve(async (req) => {
       throw new Error("ELEVENLABS_AGENT_ID is not configured");
     }
 
+    console.log("Using agent ID:", ELEVENLABS_AGENT_ID);
+
     // Parse request body for scenario
     let scenarioId: string | null = null;
     let scenario: {
@@ -37,6 +39,7 @@ serve(async (req) => {
     try {
       const body = await req.json();
       scenarioId = body.scenario_id;
+      console.log("Scenario ID received:", scenarioId);
     } catch {
       // No body or invalid JSON, continue without scenario
     }
@@ -53,13 +56,17 @@ serve(async (req) => {
 
       if (!error && data) {
         scenario = data;
+        console.log("Scenario loaded:", scenario?.first_message);
+      } else {
+        console.error("Error fetching scenario:", error);
       }
     }
 
-    // Build the token request URL
+    // Use the correct endpoint for conversation token (not signed URL)
     const tokenUrl = `https://api.elevenlabs.io/v1/convai/conversation/get-signed-url?agent_id=${ELEVENLABS_AGENT_ID}`;
+    
+    console.log("Fetching signed URL from:", tokenUrl);
 
-    // Get a signed URL from ElevenLabs
     const response = await fetch(tokenUrl, {
       method: "GET",
       headers: {
@@ -70,15 +77,16 @@ serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error("ElevenLabs API error:", response.status, errorText);
-      throw new Error(`ElevenLabs API error: ${response.status}`);
+      throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
+    console.log("ElevenLabs response keys:", Object.keys(data));
 
-    // Return signed URL and scenario info for client to use with overrides
+    // Return signed_url for WebSocket connection
     return new Response(
       JSON.stringify({
-        token: data.signed_url,
+        signedUrl: data.signed_url,
         scenario: scenario
           ? {
               prompt: scenario.client_persona,
