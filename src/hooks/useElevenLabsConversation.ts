@@ -1,5 +1,5 @@
 import { useConversation } from "@elevenlabs/react";
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface UseElevenLabsConversationOptions {
@@ -9,7 +9,17 @@ interface UseElevenLabsConversationOptions {
 }
 
 export const useElevenLabsConversation = (options: UseElevenLabsConversationOptions = {}) => {
-  const { scenarioId, onTranscript, onError } = options;
+  // Use refs for callbacks to prevent hook recreation
+  const onTranscriptRef = useRef(options.onTranscript);
+  const onErrorRef = useRef(options.onError);
+  const scenarioIdRef = useRef(options.scenarioId);
+  
+  // Update refs when options change
+  useEffect(() => {
+    onTranscriptRef.current = options.onTranscript;
+    onErrorRef.current = options.onError;
+    scenarioIdRef.current = options.scenarioId;
+  }, [options.onTranscript, options.onError, options.scenarioId]);
   
   const [isConnecting, setIsConnecting] = useState(false);
   const [sessionTime, setSessionTime] = useState(0);
@@ -44,18 +54,18 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
         agent_response_event?: { agent_response?: string };
       };
       
-      if (msg.user_transcription_event?.user_transcript && onTranscript) {
-        onTranscript(msg.user_transcription_event.user_transcript, true);
+      if (msg.user_transcription_event?.user_transcript && onTranscriptRef.current) {
+        onTranscriptRef.current(msg.user_transcription_event.user_transcript, true);
       }
       
-      if (msg.agent_response_event?.agent_response && onTranscript) {
-        onTranscript(msg.agent_response_event.agent_response, false);
+      if (msg.agent_response_event?.agent_response && onTranscriptRef.current) {
+        onTranscriptRef.current(msg.agent_response_event.agent_response, false);
       }
     },
     onError: (error) => {
       console.error("ElevenLabs conversation error:", error);
       const errorMessage = typeof error === 'string' ? error : (error as Error)?.message || "Connection error";
-      onError?.(errorMessage);
+      onErrorRef.current?.(errorMessage);
       setIsConnecting(false);
     },
   });
@@ -77,7 +87,7 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
       const { data, error } = await supabase.functions.invoke(
         "elevenlabs-conversation-token",
         {
-          body: { scenario_id: scenarioId },
+          body: { scenario_id: scenarioIdRef.current },
         }
       );
 
@@ -100,10 +110,10 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
       console.log("Session started successfully");
     } catch (error) {
       console.error("Failed to start conversation:", error);
-      onError?.(error instanceof Error ? error.message : "Failed to connect");
+      onErrorRef.current?.(error instanceof Error ? error.message : "Failed to connect");
       setIsConnecting(false);
     }
-  }, [conversation, onError, scenarioId, isConnecting]);
+  }, [conversation, isConnecting]);
 
   const disconnect = useCallback(async () => {
     console.log("Disconnect called");
