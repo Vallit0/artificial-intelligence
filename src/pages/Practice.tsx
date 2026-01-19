@@ -5,7 +5,7 @@ import LogoMorph from "@/components/LogoMorph";
 import FeedbackScreen from "@/components/FeedbackScreen";
 import PracticeTimer from "@/components/PracticeTimer";
 import UserMenu from "@/components/UserMenu";
-import { useRealtimeAudio } from "@/hooks/useRealtimeAudio";
+import { useElevenLabsConversation } from "@/hooks/useElevenLabsConversation";
 import { usePracticeSessions } from "@/hooks/usePracticeSessions";
 
 type SessionState = "idle" | "morphing" | "active" | "feedback";
@@ -28,7 +28,7 @@ const Practice = () => {
     connect,
     disconnect,
     toggleMute,
-  } = useRealtimeAudio({
+  } = useElevenLabsConversation({
     onTranscript: handleTranscript,
   });
 
