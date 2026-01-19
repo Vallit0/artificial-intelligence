@@ -20,6 +20,7 @@ export type Database = {
           duration_seconds: number
           id: string
           rating: number | null
+          scenario_id: string | null
           user_id: string
         }
         Insert: {
@@ -27,6 +28,7 @@ export type Database = {
           duration_seconds?: number
           id?: string
           rating?: number | null
+          scenario_id?: string | null
           user_id: string
         }
         Update: {
@@ -34,7 +36,58 @@ export type Database = {
           duration_seconds?: number
           id?: string
           rating?: number | null
+          scenario_id?: string | null
           user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "practice_sessions_scenario_id_fkey"
+            columns: ["scenario_id"]
+            isOneToOne: false
+            referencedRelation: "scenarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scenarios: {
+        Row: {
+          client_persona: string
+          created_at: string | null
+          description: string | null
+          difficulty: string | null
+          first_message: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          objection: string
+          script_content: Json | null
+          voice_type: string | null
+        }
+        Insert: {
+          client_persona: string
+          created_at?: string | null
+          description?: string | null
+          difficulty?: string | null
+          first_message?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          objection: string
+          script_content?: Json | null
+          voice_type?: string | null
+        }
+        Update: {
+          client_persona?: string
+          created_at?: string | null
+          description?: string | null
+          difficulty?: string | null
+          first_message?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          objection?: string
+          script_content?: Json | null
+          voice_type?: string | null
         }
         Relationships: []
       }
