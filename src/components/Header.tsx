@@ -1,9 +1,12 @@
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
+import UserMenu from "@/components/UserMenu";
 
 const Header = () => {
   const location = useLocation();
+  const { user } = useAuth();
 
   const navLinks = [
     { href: "/", label: "Inicio" },
@@ -38,14 +41,20 @@ const Header = () => {
         </nav>
 
         <div className="flex items-center gap-3">
-          <Link to="/auth">
-            <Button variant="ghost" size="sm">
-              Iniciar Sesión
-            </Button>
-          </Link>
-          <Link to="/auth?mode=signup">
-            <Button size="sm">Registrarse</Button>
-          </Link>
+          {user ? (
+            <UserMenu />
+          ) : (
+            <>
+              <Link to="/auth">
+                <Button variant="ghost" size="sm">
+                  Iniciar Sesión
+                </Button>
+              </Link>
+              <Link to="/auth?mode=signup">
+                <Button size="sm">Registrarse</Button>
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </header>
