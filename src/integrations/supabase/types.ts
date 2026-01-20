@@ -14,6 +14,101 @@ export type Database = {
   }
   public: {
     Tables: {
+      lti_platforms: {
+        Row: {
+          auth_endpoint: string
+          client_id: string
+          created_at: string | null
+          deployment_id: string
+          id: string
+          is_active: boolean | null
+          issuer_url: string
+          jwks_url: string
+          name: string
+          token_endpoint: string
+          updated_at: string | null
+        }
+        Insert: {
+          auth_endpoint: string
+          client_id: string
+          created_at?: string | null
+          deployment_id: string
+          id?: string
+          is_active?: boolean | null
+          issuer_url: string
+          jwks_url: string
+          name: string
+          token_endpoint: string
+          updated_at?: string | null
+        }
+        Update: {
+          auth_endpoint?: string
+          client_id?: string
+          created_at?: string | null
+          deployment_id?: string
+          id?: string
+          is_active?: boolean | null
+          issuer_url?: string
+          jwks_url?: string
+          name?: string
+          token_endpoint?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      lti_sessions: {
+        Row: {
+          context_id: string | null
+          context_title: string | null
+          created_at: string | null
+          id: string
+          last_launch_at: string | null
+          lti_email: string | null
+          lti_name: string | null
+          lti_user_id: string
+          platform_id: string
+          resource_link_id: string | null
+          roles: Database["public"]["Enums"]["lti_role"][] | null
+          user_id: string
+        }
+        Insert: {
+          context_id?: string | null
+          context_title?: string | null
+          created_at?: string | null
+          id?: string
+          last_launch_at?: string | null
+          lti_email?: string | null
+          lti_name?: string | null
+          lti_user_id: string
+          platform_id: string
+          resource_link_id?: string | null
+          roles?: Database["public"]["Enums"]["lti_role"][] | null
+          user_id: string
+        }
+        Update: {
+          context_id?: string | null
+          context_title?: string | null
+          created_at?: string | null
+          id?: string
+          last_launch_at?: string | null
+          lti_email?: string | null
+          lti_name?: string | null
+          lti_user_id?: string
+          platform_id?: string
+          resource_link_id?: string | null
+          roles?: Database["public"]["Enums"]["lti_role"][] | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lti_sessions_platform_id_fkey"
+            columns: ["platform_id"]
+            isOneToOne: false
+            referencedRelation: "lti_platforms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       practice_sessions: {
         Row: {
           created_at: string
@@ -99,7 +194,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      lti_role: "instructor" | "learner" | "admin" | "content_developer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -226,6 +321,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      lti_role: ["instructor", "learner", "admin", "content_developer"],
+    },
   },
 } as const
