@@ -81,42 +81,42 @@ const ScenarioPreviewModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md p-0 overflow-hidden border-border/50 bg-card">
+      <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-md p-0 overflow-hidden border-border/50 bg-card max-h-[90vh] overflow-y-auto">
         {/* Header with gradient */}
-        <div className="bg-gradient-to-br from-primary to-primary/80 p-6 text-primary-foreground">
-          <div className="flex items-start justify-between gap-4">
-            <div className="space-y-2 animate-fade-in">
-              <div className="flex items-center gap-2">
-                <Phone className="w-5 h-5" />
-                <span className="text-sm font-medium opacity-90">Escenario de Práctica</span>
+        <div className="bg-gradient-to-br from-primary to-primary/80 p-4 sm:p-6 text-primary-foreground">
+          <div className="flex items-start justify-between gap-3 sm:gap-4">
+            <div className="space-y-1.5 sm:space-y-2 animate-fade-in min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Phone className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                <span className="text-xs sm:text-sm font-medium opacity-90">Escenario de Práctica</span>
               </div>
-              <h2 className="text-xl font-bold leading-tight">
+              <h2 className="text-base sm:text-xl font-bold leading-tight">
                 {scenario.name}
               </h2>
             </div>
             <Badge 
               variant="outline" 
-              className={cn("shrink-0 border animate-scale-in", difficultyConfig.className)}
+              className={cn("shrink-0 border animate-scale-in text-[10px] sm:text-xs", difficultyConfig.className)}
             >
-              <Star className="w-3 h-3 mr-1" />
+              <Star className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1" />
               {difficultyConfig.label}
             </Badge>
           </div>
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-6">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* The Case Section */}
-          <div className="space-y-3 animate-fade-in" style={{ animationDelay: "0.1s" }}>
-            <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+          <div className="space-y-2 sm:space-y-3 animate-fade-in" style={{ animationDelay: "0.1s" }}>
+            <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-muted-foreground">
               El Caso
             </h3>
-            <div className="bg-muted/50 rounded-xl p-4 border border-border/50">
-              <p className="text-sm text-foreground leading-relaxed">
+            <div className="bg-muted/50 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-border/50">
+              <p className="text-xs sm:text-sm text-foreground leading-relaxed">
                 {scenario.description || `El cliente responderá con "${scenario.objection}". Tu objetivo es manejar esta objeción de manera profesional y mantener la conversación.`}
               </p>
-              <div className="mt-3 flex items-center gap-2">
-                <Badge variant="secondary" className="text-xs">
+              <div className="mt-2 sm:mt-3 flex items-center gap-2 flex-wrap">
+                <Badge variant="secondary" className="text-[10px] sm:text-xs">
                   Objeción: "{scenario.objection}"
                 </Badge>
               </div>
@@ -124,19 +124,19 @@ const ScenarioPreviewModal = ({
           </div>
 
           {/* Your Client Section */}
-          <div className="space-y-3 animate-fade-in" style={{ animationDelay: "0.2s" }}>
-            <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+          <div className="space-y-2 sm:space-y-3 animate-fade-in" style={{ animationDelay: "0.2s" }}>
+            <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-muted-foreground">
               Tu Cliente
             </h3>
             <div 
-              className="bg-gradient-to-br from-secondary/20 to-secondary/5 rounded-xl p-4 border border-secondary/30 animate-scale-in"
+              className="bg-gradient-to-br from-secondary/20 to-secondary/5 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-secondary/30 animate-scale-in"
               style={{ animationDelay: "0.3s" }}
             >
-              <div className="flex items-start gap-4">
+              <div className="flex items-start gap-3 sm:gap-4">
                 {/* Avatar */}
-                <Avatar className="w-16 h-16 border-2 border-secondary shadow-lg">
+                <Avatar className="w-12 h-12 sm:w-16 sm:h-16 border-2 border-secondary shadow-lg shrink-0">
                   <AvatarFallback className={cn(
-                    "text-xl font-bold",
+                    "text-lg sm:text-xl font-bold",
                     isFemale 
                       ? "bg-pink-500/20 text-pink-400" 
                       : "bg-blue-500/20 text-blue-400"
@@ -146,20 +146,20 @@ const ScenarioPreviewModal = ({
                 </Avatar>
 
                 {/* Info */}
-                <div className="flex-1 space-y-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h4 className="font-bold text-foreground">{clientName}</h4>
+                <div className="flex-1 space-y-1 min-w-0">
+                  <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                    <h4 className="font-bold text-foreground text-sm sm:text-base">{clientName}</h4>
                     {clientAge && (
-                      <span className="text-sm text-muted-foreground">• {clientAge}</span>
+                      <span className="text-xs sm:text-sm text-muted-foreground">• {clientAge}</span>
                     )}
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-xs">
-                      <User className="w-3 h-3 mr-1" />
+                    <Badge variant="outline" className="text-[10px] sm:text-xs">
+                      <User className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1" />
                       Voz {isFemale ? "Femenina" : "Masculina"}
                     </Badge>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                  <p className="text-xs sm:text-sm text-muted-foreground mt-1.5 sm:mt-2 leading-relaxed">
                     {personalitySummary}
                   </p>
                 </div>
@@ -170,10 +170,10 @@ const ScenarioPreviewModal = ({
           {/* Start Button */}
           <Button
             onClick={() => onStartPractice(scenario.id)}
-            className="w-full h-14 text-lg font-bold uppercase tracking-wider animate-fade-in shadow-lg hover:shadow-xl transition-all duration-300"
+            className="w-full h-11 sm:h-14 text-sm sm:text-lg font-bold uppercase tracking-wider animate-fade-in shadow-lg hover:shadow-xl transition-all duration-300"
             style={{ animationDelay: "0.4s" }}
           >
-            <Play className="w-5 h-5 mr-2" />
+            <Play className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2" />
             Empezar Práctica
           </Button>
         </div>

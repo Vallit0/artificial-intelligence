@@ -103,7 +103,7 @@ export default function Scenarios() {
       {/* Main Content - Centered */}
       <main className="lg:ml-56 xl:mr-80 min-h-screen">
         <ScrollArea className="h-screen">
-          <div className="max-w-xl mx-auto px-4 py-6">
+          <div className="max-w-xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
 
             {/* Content */}
             {isLoading ? (
