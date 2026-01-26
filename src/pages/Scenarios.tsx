@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useScenarios } from "@/hooks/useScenarios";
 import { useAuth } from "@/hooks/useAuth";
 import { AlertCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import LeftSidebar from "@/components/scenarios/LeftSidebar";
 import RightSidebar from "@/components/scenarios/RightSidebar";
@@ -77,7 +78,7 @@ export default function Scenarios() {
       </main>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-background border-t border-border py-2 px-4 lg:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border py-3 px-4 lg:hidden shadow-lg">
         <div className="flex items-center justify-around">
           <MobileNavItem icon="home" label="Aprender" href="/scenarios" active />
           <MobileNavItem icon="trophy" label="Ranking" href="/leaderboards" />
@@ -139,12 +140,15 @@ function MobileNavItem({
   return (
     <button
       onClick={() => navigate(href)}
-      className={`flex flex-col items-center gap-1 px-3 py-1 ${
-        active ? "text-sidebar-primary" : "text-sidebar-foreground/60"
-      }`}
+      className={cn(
+        "flex flex-col items-center gap-1.5 px-4 py-2 rounded-xl transition-all duration-200",
+        active 
+          ? "text-secondary bg-secondary/10" 
+          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+      )}
     >
       {getIcon()}
-      <span className="text-xs font-medium">{label}</span>
+      <span className="text-xs font-semibold">{label}</span>
     </button>
   );
 }
