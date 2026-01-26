@@ -136,7 +136,7 @@ const LessonPath = ({
               </button>
 
               {/* Scenario name */}
-              <p className={cn("mt-3 text-sm font-medium text-center max-w-[120px] text-indigo-800", isLocked ? "text-muted-foreground" : "text-sidebar-foreground")}>
+              <p className={cn("mt-3 text-sm font-medium text-center max-w-[120px] text-indigo-700", isLocked ? "text-muted-foreground" : "text-sidebar-foreground")}>
                 {scenario.name}
               </p>
             </div>
