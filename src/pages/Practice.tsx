@@ -7,15 +7,18 @@ import FeedbackScreen from "@/components/FeedbackScreen";
 import PracticeTimer from "@/components/PracticeTimer";
 import UserMenu from "@/components/UserMenu";
 import LiveTranscript from "@/components/LiveTranscript";
+import { FreeTierTimer } from "@/components/practice/FreeTierTimer";
+import { TimeUpModal } from "@/components/practice/TimeUpModal";
 import { useElevenLabsConversation } from "@/hooks/useElevenLabsConversation";
 import { usePracticeSessions } from "@/hooks/usePracticeSessions";
+import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2, Wifi, WifiOff, MessageSquare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Scenario } from "@/hooks/useScenarios";
 
-type SessionState = "idle" | "connecting" | "active" | "feedback";
+type SessionState = "idle" | "connecting" | "active" | "feedback" | "timeup";
 
 interface TranscriptMessage {
   id: string;
@@ -24,11 +27,34 @@ interface TranscriptMessage {
   timestamp: Date;
 }
 
+// Character configurations
+const characters: Record<string, { name: string; role: string; persona: string }> = {
+  alvaro: {
+    name: "Álvaro",
+    role: "client",
+    persona: "Cliente potencial interesado en servicios funerarios con dudas y objeciones típicas.",
+  },
+  lea: {
+    name: "Lea",
+    role: "coach",
+    persona: "Coach de ventas que da feedback en tiempo real y consejos para mejorar.",
+  },
+};
+
+const FREE_TIER_MAX_SECONDS = 180; // 3 minutes
+
 const Practice = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [searchParams] = useSearchParams();
+  
   const scenarioId = searchParams.get("scenario");
+  const characterId = searchParams.get("character");
+  const tier = searchParams.get("tier");
+  
+  const isFreeTier = tier === "free" && !user;
+  const character = characterId ? characters[characterId] : null;
   
   const [sessionState, setSessionState] = useState<SessionState>("idle");
   const [scenario, setScenario] = useState<Scenario | null>(null);
@@ -109,6 +135,12 @@ const Practice = () => {
     }
   }, [isConnecting]);
 
+  // Handle free tier time up
+  const handleTimeUp = useCallback(() => {
+    disconnect();
+    setSessionState("timeup");
+  }, [disconnect]);
+
   const handleStart = async () => {
     setSessionState("connecting");
     setConnectionStatus("Solicitando permisos de micrófono...");
@@ -118,7 +150,12 @@ const Practice = () => {
 
   const handleEndCall = () => {
     disconnect();
-    setSessionState("feedback");
+    if (isFreeTier) {
+      // For free tier, just go back to landing
+      navigate("/");
+    } else {
+      setSessionState("feedback");
+    }
   };
 
   const handleFeedbackSubmit = async (rating: number) => {
@@ -134,10 +171,22 @@ const Practice = () => {
     navigate("/");
   };
 
+  // Time up modal for free tier
+  if (sessionState === "timeup") {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <TimeUpModal 
+          open={true} 
+          characterName={character?.name || "el asistente"} 
+        />
+      </div>
+    );
+  }
+
   if (sessionState === "feedback") {
     return (
       <FeedbackScreen
-        agentName={scenario?.voice_type === "male" ? "Cliente" : "María"}
+        agentName={character?.name || scenario?.voice_type === "male" ? "Cliente" : "María"}
         onSubmit={handleFeedbackSubmit}
         sessionDuration={sessionDurationRef.current}
       />
@@ -154,9 +203,17 @@ const Practice = () => {
         </Button>
       </div>
 
-      {/* User menu */}
+      {/* User menu or free tier timer */}
       <div className="absolute top-6 right-6">
-        <UserMenu />
+        {isFreeTier && sessionState === "active" ? (
+          <FreeTierTimer
+            maxSeconds={FREE_TIER_MAX_SECONDS}
+            currentSeconds={sessionTime}
+            onTimeUp={handleTimeUp}
+          />
+        ) : user ? (
+          <UserMenu />
+        ) : null}
       </div>
 
       {/* Connection status indicator */}
@@ -173,11 +230,22 @@ const Practice = () => {
         </div>
       )}
 
-      {/* Show scenario info when idle/connecting */}
-      {(sessionState === "idle" || sessionState === "connecting") && scenario && (
+      {/* Show character or scenario info when idle/connecting */}
+      {(sessionState === "idle" || sessionState === "connecting") && (
         <div className="absolute top-20 left-6 max-w-xs">
-          <p className="text-sm font-medium text-foreground">{scenario.name}</p>
-          <p className="text-xs text-muted-foreground">Objeción: "{scenario.objection}"</p>
+          {character ? (
+            <>
+              <p className="text-sm font-medium text-foreground">
+                Hablando con {character.name}
+              </p>
+              <p className="text-xs text-muted-foreground">{character.persona}</p>
+            </>
+          ) : scenario ? (
+            <>
+              <p className="text-sm font-medium text-foreground">{scenario.name}</p>
+              <p className="text-xs text-muted-foreground">Objeción: "{scenario.objection}"</p>
+            </>
+          ) : null}
         </div>
       )}
 
@@ -193,12 +261,17 @@ const Practice = () => {
         <div className="flex w-full max-w-4xl mx-auto px-6 gap-8">
           {/* Left side - Voice interaction */}
           <div className="flex-1 flex flex-col items-center gap-8 animate-fade-in">
-            {scenario && (
+            {character ? (
+              <p className="text-sm text-muted-foreground">
+                Hablando con {character.name} ({character.role === "coach" ? "Coach" : "Cliente"})
+              </p>
+            ) : scenario ? (
               <p className="text-sm text-muted-foreground">
                 Practicando: "{scenario.objection}"
               </p>
-            )}
-            <PracticeTimer totalSeconds={sessionTime} />
+            ) : null}
+            
+            {!isFreeTier && <PracticeTimer totalSeconds={sessionTime} />}
             
             <VoiceOrb isSpeaking={isSpeaking} isListening={!isMuted} />
 
