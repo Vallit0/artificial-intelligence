@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import Landing from "./pages/Landing";
 import Scenarios from "./pages/Scenarios";
 import Practice from "./pages/Practice";
 import Progress from "./pages/Progress";
@@ -41,7 +42,7 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   if (user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/scenarios" replace />;
   }
 
   return <>{children}</>;
@@ -49,19 +50,18 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
 
 const AppRoutes = () => (
   <Routes>
+    {/* Public landing page */}
+    <Route path="/" element={<Landing />} />
+    
+    {/* Practice can be accessed by anyone (free tier) or authenticated users */}
+    <Route path="/practice" element={<Practice />} />
+    
+    {/* Protected routes */}
     <Route
-      path="/"
+      path="/scenarios"
       element={
         <ProtectedRoute>
           <Scenarios />
-        </ProtectedRoute>
-      }
-    />
-    <Route
-      path="/practice"
-      element={
-        <ProtectedRoute>
-          <Practice />
         </ProtectedRoute>
       }
     />
@@ -73,6 +73,8 @@ const AppRoutes = () => (
         </ProtectedRoute>
       }
     />
+    
+    {/* Auth routes */}
     <Route
       path="/auth"
       element={
@@ -81,6 +83,7 @@ const AppRoutes = () => (
         </PublicRoute>
       }
     />
+    
     <Route path="*" element={<Navigate to="/" replace />} />
   </Routes>
 );
