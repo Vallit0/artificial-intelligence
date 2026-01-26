@@ -194,7 +194,12 @@ const Practice = () => {
     <div className="min-h-screen bg-background flex flex-col items-center justify-center relative">
       {/* Back button */}
       <div className="absolute top-6 left-6">
-        <Button variant="ghost" size="sm" onClick={handleBack}>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={handleBack}
+          className="font-bold uppercase tracking-wider text-xs"
+        >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Volver
         </Button>
@@ -223,7 +228,7 @@ const Practice = () => {
           ) : (
             <WifiOff className="h-4 w-4 text-destructive" />
           )}
-          <span className="text-sm text-muted-foreground">{connectionStatus}</span>
+          <span className="text-sm font-semibold text-muted-foreground">{connectionStatus}</span>
         </div>
       )}
 
@@ -232,15 +237,23 @@ const Practice = () => {
         <div className="absolute top-20 left-6 max-w-xs">
           {character ? (
             <>
-              <p className="text-sm font-medium text-foreground">
+              <p 
+                className="text-base font-extrabold text-foreground"
+                style={{ fontFamily: "'Nunito', 'DIN Rounded', -apple-system, sans-serif" }}
+              >
                 Hablando con {character.name}
               </p>
-              <p className="text-xs text-muted-foreground">{character.persona}</p>
+              <p className="text-sm font-medium text-muted-foreground">{character.persona}</p>
             </>
           ) : scenario ? (
             <>
-              <p className="text-sm font-medium text-foreground">{scenario.name}</p>
-              <p className="text-xs text-muted-foreground">Objeción: "{scenario.objection}"</p>
+              <p 
+                className="text-base font-extrabold text-foreground"
+                style={{ fontFamily: "'Nunito', 'DIN Rounded', -apple-system, sans-serif" }}
+              >
+                {scenario.name}
+              </p>
+              <p className="text-sm font-medium text-muted-foreground">Objeción: "{scenario.objection}"</p>
             </>
           ) : null}
         </div>
@@ -259,11 +272,17 @@ const Practice = () => {
           {/* Left side - Voice interaction */}
           <div className="flex-1 flex flex-col items-center gap-8 animate-fade-in">
             {character ? (
-              <p className="text-sm text-muted-foreground">
+              <p 
+                className="text-base font-bold text-muted-foreground"
+                style={{ fontFamily: "'Nunito', 'DIN Rounded', -apple-system, sans-serif" }}
+              >
                 Hablando con {character.name} ({character.role === "coach" ? "Coach" : "Cliente"})
               </p>
             ) : scenario ? (
-              <p className="text-sm text-muted-foreground">
+              <p 
+                className="text-base font-bold text-muted-foreground"
+                style={{ fontFamily: "'Nunito', 'DIN Rounded', -apple-system, sans-serif" }}
+              >
                 Practicando: "{scenario.objection}"
               </p>
             ) : null}
@@ -281,16 +300,21 @@ const Practice = () => {
 
           {/* Right side - Live transcript */}
           {showTranscript && (
-            <div className="w-80 h-[400px] bg-card border border-border rounded-xl flex flex-col animate-fade-in">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+            <div className="w-80 h-[400px] bg-card border-2 border-border rounded-2xl flex flex-col animate-fade-in shadow-[0_4px_0_0_hsl(var(--border))]">
+              <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border">
                 <div className="flex items-center gap-2">
                   <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Transcripción</span>
+                  <span 
+                    className="text-sm font-bold uppercase tracking-wider"
+                    style={{ fontFamily: "'Nunito', 'DIN Rounded', -apple-system, sans-serif" }}
+                  >
+                    Transcripción
+                  </span>
                 </div>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-6 w-6 p-0"
+                  className="h-6 w-6 p-0 font-bold"
                   onClick={() => setShowTranscript(false)}
                 >
                   ×
@@ -307,7 +331,7 @@ const Practice = () => {
             <Button
               variant="outline"
               size="sm"
-              className="absolute bottom-6 right-6"
+              className="absolute bottom-6 right-6 rounded-xl font-bold uppercase tracking-wider border-2"
               onClick={() => setShowTranscript(true)}
             >
               <MessageSquare className="h-4 w-4 mr-2" />
