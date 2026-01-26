@@ -156,14 +156,16 @@ const Practice = () => {
   const handleFeedbackSubmit = async (rating: number) => {
     await savePracticeSession(sessionDurationRef.current, rating, scenarioId ?? undefined);
     setSessionState("idle");
-    navigate("/");
+    // Navigate based on auth status
+    navigate(user ? "/scenarios" : "/");
   };
 
   const handleBack = () => {
     if (isConnected) {
       disconnect();
     }
-    navigate("/");
+    // Navigate based on auth status: logged in users go to scenarios, others to landing
+    navigate(user ? "/scenarios" : "/");
   };
 
   // Time up modal for free tier
