@@ -51,7 +51,8 @@ const LessonPath = ({
   const getSection = (index: number): number => {
     if (index < 3) return 1;
     if (index < 6) return 2;
-    return 3;
+    if (index < 9) return 3;
+    return 4; // Prospección Final
   };
 
   // Check if this is the first item of a new section
@@ -69,6 +70,8 @@ const LessonPath = ({
         return "Objeciones Intermedias";
       case 3:
         return "Objeciones Avanzadas";
+      case 4:
+        return "Prospección Final";
       default:
         return "Práctica";
     }
