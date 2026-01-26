@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Home, Target, Mic, LogOut } from "lucide-react";
+import { Home, Target, Mic, LogOut, TrendingUp } from "lucide-react";
 import logoSenoriales from "@/assets/logo-senoriales.png";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ const navItems: NavItem[] = [
   { icon: Home, label: "APRENDER", href: "/scenarios" },
   { icon: Mic, label: "HABLA PARA PRACTICAR", href: "/practice" },
   { icon: Target, label: "MISIONES", href: "/quests" },
+  { icon: TrendingUp, label: "MI PROGRESO", href: "/progress" },
 ];
 
 const LeftSidebar = () => {
