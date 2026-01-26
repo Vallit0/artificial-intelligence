@@ -31,13 +31,13 @@ interface TranscriptMessage {
 const characters: Record<string, { name: string; role: string; persona: string }> = {
   alvaro: {
     name: "Álvaro",
-    role: "client",
-    persona: "Cliente potencial interesado en servicios funerarios con dudas y objeciones típicas.",
+    role: "coach",
+    persona: "Entrenador personal de ventas que da feedback en tiempo real y consejos para mejorar.",
   },
   lea: {
     name: "Lea",
-    role: "coach",
-    persona: "Coach de ventas que da feedback en tiempo real y consejos para mejorar.",
+    role: "client",
+    persona: "Clienta potencial interesada en servicios funerarios con dudas y objeciones típicas.",
   },
 };
 
