@@ -1,4 +1,4 @@
-import { Flame, Crown, Heart, Zap, Lock, GraduationCap, ExternalLink, Check } from "lucide-react";
+import { Flame, Crown, Zap, Lock, GraduationCap, ExternalLink, Check, Mic, Clock, Star, MessageSquare } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -8,21 +8,50 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { startOfWeek, eachDayOfInterval, endOfWeek, isSameDay, format } from "date-fns";
-import { es } from "date-fns/locale";
 
 interface RightSidebarProps {
   streak?: number;
-  xp?: number;
-  lives?: number;
+  crowns?: number;
   moodleUrl?: string;
   practiceDays?: Date[];
 }
 
 const WEEKDAY_LABELS = ["L", "M", "X", "J", "V", "S", "D"];
 
-const RightSidebar = ({ streak = 0, xp = 0, lives = 5, moodleUrl = "#", practiceDays = [] }: RightSidebarProps) => {
+// Daily missions focused on ElevenLabs voice practice
+const DAILY_MISSIONS = [
+  {
+    id: "practice-session",
+    title: "Práctica del día",
+    description: "Completa 1 sesión de práctica de voz",
+    icon: Mic,
+    current: 0,
+    target: 1,
+    xp: 10,
+  },
+  {
+    id: "practice-time",
+    title: "Entrena 10 minutos",
+    description: "Acumula 10 minutos hablando con el coach",
+    icon: Clock,
+    current: 3,
+    target: 10,
+    xp: 15,
+  },
+  {
+    id: "perfect-response",
+    title: "Respuesta perfecta",
+    description: "Obtén 5 estrellas en una sesión",
+    icon: Star,
+    current: 0,
+    target: 1,
+    xp: 25,
+  },
+];
+
+const RightSidebar = ({ streak = 0, crowns = 0, moodleUrl = "#", practiceDays = [] }: RightSidebarProps) => {
   const today = new Date();
-  const weekStart = startOfWeek(today, { weekStartsOn: 1 }); // Monday
+  const weekStart = startOfWeek(today, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
   const daysOfWeek = eachDayOfInterval({ start: weekStart, end: weekEnd });
 
@@ -83,17 +112,26 @@ const RightSidebar = ({ streak = 0, xp = 0, lives = 5, moodleUrl = "#", practice
           </HoverCardContent>
         </HoverCard>
 
-        {/* XP/Gems */}
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer">
-          <Crown className="w-5 h-5 text-secondary" />
-          <span className="text-sm font-bold text-foreground">{xp}</span>
-        </div>
-
-        {/* Lives */}
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer">
-          <Heart className="w-5 h-5 text-destructive fill-destructive" />
-          <span className="text-sm font-bold text-foreground">{lives}</span>
-        </div>
+        {/* Crowns (earned by completing sections) */}
+        <HoverCard openDelay={100} closeDelay={100}>
+          <HoverCardTrigger asChild>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer">
+              <Crown className="w-5 h-5 text-secondary" />
+              <span className="text-sm font-bold text-foreground">{crowns}</span>
+            </div>
+          </HoverCardTrigger>
+          <HoverCardContent className="w-56 p-4" side="bottom" align="center">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Crown className="w-5 h-5 text-secondary" />
+                <span className="font-bold text-foreground">{crowns} Coronas</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Gana coronas completando secciones del curso.
+              </p>
+            </div>
+          </HoverCardContent>
+        </HoverCard>
       </div>
 
       {/* Unlock Leaderboards Card */}
@@ -111,7 +149,7 @@ const RightSidebar = ({ streak = 0, xp = 0, lives = 5, moodleUrl = "#", practice
         </CardContent>
       </Card>
 
-      {/* Daily Quests Card */}
+      {/* Daily Quests Card - ElevenLabs Voice Practice Focused */}
       <Card className="bg-card border-border shadow-sm hover:shadow-md transition-shadow">
         <CardHeader className="pb-3 flex flex-row items-center justify-between">
           <CardTitle className="text-base font-bold text-foreground">Misiones Diarias</CardTitle>
@@ -119,19 +157,34 @@ const RightSidebar = ({ streak = 0, xp = 0, lives = 5, moodleUrl = "#", practice
             VER TODO
           </Button>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-gold/20 flex items-center justify-center">
-              <Zap className="w-6 h-6 text-gold" />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-foreground">Gana 10 XP</p>
-              <div className="flex items-center gap-3 mt-2">
-                <Progress value={30} className="h-2.5 flex-1" />
-                <span className="text-xs font-medium text-muted-foreground">3 / 10</span>
+        <CardContent className="space-y-4">
+          {DAILY_MISSIONS.map((mission) => {
+            const Icon = mission.icon;
+            const progress = (mission.current / mission.target) * 100;
+            const isComplete = mission.current >= mission.target;
+            
+            return (
+              <div key={mission.id} className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                  isComplete ? "bg-secondary/20" : "bg-muted"
+                }`}>
+                  <Icon className={`w-5 h-5 ${isComplete ? "text-secondary" : "text-muted-foreground"}`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-sm font-semibold text-foreground truncate">{mission.title}</p>
+                    <span className="text-xs font-medium text-secondary ml-2">+{mission.xp} XP</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Progress value={progress} className="h-2 flex-1" />
+                    <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+                      {mission.current} / {mission.target}
+                    </span>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+            );
+          })}
         </CardContent>
       </Card>
 

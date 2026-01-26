@@ -73,13 +73,13 @@ export default function Scenarios() {
     return count;
   }, [sessions]);
 
-  // Calculate XP (10 XP per session, simplified)
-  const xp = sessions.length * 10;
+  // Calculate crowns (earned by completing sections - for now, placeholder)
+  // In production, this would track completed scenarios/sections
+  const crowns = 0;
 
   const userStats = {
     streak,
-    xp,
-    lives: 5,
+    crowns,
   };
 
   // Mock scenario progress (in production, calculate from practice_sessions)
@@ -96,8 +96,7 @@ export default function Scenarios() {
       {/* Right Sidebar - Fixed (Desktop XL only) */}
       <RightSidebar
         streak={userStats.streak}
-        xp={userStats.xp}
-        lives={userStats.lives}
+        crowns={userStats.crowns}
         practiceDays={practiceDays}
       />
 
