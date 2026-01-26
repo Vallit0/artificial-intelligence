@@ -5,7 +5,7 @@ import { AlertCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import LeftSidebar from "@/components/scenarios/LeftSidebar";
 import RightSidebar from "@/components/scenarios/RightSidebar";
-import UnitBanner from "@/components/scenarios/UnitBanner";
+
 import LessonPath from "@/components/scenarios/LessonPath";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -47,12 +47,6 @@ export default function Scenarios() {
       <main className="lg:ml-56 xl:mr-80 min-h-screen">
         <ScrollArea className="h-screen">
           <div className="max-w-xl mx-auto px-4 py-6">
-            {/* Unit Banner */}
-            <UnitBanner
-              section={1}
-              unit={1}
-              title="Manejo de Objeciones"
-            />
 
             {/* Content */}
             {isLoading ? (

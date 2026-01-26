@@ -26,9 +26,23 @@ const LessonPath = ({ scenarios, onSelectScenario, getProgress }: LessonPathProp
     }
   };
 
+  // Determine section based on scenario index
+  const getSection = (index: number): number => {
+    if (index < 3) return 1;
+    if (index < 6) return 2;
+    return 3;
+  };
+
+  // Check if this is the first item of a new section
+  const isNewSection = (index: number): boolean => {
+    if (index === 0) return true;
+    return getSection(index) !== getSection(index - 1);
+  };
+
   return (
     <div className="flex flex-col items-center py-8 space-y-2">
       {scenarios.map((scenario, index) => {
+        const section = getSection(index);
         const progress = getProgress(scenario.id);
         const isCompleted = progress >= 100;
         const isLocked = index > 0 && getProgress(scenarios[index - 1].id) < 100;
@@ -38,8 +52,17 @@ const LessonPath = ({ scenarios, onSelectScenario, getProgress }: LessonPathProp
 
         return (
           <div key={scenario.id} className="flex flex-col items-center">
-            {/* Connector line (except first) */}
-            {index > 0 && (
+            {/* Section Header */}
+            {isNewSection(index) && (
+              <div className="w-full bg-secondary rounded-2xl p-4 mb-6 text-center">
+                <p className="text-sm font-bold text-secondary-foreground uppercase tracking-wide">
+                  SECCIÓN {section}
+                </p>
+              </div>
+            )}
+
+            {/* Connector line (except first of each section) */}
+            {index > 0 && !isNewSection(index) && (
               <svg
                 width="60"
                 height="40"
@@ -64,9 +87,9 @@ const LessonPath = ({ scenarios, onSelectScenario, getProgress }: LessonPathProp
 
             {/* Node container with offset */}
             <div className={cn("transition-transform duration-300 flex flex-col items-center", getOffsetClass(position))}>
-              {/* START tooltip bubble for first/current lesson */}
-              {isFirst && isCurrent && (
-                <div className="relative mb-2">
+              {/* START tooltip bubble for current lesson */}
+              {isCurrent && (
+                <div className="relative mb-2 animate-bounce">
                   <div className="bg-secondary text-secondary-foreground font-bold text-sm px-4 py-2 rounded-xl shadow-lg">
                     EMPEZAR
                   </div>
