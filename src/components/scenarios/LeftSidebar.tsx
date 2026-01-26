@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Home, Trophy, Target, ShoppingBag, User, MoreHorizontal } from "lucide-react";
+import { Home, Target, Mic } from "lucide-react";
 import logoSenoriales from "@/assets/logo-senoriales.png";
 
 interface NavItem {
@@ -11,11 +11,8 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { icon: Home, label: "APRENDER", href: "/scenarios" },
-  { icon: Trophy, label: "CLASIFICACIÓN", href: "/leaderboards" },
+  { icon: Mic, label: "HABLA PARA PRACTICAR", href: "/practice" },
   { icon: Target, label: "MISIONES", href: "/quests" },
-  { icon: ShoppingBag, label: "TIENDA", href: "/shop" },
-  { icon: User, label: "PERFIL", href: "/profile" },
-  { icon: MoreHorizontal, label: "MÁS", href: "/more" },
 ];
 
 const LeftSidebar = () => {
