@@ -15,17 +15,17 @@ const LogoMorph = ({ isMorphing, isConnecting, onClick }: LogoMorphProps) => {
     >
       {/* Container for the logo */}
       <div className="relative w-64 h-80 flex flex-col items-center justify-center">
-        {/* Circle - accent green, stays in place */}
+        {/* Circle - turquoise, stays in place */}
         <div
           className={cn(
-            "absolute rounded-full bg-accent transition-all duration-[1500ms] ease-in-out",
+            "absolute rounded-full bg-turquoise transition-all duration-[1500ms] ease-in-out",
             isMorphing
               ? "w-56 h-56 shadow-2xl top-0"
               : "w-44 h-44 top-8 group-hover:scale-105 group-hover:shadow-lg"
           )}
         />
 
-        {/* Triangle - olive/accent green, flies up when morphing */}
+        {/* Triangle - turquoise, flies up when morphing */}
         <div
           className={cn(
             "absolute transition-all duration-[1500ms] ease-in-out",
@@ -47,7 +47,7 @@ const LogoMorph = ({ isMorphing, isConnecting, onClick }: LogoMorphProps) => {
             {/* Main triangle body */}
             <path
               d="M90 10 L175 125 L5 125 Z"
-              className="fill-accent"
+              className="fill-turquoise"
             />
             {/* White diagonal lines from peak to corners */}
             <path
