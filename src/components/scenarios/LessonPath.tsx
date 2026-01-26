@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Star, Lock, Check, Crown, ArrowLeft, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import type { Scenario } from "@/hooks/useScenarios";
+import ScenarioPreviewModal from "./ScenarioPreviewModal";
+
 interface LessonPathProps {
   scenarios: Scenario[];
   onSelectScenario: (id: string) => void;
@@ -16,6 +19,18 @@ const LessonPath = ({
   guidebookUrl
 }: LessonPathProps) => {
   const navigate = useNavigate();
+  const [selectedScenario, setSelectedScenario] = useState<Scenario | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleNodeClick = (scenario: Scenario) => {
+    setSelectedScenario(scenario);
+    setIsModalOpen(true);
+  };
+
+  const handleStartPractice = (scenarioId: string) => {
+    setIsModalOpen(false);
+    onSelectScenario(scenarioId);
+  };
   // Pattern for zigzag: center, right, center, left, repeat
   const getPosition = (index: number): "left" | "center" | "right" => {
     const pattern: Array<"center" | "right" | "center" | "left"> = ["center", "right", "center", "left"];
@@ -114,7 +129,7 @@ const LessonPath = ({
                 </div>}
 
               {/* Lesson node with outer ring */}
-              <button onClick={() => !isLocked && onSelectScenario(scenario.id)} disabled={isLocked} className={cn("relative transition-all duration-300", !isLocked && "hover:scale-105 active:scale-95")}>
+              <button onClick={() => !isLocked && handleNodeClick(scenario)} disabled={isLocked} className={cn("relative transition-all duration-300", !isLocked && "hover:scale-105 active:scale-95")}>
                 {/* Outer dark ring */}
                 <div className={cn("w-24 h-24 rounded-full flex items-center justify-center", isLocked ? "bg-muted/50" : "bg-muted shadow-lg")}>
                   {/* Inner colored circle */}
@@ -142,6 +157,14 @@ const LessonPath = ({
             </div>
           </div>;
     })}
+
+      {/* Scenario Preview Modal */}
+      <ScenarioPreviewModal
+        scenario={selectedScenario}
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        onStartPractice={handleStartPractice}
+      />
     </div>;
 };
 export default LessonPath;
