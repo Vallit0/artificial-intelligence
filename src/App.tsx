@@ -8,6 +8,7 @@ import Landing from "./pages/Landing";
 import Scenarios from "./pages/Scenarios";
 import Practice from "./pages/Practice";
 import Progress from "./pages/Progress";
+import Quests from "./pages/Quests";
 import Auth from "./pages/Auth";
 
 const queryClient = new QueryClient();
@@ -70,6 +71,14 @@ const AppRoutes = () => (
       element={
         <ProtectedRoute>
           <Progress />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/quests"
+      element={
+        <ProtectedRoute>
+          <Quests />
         </ProtectedRoute>
       }
     />
