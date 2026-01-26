@@ -1,10 +1,13 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { LogIn, GraduationCap } from "lucide-react";
+import { LogIn } from "lucide-react";
+import { cn } from "@/lib/utils";
 import logoSenoriales from "@/assets/logo-senoriales.png";
 
 const Landing = () => {
   const navigate = useNavigate();
+  const [isHovered, setIsHovered] = useState(false);
 
   const handleStartPractice = () => {
     navigate("/practice?character=alvaro&tier=free");
@@ -35,64 +38,93 @@ const Landing = () => {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col items-center justify-center px-6 pb-12">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
-            Practica tus ventas
-          </h1>
-          <p className="text-lg text-muted-foreground max-w-md mx-auto">
-            Entrena con Álvaro, tu coach personal de ventas con IA
-          </p>
-        </div>
-
-        {/* Álvaro Coach Card */}
-        <div
-          className="flex flex-col items-center p-10 rounded-3xl border border-border bg-card transition-all duration-300 hover:border-primary/50 hover:shadow-lg w-[320px] cursor-pointer"
+        {/* Logo Morph Style Button */}
+        <button
           onClick={handleStartPractice}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+          className="relative flex flex-col items-center justify-center group"
         >
-          {/* Avatar Orb */}
-          <div className="w-32 h-32 rounded-full bg-primary flex items-center justify-center mb-6">
-            <span className="text-4xl font-bold text-primary-foreground">
-              Á
-            </span>
+          {/* Container for the logo */}
+          <div className="relative w-64 h-80 flex flex-col items-center justify-center">
+            {/* Circle - accent green */}
+            <div
+              className={cn(
+                "absolute rounded-full bg-accent transition-all duration-300 ease-in-out",
+                "w-44 h-44 top-8",
+                isHovered && "scale-105 shadow-lg"
+              )}
+            />
+
+            {/* Triangle */}
+            <div
+              className="absolute transition-all duration-300 ease-in-out"
+              style={{ top: "80px" }}
+            >
+              <svg
+                width="180"
+                height="130"
+                viewBox="0 0 180 130"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                className={cn(
+                  "transition-transform duration-300",
+                  isHovered && "translate-y-1"
+                )}
+              >
+                <path
+                  d="M90 10 L175 125 L5 125 Z"
+                  className="fill-accent"
+                />
+                <path
+                  d="M90 10 L5 125"
+                  stroke="hsl(var(--background))"
+                  strokeWidth="6"
+                />
+                <path
+                  d="M90 10 L175 125"
+                  stroke="hsl(var(--background))"
+                  strokeWidth="6"
+                />
+              </svg>
+            </div>
+
+            {/* Text below logo */}
+            <div className="absolute bottom-0 text-center">
+              <h1 className="text-lg font-semibold text-foreground mb-1">
+                Álvaro
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Tu coach personal de ventas
+              </p>
+            </div>
           </div>
+        </button>
 
-          {/* Name */}
-          <h2 className="text-2xl font-bold text-foreground mb-2">
-            Álvaro
-          </h2>
+        {/* Description */}
+        <p className="text-center text-muted-foreground max-w-sm mt-4 mb-8">
+          Te daré feedback en tiempo real y consejos para mejorar tu técnica de ventas.
+        </p>
 
-          {/* Role badge */}
-          <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-4">
-            <GraduationCap className="h-4 w-4" />
-            <span>Tu coach personal de ventas</span>
-          </div>
-
-          {/* Description */}
-          <p className="text-sm text-muted-foreground text-center mb-6">
-            Te daré feedback en tiempo real y consejos para mejorar tu técnica de ventas.
-          </p>
-
-          {/* CTA Button */}
-          <Button className="w-full" size="lg">
-            Habla con Álvaro
-          </Button>
-        </div>
+        {/* CTA Button */}
+        <Button size="lg" onClick={handleStartPractice}>
+          Habla con Álvaro
+        </Button>
 
         {/* Free tier notice */}
-        <div className="mt-12 text-center">
+        <div className="mt-8 text-center">
           <p className="text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
               3 minutos gratis
             </span>
-            {" · "}
-            <button
-              onClick={() => navigate("/auth?mode=signup")}
-              className="text-primary hover:underline"
-            >
-              Crea una cuenta para acceso completo
-            </button>
           </p>
+          <button
+            onClick={() => navigate("/auth?mode=signup")}
+            className="text-sm text-primary hover:underline mt-2"
+          >
+            Crea una cuenta para acceso completo
+          </button>
         </div>
       </main>
     </div>
