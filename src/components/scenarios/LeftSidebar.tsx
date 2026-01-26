@@ -23,9 +23,9 @@ const LeftSidebar = () => {
   const location = useLocation();
 
   return (
-    <aside className="hidden lg:flex flex-col w-56 min-h-screen bg-sidebar-background border-r border-sidebar-border fixed left-0 top-0 bottom-0">
+    <aside className="hidden lg:flex flex-col w-56 min-h-screen bg-[hsl(229,48%,10%)] border-r border-[hsl(229,40%,18%)] fixed left-0 top-0 bottom-0">
       {/* Logo */}
-      <div className="p-4 border-b border-sidebar-border">
+      <div className="p-4 border-b border-[hsl(229,40%,18%)]">
         <Link to="/" className="flex items-center gap-2">
           <img src={logoSenoriales} alt="Logo" className="h-10" />
         </Link>

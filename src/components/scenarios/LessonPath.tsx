@@ -1,7 +1,6 @@
 import { cn } from "@/lib/utils";
 import { Star, Lock, Check, Crown } from "lucide-react";
 import type { Scenario } from "@/hooks/useScenarios";
-import { Button } from "@/components/ui/button";
 
 interface LessonPathProps {
   scenarios: Scenario[];
@@ -34,6 +33,7 @@ const LessonPath = ({ scenarios, onSelectScenario, getProgress }: LessonPathProp
         const isCompleted = progress >= 100;
         const isLocked = index > 0 && getProgress(scenarios[index - 1].id) < 100;
         const isFirst = index === 0;
+        const isCurrent = !isLocked && !isCompleted;
         const position = getPosition(index);
 
         return (
@@ -63,75 +63,85 @@ const LessonPath = ({ scenarios, onSelectScenario, getProgress }: LessonPathProp
             )}
 
             {/* Node container with offset */}
-            <div className={cn("transition-transform duration-300", getOffsetClass(position))}>
-              {/* Start button for first uncompleted lesson */}
-              {isFirst && !isCompleted && (
-                <Button
-                  onClick={() => onSelectScenario(scenario.id)}
-                  className="mb-2 bg-secondary hover:bg-secondary/90 text-secondary-foreground font-bold px-6"
-                >
-                  EMPEZAR
-                </Button>
+            <div className={cn("transition-transform duration-300 flex flex-col items-center", getOffsetClass(position))}>
+              {/* START tooltip bubble for first/current lesson */}
+              {isFirst && isCurrent && (
+                <div className="relative mb-2">
+                  <div className="bg-secondary text-secondary-foreground font-bold text-sm px-4 py-2 rounded-xl shadow-lg">
+                    EMPEZAR
+                  </div>
+                  {/* Arrow pointing down */}
+                  <div className="absolute left-1/2 -translate-x-1/2 -bottom-2 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[8px] border-t-secondary" />
+                </div>
               )}
 
-              {/* Lesson node */}
+              {/* Lesson node with outer ring */}
               <button
                 onClick={() => !isLocked && onSelectScenario(scenario.id)}
                 disabled={isLocked}
                 className={cn(
-                  "relative w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300",
-                  "shadow-lg hover:shadow-xl",
-                  isLocked
-                    ? "bg-muted cursor-not-allowed"
-                    : isCompleted
-                    ? "bg-secondary hover:scale-105"
-                    : "bg-secondary hover:scale-105 ring-4 ring-secondary/30",
-                  !isLocked && !isCompleted && isFirst && "ring-4 ring-secondary"
+                  "relative transition-all duration-300",
+                  !isLocked && "hover:scale-105 active:scale-95"
                 )}
               >
-                {/* Progress ring */}
+                {/* Outer dark ring (like in the reference) */}
+                <div
+                  className={cn(
+                    "w-24 h-24 rounded-full flex items-center justify-center",
+                    isLocked
+                      ? "bg-muted/50"
+                      : isCurrent
+                      ? "bg-gradient-to-b from-sidebar-border to-sidebar-background shadow-xl"
+                      : "bg-gradient-to-b from-sidebar-border to-sidebar-background"
+                  )}
+                >
+                  {/* Inner colored circle */}
+                  <div
+                    className={cn(
+                      "w-[72px] h-[72px] rounded-full flex items-center justify-center shadow-inner",
+                      isLocked
+                        ? "bg-muted"
+                        : isCompleted
+                        ? "bg-secondary"
+                        : "bg-secondary"
+                    )}
+                  >
+                    {/* Icon */}
+                    {isLocked ? (
+                      <Lock className="w-8 h-8 text-muted-foreground" />
+                    ) : isCompleted ? (
+                      <Crown className="w-8 h-8 text-secondary-foreground" />
+                    ) : (
+                      <Star className="w-8 h-8 text-secondary-foreground" />
+                    )}
+                  </div>
+                </div>
+
+                {/* Progress ring overlay */}
                 {!isLocked && !isCompleted && progress > 0 && (
                   <svg
                     className="absolute inset-0 w-full h-full -rotate-90"
-                    viewBox="0 0 80 80"
+                    viewBox="0 0 96 96"
                   >
                     <circle
-                      cx="40"
-                      cy="40"
-                      r="36"
+                      cx="48"
+                      cy="48"
+                      r="44"
                       fill="none"
                       stroke="currentColor"
-                      strokeWidth="6"
-                      className="text-secondary/30"
-                    />
-                    <circle
-                      cx="40"
-                      cy="40"
-                      r="36"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="6"
-                      strokeLinecap="round"
+                      strokeWidth="4"
                       className="text-gold"
-                      strokeDasharray={2 * Math.PI * 36}
-                      strokeDashoffset={2 * Math.PI * 36 * (1 - progress / 100)}
+                      strokeLinecap="round"
+                      strokeDasharray={2 * Math.PI * 44}
+                      strokeDashoffset={2 * Math.PI * 44 * (1 - progress / 100)}
                     />
                   </svg>
                 )}
 
-                {/* Icon */}
-                {isLocked ? (
-                  <Lock className="w-8 h-8 text-muted-foreground" />
-                ) : isCompleted ? (
-                  <Crown className="w-8 h-8 text-secondary-foreground" />
-                ) : (
-                  <Star className="w-8 h-8 text-secondary-foreground" />
-                )}
-
                 {/* Completion badge */}
                 {isCompleted && (
-                  <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-gold rounded-full flex items-center justify-center shadow-md">
-                    <Check className="w-4 h-4 text-primary" />
+                  <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-gold rounded-full flex items-center justify-center shadow-md border-2 border-sidebar-background">
+                    <Check className="w-5 h-5 text-primary" />
                   </div>
                 )}
               </button>
@@ -139,8 +149,8 @@ const LessonPath = ({ scenarios, onSelectScenario, getProgress }: LessonPathProp
               {/* Scenario name */}
               <p
                 className={cn(
-                  "mt-2 text-sm font-medium text-center max-w-[100px]",
-                  isLocked ? "text-muted-foreground" : "text-foreground"
+                  "mt-3 text-sm font-medium text-center max-w-[120px]",
+                  isLocked ? "text-muted-foreground" : "text-sidebar-foreground"
                 )}
               >
                 {scenario.name}
