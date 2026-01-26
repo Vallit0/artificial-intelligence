@@ -47,10 +47,10 @@ const Landing = () => {
         >
           {/* Container for the logo */}
           <div className="relative w-80 h-80 flex flex-col items-center justify-center">
-            {/* Circle - accent green */}
+            {/* Circle - turquoise */}
             <div
               className={cn(
-                "absolute rounded-full bg-accent transition-all duration-300 ease-in-out",
+                "absolute rounded-full bg-turquoise transition-all duration-300 ease-in-out",
                 "w-48 h-48 top-4",
                 isHovered && "scale-110 shadow-lg"
               )}
@@ -74,7 +74,7 @@ const Landing = () => {
               >
                 <path
                   d="M90 10 L175 125 L5 125 Z"
-                  className="fill-accent"
+                  className="fill-turquoise"
                 />
                 <path
                   d="M90 10 L5 125"
