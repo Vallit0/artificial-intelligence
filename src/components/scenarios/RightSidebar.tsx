@@ -1,25 +1,87 @@
-import { Flame, Crown, Heart, Zap, Lock, GraduationCap, ExternalLink } from "lucide-react";
+import { Flame, Crown, Heart, Zap, Lock, GraduationCap, ExternalLink, Check } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
+import { startOfWeek, eachDayOfInterval, endOfWeek, isSameDay, format } from "date-fns";
+import { es } from "date-fns/locale";
 
 interface RightSidebarProps {
   streak?: number;
   xp?: number;
   lives?: number;
   moodleUrl?: string;
+  practiceDays?: Date[];
 }
 
-const RightSidebar = ({ streak = 0, xp = 0, lives = 5, moodleUrl = "#" }: RightSidebarProps) => {
+const WEEKDAY_LABELS = ["L", "M", "X", "J", "V", "S", "D"];
+
+const RightSidebar = ({ streak = 0, xp = 0, lives = 5, moodleUrl = "#", practiceDays = [] }: RightSidebarProps) => {
+  const today = new Date();
+  const weekStart = startOfWeek(today, { weekStartsOn: 1 }); // Monday
+  const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
+  const daysOfWeek = eachDayOfInterval({ start: weekStart, end: weekEnd });
+
+  const hasPracticedOnDay = (day: Date) => {
+    return practiceDays.some((practiceDay) => isSameDay(practiceDay, day));
+  };
+
   return (
     <aside className="hidden xl:flex flex-col w-80 min-h-screen p-5 space-y-5 fixed right-0 top-0 bottom-0 overflow-y-auto bg-background">
       {/* Top Stats Bar */}
       <div className="flex items-center justify-end gap-4 py-3 px-2 bg-card rounded-2xl border border-border">
-        {/* Streak */}
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer">
-          <Flame className="w-5 h-5 text-orange-500" />
-          <span className="text-sm font-bold text-foreground">{streak}</span>
-        </div>
+        {/* Streak with HoverCard */}
+        <HoverCard openDelay={100} closeDelay={100}>
+          <HoverCardTrigger asChild>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer">
+              <Flame className="w-5 h-5 text-orange-500" />
+              <span className="text-sm font-bold text-foreground">{streak}</span>
+            </div>
+          </HoverCardTrigger>
+          <HoverCardContent className="w-64 p-4" side="bottom" align="center">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Flame className="w-5 h-5 text-orange-500" />
+                <span className="font-bold text-foreground">
+                  Racha de {streak} {streak === 1 ? "día" : "días"}
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Días que has practicado esta semana:
+              </p>
+              <div className="flex justify-between gap-1">
+                {daysOfWeek.map((day, index) => {
+                  const practiced = hasPracticedOnDay(day);
+                  const isToday = isSameDay(day, today);
+                  return (
+                    <div key={index} className="flex flex-col items-center gap-1">
+                      <span className="text-xs text-muted-foreground">
+                        {WEEKDAY_LABELS[index]}
+                      </span>
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                          practiced
+                            ? "bg-orange-500 text-white"
+                            : "bg-muted text-muted-foreground"
+                        } ${isToday ? "ring-2 ring-secondary ring-offset-2 ring-offset-background" : ""}`}
+                      >
+                        {practiced ? (
+                          <Check className="w-4 h-4" />
+                        ) : (
+                          <span className="text-xs">{format(day, "d")}</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </HoverCardContent>
+        </HoverCard>
 
         {/* XP/Gems */}
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer">
