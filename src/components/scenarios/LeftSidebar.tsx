@@ -1,7 +1,9 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Home, Target, Mic } from "lucide-react";
+import { Home, Target, Mic, LogOut } from "lucide-react";
 import logoSenoriales from "@/assets/logo-senoriales.png";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
 
 interface NavItem {
   icon: React.ElementType;
@@ -17,6 +19,12 @@ const navItems: NavItem[] = [
 
 const LeftSidebar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/auth");
+  };
 
   return (
     <aside className="hidden lg:flex flex-col w-56 min-h-screen bg-card border-r border-border fixed left-0 top-0 bottom-0">
@@ -55,8 +63,20 @@ const LeftSidebar = () => {
         })}
       </nav>
 
-      {/* Footer */}
+      {/* Logout Button */}
       <div className="p-4 border-t border-border">
+        <Button
+          variant="ghost"
+          onClick={handleLogout}
+          className="w-full justify-start gap-3 px-4 py-3 h-auto text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+        >
+          <LogOut className="w-5 h-5" />
+          <span className="font-semibold text-sm">Cerrar Sesión</span>
+        </Button>
+      </div>
+
+      {/* Footer */}
+      <div className="p-4 pt-0">
         <p className="text-xs text-muted-foreground text-center">
           © Centro de Negocios Señoriales
         </p>

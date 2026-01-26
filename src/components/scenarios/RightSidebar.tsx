@@ -13,31 +13,53 @@ interface RightSidebarProps {
 const WEEKDAY_LABELS = ["L", "M", "X", "J", "V", "S", "D"];
 
 // Daily missions focused on ElevenLabs voice practice
-const DAILY_MISSIONS = [{
-  id: "practice-session",
-  title: "Práctica del día",
-  description: "Completa 1 sesión de práctica de voz",
-  icon: Mic,
-  current: 0,
-  target: 1,
-  xp: 10
-}, {
-  id: "practice-time",
-  title: "Entrena 10 minutos",
-  description: "Acumula 10 minutos hablando con el coach",
-  icon: Clock,
-  current: 3,
-  target: 10,
-  xp: 15
-}, {
-  id: "perfect-response",
-  title: "Respuesta perfecta",
-  description: "Obtén 5 estrellas en una sesión",
-  icon: Star,
-  current: 0,
-  target: 1,
-  xp: 25
-}];
+const DAILY_MISSIONS = [
+  {
+    id: "practice-session",
+    title: "Práctica del día",
+    description: "Completa 1 sesión de práctica de voz",
+    icon: Mic,
+    current: 0,
+    target: 1,
+    xp: 10
+  },
+  {
+    id: "practice-time",
+    title: "Entrena 10 minutos",
+    description: "Acumula 10 minutos hablando con el coach",
+    icon: Clock,
+    current: 3,
+    target: 10,
+    xp: 15
+  },
+  {
+    id: "perfect-response",
+    title: "Respuesta perfecta",
+    description: "Obtén 5 estrellas en una sesión",
+    icon: Star,
+    current: 0,
+    target: 1,
+    xp: 25
+  },
+  {
+    id: "complete-scenario",
+    title: "Conquista un escenario",
+    description: "Completa cualquier escenario de ventas",
+    icon: MessageSquare,
+    current: 0,
+    target: 1,
+    xp: 20
+  },
+  {
+    id: "streak-keeper",
+    title: "Mantén la racha",
+    description: "Practica hoy para mantener tu racha activa",
+    icon: Flame,
+    current: 0,
+    target: 1,
+    xp: 15
+  }
+];
 const RightSidebar = ({
   streak = 0,
   crowns = 0,
