@@ -84,15 +84,13 @@ const LessonPath = ({ scenarios, onSelectScenario, getProgress }: LessonPathProp
                   !isLocked && "hover:scale-105 active:scale-95"
                 )}
               >
-                {/* Outer dark ring (like in the reference) */}
+                {/* Outer dark ring */}
                 <div
                   className={cn(
                     "w-24 h-24 rounded-full flex items-center justify-center",
                     isLocked
                       ? "bg-muted/50"
-                      : isCurrent
-                      ? "bg-gradient-to-b from-sidebar-border to-sidebar-background shadow-xl"
-                      : "bg-gradient-to-b from-sidebar-border to-sidebar-background"
+                      : "bg-muted shadow-lg"
                   )}
                 >
                   {/* Inner colored circle */}
