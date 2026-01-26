@@ -142,20 +142,6 @@ const RightSidebar = ({
         </HoverCard>
       </div>
 
-      {/* Unlock Leaderboards Card */}
-      <Card className="bg-card border-border shadow-sm hover:shadow-md transition-shadow">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-bold text-foreground">¡Desbloquea la Clasificación!</CardTitle>
-        </CardHeader>
-        <CardContent className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-            <Lock className="w-6 h-6 text-muted-foreground" />
-          </div>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Completa 10 lecciones más para comenzar a competir
-          </p>
-        </CardContent>
-      </Card>
 
       {/* Daily Quests Card - ElevenLabs Voice Practice Focused */}
       <Card className="bg-card border-border shadow-sm hover:shadow-md transition-shadow">
