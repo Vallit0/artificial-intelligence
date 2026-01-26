@@ -23,9 +23,9 @@ const LeftSidebar = () => {
   const location = useLocation();
 
   return (
-    <aside className="hidden lg:flex flex-col w-56 min-h-screen bg-[hsl(229,48%,10%)] border-r border-[hsl(229,40%,18%)] fixed left-0 top-0 bottom-0">
+    <aside className="hidden lg:flex flex-col w-56 min-h-screen bg-card border-r border-border fixed left-0 top-0 bottom-0">
       {/* Logo */}
-      <div className="p-4 border-b border-[hsl(229,40%,18%)]">
+      <div className="p-4 border-b border-border">
         <Link to="/" className="flex items-center gap-2">
           <img src={logoSenoriales} alt="Logo" className="h-10" />
         </Link>
@@ -44,11 +44,11 @@ const LeftSidebar = () => {
               className={cn(
                 "flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all duration-200",
                 isActive
-                  ? "bg-sidebar-primary/20 text-sidebar-primary border-2 border-sidebar-primary"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent/10"
+                  ? "bg-primary/10 text-primary border-2 border-primary"
+                  : "text-primary hover:bg-primary/5"
               )}
             >
-              <Icon className={cn("w-6 h-6", isActive && "text-sidebar-primary")} />
+              <Icon className={cn("w-6 h-6", isActive ? "text-primary" : "text-primary")} />
               <span>{item.label}</span>
             </Link>
           );
