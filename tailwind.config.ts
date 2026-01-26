@@ -57,12 +57,11 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        olive: {
-          DEFAULT: "hsl(var(--olive))",
-          dark: "hsl(var(--olive-dark))",
+        indigo: {
+          DEFAULT: "hsl(var(--indigo))",
         },
-        sage: "hsl(var(--sage))",
-        cream: "hsl(var(--cream))",
+        turquoise: "hsl(var(--turquoise))",
+        lime: "hsl(var(--lime))",
         gold: "hsl(var(--gold))",
       },
       borderRadius: {
