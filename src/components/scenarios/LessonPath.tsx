@@ -1,14 +1,18 @@
 import { cn } from "@/lib/utils";
-import { Star, Lock, Check, Crown } from "lucide-react";
+import { Star, Lock, Check, Crown, ArrowLeft, BookOpen } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 import type { Scenario } from "@/hooks/useScenarios";
 
 interface LessonPathProps {
   scenarios: Scenario[];
   onSelectScenario: (id: string) => void;
   getProgress: (id: string) => number;
+  guidebookUrl?: string;
 }
 
-const LessonPath = ({ scenarios, onSelectScenario, getProgress }: LessonPathProps) => {
+const LessonPath = ({ scenarios, onSelectScenario, getProgress, guidebookUrl }: LessonPathProps) => {
+  const navigate = useNavigate();
   // Pattern for zigzag: center, right, center, left, repeat
   const getPosition = (index: number): "left" | "center" | "right" => {
     const pattern: Array<"center" | "right" | "center" | "left"> = ["center", "right", "center", "left"];
@@ -39,6 +43,26 @@ const LessonPath = ({ scenarios, onSelectScenario, getProgress }: LessonPathProp
     return getSection(index) !== getSection(index - 1);
   };
 
+  // Get section title
+  const getSectionTitle = (section: number): string => {
+    switch (section) {
+      case 1:
+        return "Primeras Objeciones";
+      case 2:
+        return "Objeciones Intermedias";
+      case 3:
+        return "Objeciones Avanzadas";
+      default:
+        return "Práctica";
+    }
+  };
+
+  const handleGuidebookClick = () => {
+    if (guidebookUrl) {
+      window.open(guidebookUrl, '_blank');
+    }
+  };
+
   return (
     <div className="flex flex-col items-center py-8 space-y-2">
       {scenarios.map((scenario, index) => {
@@ -52,12 +76,39 @@ const LessonPath = ({ scenarios, onSelectScenario, getProgress }: LessonPathProp
 
         return (
           <div key={scenario.id} className="flex flex-col items-center">
-            {/* Section Header */}
+            {/* Section Header Banner */}
             {isNewSection(index) && (
-              <div className="w-full bg-secondary rounded-2xl p-4 mb-6 text-center">
-                <p className="text-sm font-bold text-secondary-foreground uppercase tracking-wide">
-                  SECCIÓN {section}
-                </p>
+              <div className="w-full bg-secondary rounded-2xl p-4 mb-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-secondary-foreground hover:bg-secondary-foreground/10 h-8 w-8"
+                      onClick={() => navigate(-1)}
+                    >
+                      <ArrowLeft className="w-5 h-5" />
+                    </Button>
+                    <div>
+                      <p className="text-xs font-medium text-secondary-foreground/80 uppercase tracking-wide">
+                        SECCIÓN {section}
+                      </p>
+                      <h2 className="text-base font-bold text-secondary-foreground">
+                        {getSectionTitle(section)}
+                      </h2>
+                    </div>
+                  </div>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-secondary-foreground text-secondary font-bold hover:bg-secondary-foreground/90 border-0"
+                    onClick={handleGuidebookClick}
+                  >
+                    <BookOpen className="w-4 h-4 mr-2" />
+                    GUÍA
+                  </Button>
+                </div>
               </div>
             )}
 
