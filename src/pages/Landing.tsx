@@ -1,48 +1,13 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { LogIn } from "lucide-react";
-import { AvatarCard } from "@/components/landing/AvatarCard";
-
-export interface AICharacter {
-  id: string;
-  name: string;
-  role: "client" | "coach";
-  description: string;
-  personality: string;
-  voiceType: string;
-  gradient: string;
-}
-
-const characters: AICharacter[] = [
-  {
-    id: "alvaro",
-    name: "Álvaro",
-    role: "coach",
-    description: "Entrenador de ventas",
-    personality: "Soy tu entrenador personal de ventas. Te daré feedback en tiempo real y consejos para mejorar tu técnica.",
-    voiceType: "male",
-    gradient: "from-primary/80 to-primary",
-  },
-  {
-    id: "lea",
-    name: "Lea",
-    role: "client",
-    description: "Cliente potencial",
-    personality: "Soy una clienta interesada en servicios funerarios. Tengo dudas y objeciones típicas que deberás resolver.",
-    voiceType: "female",
-    gradient: "from-accent/80 to-accent",
-  },
-];
+import { LogIn, GraduationCap } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const Landing = () => {
   const navigate = useNavigate();
-  const [selectedCharacter, setSelectedCharacter] = useState<string | null>(null);
 
-  const handleSelectCharacter = (characterId: string) => {
-    setSelectedCharacter(characterId);
-    // Navigate to practice with the selected character and free tier flag
-    navigate(`/practice?character=${characterId}&tier=free`);
+  const handleStartPractice = () => {
+    navigate("/practice?character=alvaro&tier=free");
   };
 
   return (
@@ -73,19 +38,64 @@ const Landing = () => {
             Practica tus ventas
           </h1>
           <p className="text-lg text-muted-foreground max-w-md mx-auto">
-            Elige a tu compañero de práctica y mejora tus habilidades de venta con IA
+            Entrena con Álvaro, tu coach personal de ventas con IA
           </p>
         </div>
 
-        {/* Character Selection */}
-        <div className="flex flex-col md:flex-row gap-8 items-center justify-center w-full max-w-3xl">
-          {characters.map((character) => (
-            <AvatarCard
-              key={character.id}
-              character={character}
-              onSelect={() => handleSelectCharacter(character.id)}
-            />
-          ))}
+        {/* Álvaro Coach Card */}
+        <div
+          className="relative group cursor-pointer"
+          onClick={handleStartPractice}
+        >
+          {/* Glow effect */}
+          <div
+            className={cn(
+              "absolute inset-0 rounded-3xl bg-gradient-to-br from-primary/30 to-primary/50 opacity-0 blur-xl transition-opacity duration-500",
+              "group-hover:opacity-30"
+            )}
+          />
+
+          {/* Card */}
+          <div
+            className={cn(
+              "relative flex flex-col items-center p-10 rounded-3xl border border-border bg-card/50 backdrop-blur-sm transition-all duration-300",
+              "hover:border-primary/50 hover:shadow-lg hover:-translate-y-1",
+              "w-[320px]"
+            )}
+          >
+            {/* Avatar Orb */}
+            <div
+              className={cn(
+                "w-36 h-36 rounded-full bg-gradient-to-br from-primary/80 to-primary flex items-center justify-center mb-6 transition-transform duration-300",
+                "group-hover:scale-110"
+              )}
+            >
+              <span className="text-5xl font-bold text-primary-foreground">
+                Á
+              </span>
+            </div>
+
+            {/* Name */}
+            <h2 className="text-3xl font-bold text-foreground mb-2">
+              Álvaro
+            </h2>
+
+            {/* Role badge */}
+            <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-4">
+              <GraduationCap className="h-4 w-4" />
+              <span>Tu coach personal de ventas</span>
+            </div>
+
+            {/* Description */}
+            <p className="text-sm text-muted-foreground text-center mb-6">
+              Te daré feedback en tiempo real y consejos para mejorar tu técnica de ventas.
+            </p>
+
+            {/* CTA Button */}
+            <Button className="w-full" size="lg">
+              Empezar a practicar
+            </Button>
+          </div>
         </div>
 
         {/* Free tier notice */}
@@ -100,7 +110,7 @@ const Landing = () => {
               onClick={() => navigate("/auth?mode=signup")}
               className="text-primary hover:underline"
             >
-              Crea una cuenta para más tiempo
+              Crea una cuenta para acceso completo
             </button>
           </p>
         </div>

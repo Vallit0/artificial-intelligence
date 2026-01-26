@@ -27,17 +27,12 @@ interface TranscriptMessage {
   timestamp: Date;
 }
 
-// Character configurations
+// Character configuration - Only Álvaro as coach
 const characters: Record<string, { name: string; role: string; persona: string }> = {
   alvaro: {
     name: "Álvaro",
     role: "coach",
-    persona: "Entrenador personal de ventas que da feedback en tiempo real y consejos para mejorar.",
-  },
-  lea: {
-    name: "Lea",
-    role: "client",
-    persona: "Clienta potencial interesada en servicios funerarios con dudas y objeciones típicas.",
+    persona: "Tu coach personal de ventas que te da feedback en tiempo real y consejos para mejorar.",
   },
 };
 
