@@ -38,33 +38,20 @@ const Landing = () => {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col items-center justify-center px-6 pb-12">
-        {/* Headline - Duolingo style */}
-        <h1 
-          className="text-3xl md:text-4xl font-extrabold text-foreground text-center mb-8 animate-fade-in"
-          style={{ 
-            fontFamily: "'Nunito', 'DIN Rounded', -apple-system, sans-serif",
-            letterSpacing: "-0.02em"
-          }}
-        >
-          ¡La forma divertida y efectiva de{" "}
-          <span className="text-primary">dominar las ventas</span>!
-        </h1>
-
         {/* Logo Morph Style Button */}
         <button
           onClick={handleStartPractice}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
           className="relative flex flex-col items-center justify-center group animate-fade-in"
-          style={{ animationDelay: "0.1s" }}
         >
           {/* Container for the logo */}
           <div className="relative w-80 h-80 flex flex-col items-center justify-center">
-            {/* Circle - accent green with gentle pulse */}
+            {/* Circle - accent green */}
             <div
               className={cn(
                 "absolute rounded-full bg-accent transition-all duration-300 ease-in-out",
-                "w-48 h-48 top-4 animate-breathe",
+                "w-48 h-48 top-4",
                 isHovered && "scale-110 shadow-lg"
               )}
             />
@@ -81,10 +68,9 @@ const Landing = () => {
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
                 className={cn(
-                  "transition-transform duration-300 animate-breathe",
+                  "transition-transform duration-300",
                   isHovered && "translate-y-1"
                 )}
-                style={{ animationDelay: "0.5s" }}
               >
                 <path
                   d="M90 10 L175 125 L5 125 Z"
