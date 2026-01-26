@@ -32,7 +32,7 @@ export default function Scenarios() {
   };
 
   return (
-    <div className="min-h-screen bg-sidebar-background">
+    <div className="min-h-screen bg-[hsl(229,48%,10%)]">
       {/* Left Sidebar - Fixed */}
       <LeftSidebar />
 
@@ -83,7 +83,7 @@ export default function Scenarios() {
       </main>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-sidebar-background border-t border-sidebar-border py-2 px-4 lg:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 bg-[hsl(229,48%,10%)] border-t border-[hsl(229,40%,18%)] py-2 px-4 lg:hidden">
         <div className="flex items-center justify-around">
           <MobileNavItem icon="home" label="Aprender" href="/scenarios" active />
           <MobileNavItem icon="trophy" label="Ranking" href="/leaderboards" />
