@@ -18,20 +18,20 @@ const characters: AICharacter[] = [
   {
     id: "alvaro",
     name: "Álvaro",
-    role: "client",
-    description: "Cliente potencial",
-    personality: "Soy un cliente interesado en servicios funerarios. Tengo dudas y objeciones típicas que deberás resolver.",
+    role: "coach",
+    description: "Entrenador de ventas",
+    personality: "Soy tu entrenador personal de ventas. Te daré feedback en tiempo real y consejos para mejorar tu técnica.",
     voiceType: "male",
-    gradient: "from-blue-500 to-indigo-600",
+    gradient: "from-primary/80 to-primary",
   },
   {
     id: "lea",
     name: "Lea",
-    role: "coach",
-    description: "Coach de ventas",
-    personality: "Soy tu entrenadora de ventas. Te daré feedback en tiempo real y consejos para mejorar tu técnica.",
+    role: "client",
+    description: "Cliente potencial",
+    personality: "Soy una clienta interesada en servicios funerarios. Tengo dudas y objeciones típicas que deberás resolver.",
     voiceType: "female",
-    gradient: "from-rose-400 to-pink-600",
+    gradient: "from-accent/80 to-accent",
   },
 ];
 

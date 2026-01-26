@@ -56,14 +56,14 @@ export const AvatarCard = ({ character, onSelect }: AvatarCardProps) => {
 
         {/* Role badge */}
         <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-4">
-          {character.role === "client" ? (
+          {character.role === "coach" ? (
             <>
-              <MessageCircle className="h-4 w-4" />
+              <GraduationCap className="h-4 w-4" />
               <span>{character.description}</span>
             </>
           ) : (
             <>
-              <GraduationCap className="h-4 w-4" />
+              <MessageCircle className="h-4 w-4" />
               <span>{character.description}</span>
             </>
           )}
@@ -76,11 +76,7 @@ export const AvatarCard = ({ character, onSelect }: AvatarCardProps) => {
 
         {/* CTA Button */}
         <Button
-          className={cn(
-            "w-full bg-gradient-to-r text-white border-0",
-            character.gradient,
-            "hover:opacity-90"
-          )}
+          className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
         >
           Hablar con {character.name}
         </Button>
