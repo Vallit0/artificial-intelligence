@@ -24,6 +24,7 @@ const LeftSidebar = () => {
       <div className="p-5 border-b border-border">
         <Link to="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
           <img src={logoSenoriales} alt="Señoriales" className="h-10" />
+          <span className="text-sm font-bold text-primary leading-tight">Centro de Negocios<br />Señoriales</span>
         </Link>
       </div>
 
