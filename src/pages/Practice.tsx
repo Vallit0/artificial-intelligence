@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2, Wifi, WifiOff, MessageSquare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import LeftSidebar from "@/components/scenarios/LeftSidebar";
 import type { Scenario } from "@/hooks/useScenarios";
 
 type SessionState = "idle" | "connecting" | "active" | "feedback" | "timeup";
@@ -191,19 +192,26 @@ const Practice = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center relative">
-      {/* Back button */}
-      <div className="absolute top-6 left-6">
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={handleBack}
-          className="font-bold uppercase tracking-wider text-xs"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Volver
-        </Button>
-      </div>
+    <div className="min-h-screen bg-background flex">
+      {/* Left Sidebar - Only show for authenticated users */}
+      {user && <LeftSidebar />}
+
+      {/* Main content */}
+      <div className={`flex-1 flex flex-col items-center justify-center relative ${user ? 'lg:ml-56' : ''}`}>
+        {/* Back button - only for non-authenticated users */}
+        {!user && (
+          <div className="absolute top-6 left-6">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleBack}
+              className="font-bold uppercase tracking-wider text-xs"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Volver
+            </Button>
+          </div>
+        )}
 
       {/* User menu or free tier timer */}
       <div className="absolute top-6 right-6">
@@ -340,6 +348,7 @@ const Practice = () => {
           )}
         </div>
       )}
+      </div>
     </div>
   );
 };
