@@ -7,7 +7,6 @@ interface NavItem {
   icon: React.ElementType;
   label: string;
   href: string;
-  active?: boolean;
 }
 
 const navItems: NavItem[] = [
@@ -25,14 +24,14 @@ const LeftSidebar = () => {
   return (
     <aside className="hidden lg:flex flex-col w-56 min-h-screen bg-card border-r border-border fixed left-0 top-0 bottom-0">
       {/* Logo */}
-      <div className="p-4 border-b border-border">
-        <Link to="/" className="flex items-center gap-2">
-          <img src={logoSenoriales} alt="Logo" className="h-10" />
+      <div className="p-5 border-b border-border">
+        <Link to="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
+          <img src={logoSenoriales} alt="Señoriales" className="h-10" />
         </Link>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-3 space-y-1">
+      <nav className="flex-1 p-4 space-y-2">
         {navItems.map((item) => {
           const isActive = location.pathname === item.href;
           const Icon = item.icon;
@@ -44,16 +43,26 @@ const LeftSidebar = () => {
               className={cn(
                 "flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all duration-200",
                 isActive
-                  ? "bg-primary/10 text-primary border-2 border-primary"
-                  : "text-primary hover:bg-primary/5"
+                  ? "bg-secondary/15 text-secondary border-2 border-secondary"
+                  : "text-foreground/70 hover:bg-muted hover:text-foreground"
               )}
             >
-              <Icon className={cn("w-6 h-6", isActive ? "text-primary" : "text-primary")} />
+              <Icon className={cn(
+                "w-6 h-6 transition-colors",
+                isActive ? "text-secondary" : "text-foreground/60"
+              )} />
               <span>{item.label}</span>
             </Link>
           );
         })}
       </nav>
+
+      {/* Footer */}
+      <div className="p-4 border-t border-border">
+        <p className="text-xs text-muted-foreground text-center">
+          © Centro de Negocios Señoriales
+        </p>
+      </div>
     </aside>
   );
 };
