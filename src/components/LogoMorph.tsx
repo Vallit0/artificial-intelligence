@@ -13,15 +13,15 @@ const LogoMorph = ({ isMorphing, isConnecting, onClick }: LogoMorphProps) => {
       disabled={isConnecting || isMorphing}
       className="relative flex flex-col items-center justify-center group"
     >
-      {/* Container for the logo */}
-      <div className="relative w-64 h-80 flex flex-col items-center justify-center">
+      {/* Container for the logo - responsive sizing */}
+      <div className="relative w-48 h-60 sm:w-56 sm:h-72 md:w-64 md:h-80 flex flex-col items-center justify-center">
         {/* Circle - turquoise, stays in place */}
         <div
           className={cn(
             "absolute rounded-full bg-turquoise transition-all duration-[1500ms] ease-in-out",
             isMorphing
-              ? "w-56 h-56 shadow-2xl top-0"
-              : "w-44 h-44 top-8 group-hover:scale-105 group-hover:shadow-lg"
+              ? "w-36 h-36 sm:w-44 sm:h-44 md:w-56 md:h-56 shadow-2xl top-0"
+              : "w-28 h-28 sm:w-36 sm:h-36 md:w-44 md:h-44 top-6 sm:top-8 group-hover:scale-105 group-hover:shadow-lg"
           )}
         />
 
@@ -33,16 +33,14 @@ const LogoMorph = ({ isMorphing, isConnecting, onClick }: LogoMorphProps) => {
               ? "opacity-0 -translate-y-96"
               : "opacity-100 translate-y-0"
           )}
-          style={{ top: "80px" }}
+          style={{ top: "60px" }}
         >
-          {/* Triangle SVG - matching the reference logo style */}
+          {/* Triangle SVG - matching the reference logo style, responsive */}
           <svg
-            width="180"
-            height="130"
             viewBox="0 0 180 130"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
-            className="transition-transform duration-300 group-hover:translate-y-1"
+            className="w-32 h-24 sm:w-40 sm:h-28 md:w-[180px] md:h-[130px] transition-transform duration-300 group-hover:translate-y-1"
           >
             {/* Main triangle body */}
             <path
@@ -70,10 +68,10 @@ const LogoMorph = ({ isMorphing, isConnecting, onClick }: LogoMorphProps) => {
             isMorphing ? "opacity-0 translate-y-4" : "opacity-100 translate-y-0"
           )}
         >
-          <h1 className="text-lg font-semibold text-foreground mb-1">
+          <h1 className="text-base sm:text-lg font-semibold text-foreground mb-1">
             Práctica de Ventas
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs sm:text-sm text-muted-foreground">
             {isConnecting ? "Conectando..." : "Toca para iniciar"}
           </p>
         </div>
