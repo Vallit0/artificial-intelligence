@@ -7,11 +7,14 @@ import FeedbackScreen from "@/components/FeedbackScreen";
 import PracticeTimer from "@/components/PracticeTimer";
 import UserMenu from "@/components/UserMenu";
 import LiveTranscript from "@/components/LiveTranscript";
+import MobileTranscriptSheet from "@/components/practice/MobileTranscriptSheet";
 import { FreeTierTimer } from "@/components/practice/FreeTierTimer";
 import { TimeUpModal } from "@/components/practice/TimeUpModal";
 import { useElevenLabsConversation } from "@/hooks/useElevenLabsConversation";
+import { useScribeRealtime } from "@/hooks/useScribeRealtime";
 import { usePracticeSessions } from "@/hooks/usePracticeSessions";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2, Wifi, WifiOff, MessageSquare } from "lucide-react";
@@ -44,6 +47,7 @@ const Practice = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const [searchParams] = useSearchParams();
   
   const scenarioId = searchParams.get("scenario");
@@ -60,6 +64,28 @@ const Practice = () => {
   const [showTranscript, setShowTranscript] = useState(true);
   const sessionDurationRef = useRef<number>(0);
   const { savePracticeSession } = usePracticeSessions();
+
+  // Scribe Realtime for live user transcription
+  const {
+    isConnected: isScribeConnected,
+    partialTranscript,
+    connect: connectScribe,
+    disconnect: disconnectScribe,
+    clearTranscripts,
+  } = useScribeRealtime({
+    onCommittedTranscript: (text) => {
+      // Add user's committed transcript to messages
+      setTranscriptMessages((prev) => [
+        ...prev,
+        {
+          id: `user-${Date.now()}-${Math.random()}`,
+          text,
+          isUser: true,
+          timestamp: new Date(),
+        },
+      ]);
+    },
+  });
 
   // Fetch scenario details
   useEffect(() => {
@@ -135,18 +161,23 @@ const Practice = () => {
   // Handle free tier time up
   const handleTimeUp = useCallback(() => {
     disconnect();
+    disconnectScribe();
     setSessionState("timeup");
-  }, [disconnect]);
+  }, [disconnect, disconnectScribe]);
 
   const handleStart = async () => {
     setSessionState("connecting");
     setConnectionStatus("Solicitando permisos de micrófono...");
     setTranscriptMessages([]); // Clear previous messages
+    clearTranscripts();
     connect();
+    // Also start Scribe for real-time user transcription
+    connectScribe();
   };
 
   const handleEndCall = () => {
     disconnect();
+    disconnectScribe();
     if (isFreeTier) {
       // For free tier, just go back to landing
       navigate("/");
@@ -165,6 +196,7 @@ const Practice = () => {
   const handleBack = () => {
     if (isConnected) {
       disconnect();
+      disconnectScribe();
     }
     // Navigate based on auth status: logged in users go to scenarios, others to landing
     navigate(user ? "/scenarios" : "/");
@@ -277,19 +309,19 @@ const Practice = () => {
       )}
 
       {sessionState === "active" && (
-        <div className="flex flex-col lg:flex-row w-full max-w-4xl mx-auto px-4 sm:px-6 gap-4 sm:gap-8">
-          {/* Left side - Voice interaction */}
-          <div className="flex-1 flex flex-col items-center gap-4 sm:gap-8 animate-fade-in">
+        <div className="flex flex-col w-full max-w-4xl mx-auto px-4 sm:px-6 gap-4 sm:gap-8 pb-24 sm:pb-0">
+          {/* Voice interaction - centered */}
+          <div className="flex-1 flex flex-col items-center gap-4 sm:gap-6 animate-fade-in">
             {character ? (
               <p 
-                className="text-sm sm:text-base font-bold text-muted-foreground text-center px-4"
+                className="text-xs sm:text-base font-bold text-muted-foreground text-center px-4"
                 style={{ fontFamily: "'Nunito', 'DIN Rounded', -apple-system, sans-serif" }}
               >
                 Hablando con {character.name} ({character.role === "coach" ? "Coach" : "Cliente"})
               </p>
             ) : scenario ? (
               <p 
-                className="text-sm sm:text-base font-bold text-muted-foreground text-center px-4"
+                className="text-xs sm:text-base font-bold text-muted-foreground text-center px-4"
                 style={{ fontFamily: "'Nunito', 'DIN Rounded', -apple-system, sans-serif" }}
               >
                 Practicando: "{scenario.objection}"
@@ -298,7 +330,16 @@ const Practice = () => {
             
             {!isFreeTier && <PracticeTimer totalSeconds={sessionTime} />}
             
-            <VoiceOrb isSpeaking={isSpeaking} isListening={!isMuted} />
+            <VoiceOrb isSpeaking={isSpeaking} isListening={!isMuted} size={isMobile ? "md" : "lg"} />
+
+            {/* Partial transcript indicator on mobile */}
+            {isMobile && partialTranscript && (
+              <div className="max-w-xs bg-muted/50 rounded-xl px-4 py-2 animate-pulse">
+                <p className="text-xs text-muted-foreground italic truncate">
+                  {partialTranscript}
+                </p>
+              </div>
+            )}
 
             <VoiceControls
               isMuted={isMuted}
@@ -307,9 +348,9 @@ const Practice = () => {
             />
           </div>
 
-          {/* Right side - Live transcript (hidden on mobile by default, toggleable) */}
-          {showTranscript && (
-            <div className="hidden sm:flex w-80 h-[400px] bg-card border-2 border-border rounded-2xl flex-col animate-fade-in shadow-[0_4px_0_0_hsl(var(--border))]">
+          {/* Desktop: Side transcript panel */}
+          {!isMobile && showTranscript && (
+            <div className="hidden sm:flex w-full sm:w-80 h-[300px] sm:h-[400px] bg-card border-2 border-border rounded-2xl flex-col animate-fade-in shadow-[0_4px_0_0_hsl(var(--border))] mx-auto sm:absolute sm:right-6 sm:top-1/2 sm:-translate-y-1/2">
               <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border">
                 <div className="flex items-center gap-2">
                   <MessageSquare className="h-4 w-4 text-muted-foreground" />
@@ -319,6 +360,9 @@ const Practice = () => {
                   >
                     Transcripción
                   </span>
+                  {isScribeConnected && (
+                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  )}
                 </div>
                 <Button
                   variant="ghost"
@@ -330,26 +374,35 @@ const Practice = () => {
                 </Button>
               </div>
               <div className="flex-1 overflow-hidden">
-                <LiveTranscript messages={transcriptMessages} />
+                <LiveTranscript 
+                  messages={partialTranscript ? [
+                    ...transcriptMessages,
+                    { id: "partial", text: partialTranscript + "...", isUser: true, timestamp: new Date() }
+                  ] : transcriptMessages} 
+                />
               </div>
             </div>
           )}
 
-          {/* Toggle transcript button - visible on desktop when hidden, always visible on mobile */}
-          {(!showTranscript || true) && (
+          {/* Desktop: Toggle transcript button */}
+          {!isMobile && !showTranscript && (
             <Button
               variant="outline"
               size="sm"
-              className={cn(
-                "fixed bottom-20 right-4 sm:absolute sm:bottom-6 sm:right-6 rounded-xl font-bold uppercase tracking-wider border-2 z-10",
-                showTranscript && "sm:hidden"
-              )}
-              onClick={() => setShowTranscript(!showTranscript)}
+              className="absolute bottom-6 right-6 rounded-xl font-bold uppercase tracking-wider border-2 z-10"
+              onClick={() => setShowTranscript(true)}
             >
               <MessageSquare className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">{showTranscript ? "Ocultar" : "Mostrar"} transcripción</span>
-              <span className="sm:hidden">Chat</span>
+              Mostrar transcripción
             </Button>
+          )}
+
+          {/* Mobile: Sheet-based transcript */}
+          {isMobile && (
+            <MobileTranscriptSheet 
+              messages={transcriptMessages} 
+              partialTranscript={partialTranscript}
+            />
           )}
         </div>
       )}
