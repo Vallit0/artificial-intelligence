@@ -9,27 +9,27 @@ interface VoiceOrbProps {
 
 const VoiceOrb = ({ isSpeaking, isListening, size = "lg", className }: VoiceOrbProps) => {
   const sizeClasses = {
-    sm: "w-16 h-16 sm:w-24 sm:h-24",
-    md: "w-28 h-28 sm:w-40 sm:h-40",
-    lg: "w-36 h-36 sm:w-48 sm:h-48 md:w-56 md:h-56",
+    sm: "w-24 h-24",
+    md: "w-32 h-32 sm:w-40 sm:h-40",
+    lg: "w-40 h-40 sm:w-48 sm:h-48 md:w-56 md:h-56",
   };
 
   const outerGlowClasses = {
-    sm: "w-20 h-20 sm:w-32 sm:h-32",
-    md: "w-36 h-36 sm:w-52 sm:h-52",
-    lg: "w-44 h-44 sm:w-60 sm:h-60 md:w-72 md:h-72",
+    sm: "w-32 h-32",
+    md: "w-40 h-40 sm:w-52 sm:h-52",
+    lg: "w-52 h-52 sm:w-60 sm:h-60 md:w-72 md:h-72",
   };
 
   const middlePulseClasses = {
-    sm: "w-18 h-18 sm:w-28 sm:h-28",
-    md: "w-32 h-32 sm:w-46 sm:h-46",
-    lg: "w-40 h-40 sm:w-54 sm:h-54 md:w-64 md:h-64",
+    sm: "w-28 h-28",
+    md: "w-36 h-36 sm:w-46 sm:h-46",
+    lg: "w-46 h-46 sm:w-54 sm:h-54 md:w-64 md:h-64",
   };
 
   const innerHighlightClasses = {
-    sm: "w-10 h-10 sm:w-16 sm:h-16",
+    sm: "w-16 h-16",
     md: "w-20 h-20 sm:w-28 sm:h-28",
-    lg: "w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40",
+    lg: "w-28 h-28 sm:w-32 sm:h-32 md:w-40 md:h-40",
   };
 
   return (

@@ -41,7 +41,7 @@ const MobileTranscriptSheet = ({ messages, partialTranscript }: MobileTranscript
         <Button
           variant="outline"
           size="sm"
-          className="fixed bottom-20 right-4 rounded-xl font-bold uppercase tracking-wider border-2 z-10 sm:hidden"
+          className="fixed bottom-4 right-4 rounded-xl font-bold uppercase tracking-wider border-2 z-10 sm:hidden"
         >
           <MessageSquare className="h-4 w-4 mr-2" />
           Chat

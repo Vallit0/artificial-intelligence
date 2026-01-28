@@ -309,9 +309,9 @@ const Practice = () => {
       )}
 
       {sessionState === "active" && (
-        <div className="flex flex-col w-full max-w-4xl mx-auto px-4 sm:px-6 gap-4 sm:gap-8 pb-24 sm:pb-0">
+        <div className="flex flex-col items-center justify-center w-full h-full px-4 pb-4 animate-fade-in">
           {/* Voice interaction - centered */}
-          <div className="flex-1 flex flex-col items-center gap-4 sm:gap-6 animate-fade-in">
+          <div className="flex flex-col items-center gap-3 sm:gap-6">
             {character ? (
               <p 
                 className="text-xs sm:text-base font-bold text-muted-foreground text-center px-4"
@@ -330,11 +330,11 @@ const Practice = () => {
             
             {!isFreeTier && <PracticeTimer totalSeconds={sessionTime} />}
             
-            <VoiceOrb isSpeaking={isSpeaking} isListening={!isMuted} size={isMobile ? "md" : "lg"} />
+            <VoiceOrb isSpeaking={isSpeaking} isListening={!isMuted} size={isMobile ? "sm" : "lg"} />
 
             {/* Partial transcript indicator on mobile */}
             {isMobile && partialTranscript && (
-              <div className="max-w-xs bg-muted/50 rounded-xl px-4 py-2 animate-pulse">
+              <div className="max-w-[280px] bg-muted/50 rounded-xl px-3 py-2 animate-pulse">
                 <p className="text-xs text-muted-foreground italic truncate">
                   {partialTranscript}
                 </p>
@@ -350,7 +350,7 @@ const Practice = () => {
 
           {/* Desktop: Side transcript panel */}
           {!isMobile && showTranscript && (
-            <div className="hidden sm:flex w-full sm:w-80 h-[300px] sm:h-[400px] bg-card border-2 border-border rounded-2xl flex-col animate-fade-in shadow-[0_4px_0_0_hsl(var(--border))] mx-auto sm:absolute sm:right-6 sm:top-1/2 sm:-translate-y-1/2">
+            <div className="hidden sm:flex w-80 h-[400px] bg-card border-2 border-border rounded-2xl flex-col shadow-[0_4px_0_0_hsl(var(--border))] absolute right-6 top-1/2 -translate-y-1/2">
               <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border">
                 <div className="flex items-center gap-2">
                   <MessageSquare className="h-4 w-4 text-muted-foreground" />
