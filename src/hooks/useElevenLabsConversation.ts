@@ -22,9 +22,11 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
   }, [options.onTranscript, options.onError, options.scenarioId]);
   
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
   const [sessionTime, setSessionTime] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isConnectedRef = useRef(false);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
 
   const conversation = useConversation({
     onConnect: () => {
@@ -39,10 +41,16 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     onDisconnect: () => {
       console.log("Disconnected from ElevenLabs agent");
       isConnectedRef.current = false;
+      setIsMuted(false);
       // Stop timer
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
+      }
+      // Cleanup media stream
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+        mediaStreamRef.current = null;
       }
     },
     onMessage: (message) => {
@@ -52,6 +60,7 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
       const msg = message as unknown as { 
         user_transcription_event?: { user_transcript?: string };
         agent_response_event?: { agent_response?: string };
+        agent_response_correction_event?: { corrected_agent_response?: string };
       };
       
       if (msg.user_transcription_event?.user_transcript && onTranscriptRef.current) {
@@ -60,6 +69,11 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
       
       if (msg.agent_response_event?.agent_response && onTranscriptRef.current) {
         onTranscriptRef.current(msg.agent_response_event.agent_response, false);
+      }
+
+      // Handle interruption correction
+      if (msg.agent_response_correction_event?.corrected_agent_response && onTranscriptRef.current) {
+        console.log("Agent was interrupted, corrected response:", msg.agent_response_correction_event.corrected_agent_response);
       }
     },
     onError: (error) => {
@@ -78,10 +92,19 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     
     setIsConnecting(true);
     setSessionTime(0);
+    setIsMuted(false);
 
     try {
-      // Request microphone permission
-      await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Request microphone permission with optimal settings
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 16000,
+        } 
+      });
+      mediaStreamRef.current = stream;
 
       // Get signed URL from edge function with scenario
       const { data, error } = await supabase.functions.invoke(
@@ -112,27 +135,72 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
       console.error("Failed to start conversation:", error);
       onErrorRef.current?.(error instanceof Error ? error.message : "Failed to connect");
       setIsConnecting(false);
+      // Cleanup on error
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+        mediaStreamRef.current = null;
+      }
     }
   }, [conversation, isConnecting]);
 
   const disconnect = useCallback(async () => {
     console.log("Disconnect called");
+    
+    // Stop timer first
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
-    await conversation.endSession();
+    
+    // Cleanup media stream
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
+    }
+    
+    // End the session
+    try {
+      await conversation.endSession();
+    } catch (error) {
+      console.error("Error ending session:", error);
+    }
+    
+    isConnectedRef.current = false;
     setSessionTime(0);
+    setIsMuted(false);
   }, [conversation]);
+
+  const toggleMute = useCallback(() => {
+    if (mediaStreamRef.current) {
+      const audioTracks = mediaStreamRef.current.getAudioTracks();
+      audioTracks.forEach((track) => {
+        track.enabled = !track.enabled;
+      });
+      setIsMuted((prev) => !prev);
+      console.log("Microphone muted:", !audioTracks[0]?.enabled);
+    }
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []);
 
   return {
     isConnected: conversation.status === "connected",
     isConnecting,
     isSpeaking: conversation.isSpeaking,
-    isMuted: false,
+    isMuted,
     sessionTime,
     connect,
     disconnect,
-    toggleMute: () => console.log("Mute not supported"),
+    toggleMute,
   };
 };

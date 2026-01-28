@@ -20,23 +20,30 @@ const VoiceControls = ({
   return (
     <div
       className={cn(
-        "flex items-center gap-8 px-8 py-4 bg-accent/50 rounded-full backdrop-blur-sm",
+        "flex items-center gap-4 sm:gap-8 px-4 sm:px-8 py-3 sm:py-4 bg-card border-2 border-border rounded-full shadow-[0_4px_0_0_hsl(var(--border))]",
         className
       )}
     >
       <Button
-        variant="ghost"
+        variant={isMuted ? "destructive" : "ghost"}
         size="lg"
         onClick={onMuteToggle}
         disabled={disabled}
-        className="flex items-center gap-2 text-olive-dark hover:text-foreground hover:bg-accent"
+        className={cn(
+          "flex items-center gap-2 rounded-full h-12 w-12 sm:h-auto sm:w-auto sm:px-4",
+          isMuted 
+            ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" 
+            : "text-foreground hover:bg-accent/20"
+        )}
       >
         {isMuted ? (
-          <MicOff className="w-5 h-5" />
+          <MicOff className="w-5 h-5 sm:w-5 sm:h-5" />
         ) : (
-          <Mic className="w-5 h-5" />
+          <Mic className="w-5 h-5 sm:w-5 sm:h-5" />
         )}
-        <span className="font-medium">{isMuted ? "Activar" : "Silenciar"}</span>
+        <span className="font-bold hidden sm:inline">
+          {isMuted ? "Activar Mic" : "Silenciar"}
+        </span>
       </Button>
 
       <Button
@@ -44,10 +51,10 @@ const VoiceControls = ({
         size="lg"
         onClick={onEndCall}
         disabled={disabled}
-        className="flex items-center gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+        className="flex items-center gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 rounded-full h-12 w-12 sm:h-auto sm:w-auto sm:px-4"
       >
         <PhoneOff className="w-5 h-5" />
-        <span className="font-medium">Terminar</span>
+        <span className="font-bold hidden sm:inline">Terminar</span>
       </Button>
     </div>
   );
