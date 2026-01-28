@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import VoiceOrb from "@/components/VoiceOrb";
 import VoiceControls from "@/components/VoiceControls";
 import LogoMorph from "@/components/LogoMorph";
-import FeedbackScreen from "@/components/FeedbackScreen";
+import EvaluationScreen from "@/components/practice/EvaluationScreen";
 import PracticeTimer from "@/components/PracticeTimer";
 import UserMenu from "@/components/UserMenu";
 import LiveTranscript from "@/components/LiveTranscript";
@@ -20,10 +20,9 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2, Wifi, WifiOff, MessageSquare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import LeftSidebar from "@/components/scenarios/LeftSidebar";
-import { cn } from "@/lib/utils";
 import type { Scenario } from "@/hooks/useScenarios";
 
-type SessionState = "idle" | "connecting" | "active" | "feedback" | "timeup";
+type SessionState = "idle" | "connecting" | "active" | "evaluating" | "timeup";
 
 interface TranscriptMessage {
   id: string;
@@ -62,8 +61,15 @@ const Practice = () => {
   const [connectionStatus, setConnectionStatus] = useState<string>("");
   const [transcriptMessages, setTranscriptMessages] = useState<TranscriptMessage[]>([]);
   const [showTranscript, setShowTranscript] = useState(true);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const sessionDurationRef = useRef<number>(0);
-  const { savePracticeSession } = usePracticeSessions();
+  
+  const { 
+    savePracticeSession, 
+    evaluateSession, 
+    isEvaluating, 
+    lastEvaluation 
+  } = usePracticeSessions();
 
   // Scribe Realtime for live user transcription
   const {
@@ -169,28 +175,68 @@ const Practice = () => {
     setSessionState("connecting");
     setConnectionStatus("Solicitando permisos de micrófono...");
     setTranscriptMessages([]); // Clear previous messages
+    setCurrentSessionId(null);
     clearTranscripts();
     connect();
     // Also start Scribe for real-time user transcription
     connectScribe();
   };
 
-  const handleEndCall = () => {
+  const handleEndCall = async () => {
     disconnect();
     disconnectScribe();
+    
     if (isFreeTier) {
       // For free tier, just go back to landing
       navigate("/");
+      return;
+    }
+    
+    // For authenticated users, save and evaluate the session
+    if (user && scenarioId) {
+      setSessionState("evaluating");
+      
+      // Save the session first
+      const sessionId = await savePracticeSession(
+        sessionDurationRef.current,
+        undefined,
+        scenarioId
+      );
+      
+      if (sessionId) {
+        setCurrentSessionId(sessionId);
+        
+        // Convert transcript for evaluation
+        const transcriptForEval = transcriptMessages.map((msg) => ({
+          role: msg.isUser ? "user" as const : "assistant" as const,
+          content: msg.text,
+        }));
+        
+        // Evaluate the session with AI
+        await evaluateSession(
+          sessionId,
+          transcriptForEval,
+          scenarioId,
+          sessionDurationRef.current
+        );
+      }
     } else {
-      setSessionState("feedback");
+      // No scenario selected, just go back
+      navigate("/scenarios");
     }
   };
 
-  const handleFeedbackSubmit = async (rating: number) => {
-    await savePracticeSession(sessionDurationRef.current, rating, scenarioId ?? undefined);
+  const handleContinue = () => {
     setSessionState("idle");
-    // Navigate based on auth status
-    navigate(user ? "/scenarios" : "/");
+    navigate("/scenarios");
+  };
+
+  const handleRetry = () => {
+    setSessionState("idle");
+    setTranscriptMessages([]);
+    setCurrentSessionId(null);
+    // Start a new session
+    handleStart();
   };
 
   const handleBack = () => {
@@ -214,12 +260,16 @@ const Practice = () => {
     );
   }
 
-  if (sessionState === "feedback") {
+  // Evaluation screen (with AI scoring)
+  if (sessionState === "evaluating") {
     return (
-      <FeedbackScreen
-        agentName={character?.name || scenario?.voice_type === "male" ? "Cliente" : "María"}
-        onSubmit={handleFeedbackSubmit}
+      <EvaluationScreen
+        isEvaluating={isEvaluating}
+        evaluation={lastEvaluation}
+        scenarioName={scenario?.name}
         sessionDuration={sessionDurationRef.current}
+        onContinue={handleContinue}
+        onRetry={handleRetry}
       />
     );
   }

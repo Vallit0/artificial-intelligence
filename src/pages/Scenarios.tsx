@@ -126,7 +126,6 @@ export default function Scenarios() {
               <LessonPath
                 scenarios={scenarios}
                 onSelectScenario={handleSelectScenario}
-                getProgress={getScenarioProgress}
               />
             )}
           </div>
