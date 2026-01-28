@@ -2,24 +2,43 @@ import { useConversation } from "@elevenlabs/react";
 import { useState, useCallback, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+interface EvaluationResult {
+  score: number;
+  passed: boolean;
+  feedback: string;
+  breakdown?: {
+    apertura: number;
+    escucha_activa: number;
+    manejo_objeciones: number;
+    propuesta_valor: number;
+    cierre: number;
+  };
+}
+
 interface UseElevenLabsConversationOptions {
   scenarioId?: string | null;
+  sessionId?: string | null;
   onTranscript?: (text: string, isUser: boolean) => void;
+  onEvaluation?: (evaluation: EvaluationResult) => void;
   onError?: (error: string) => void;
 }
 
 export const useElevenLabsConversation = (options: UseElevenLabsConversationOptions = {}) => {
   // Use refs for callbacks to prevent hook recreation
   const onTranscriptRef = useRef(options.onTranscript);
+  const onEvaluationRef = useRef(options.onEvaluation);
   const onErrorRef = useRef(options.onError);
   const scenarioIdRef = useRef(options.scenarioId);
+  const sessionIdRef = useRef(options.sessionId);
   
   // Update refs when options change
   useEffect(() => {
     onTranscriptRef.current = options.onTranscript;
+    onEvaluationRef.current = options.onEvaluation;
     onErrorRef.current = options.onError;
     scenarioIdRef.current = options.scenarioId;
-  }, [options.onTranscript, options.onError, options.scenarioId]);
+    sessionIdRef.current = options.sessionId;
+  }, [options.onTranscript, options.onEvaluation, options.onError, options.scenarioId, options.sessionId]);
   
   const [isConnecting, setIsConnecting] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -61,6 +80,11 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
         user_transcription_event?: { user_transcript?: string };
         agent_response_event?: { agent_response?: string };
         agent_response_correction_event?: { corrected_agent_response?: string };
+        client_tool_call?: {
+          tool_name: string;
+          tool_call_id: string;
+          parameters: Record<string, unknown>;
+        };
       };
       
       if (msg.user_transcription_event?.user_transcript && onTranscriptRef.current) {
@@ -74,6 +98,51 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
       // Handle interruption correction
       if (msg.agent_response_correction_event?.corrected_agent_response && onTranscriptRef.current) {
         console.log("Agent was interrupted, corrected response:", msg.agent_response_correction_event.corrected_agent_response);
+      }
+
+      // Handle evaluation client tool call from ElevenLabs agent
+      if (msg.client_tool_call?.tool_name === "submit_evaluation") {
+        const params = msg.client_tool_call.parameters as {
+          score?: number;
+          passed?: boolean;
+          feedback?: string;
+          apertura?: number;
+          escucha_activa?: number;
+          manejo_objeciones?: number;
+          propuesta_valor?: number;
+          cierre?: number;
+        };
+        
+        console.log("Received evaluation from agent:", params);
+        
+        const evaluation: EvaluationResult = {
+          score: params.score ?? 0,
+          passed: params.passed ?? false,
+          feedback: params.feedback ?? "",
+          breakdown: {
+            apertura: params.apertura ?? 0,
+            escucha_activa: params.escucha_activa ?? 0,
+            manejo_objeciones: params.manejo_objeciones ?? 0,
+            propuesta_valor: params.propuesta_valor ?? 0,
+            cierre: params.cierre ?? 0,
+          },
+        };
+
+        // Save evaluation to database via edge function
+        if (sessionIdRef.current) {
+          supabase.functions.invoke("agent-evaluation", {
+            body: {
+              session_id: sessionIdRef.current,
+              ...evaluation,
+            },
+          }).then(({ error }) => {
+            if (error) {
+              console.error("Error saving evaluation:", error);
+            }
+          });
+        }
+
+        onEvaluationRef.current?.(evaluation);
       }
     },
     onError: (error) => {

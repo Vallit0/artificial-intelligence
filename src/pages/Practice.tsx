@@ -22,13 +22,26 @@ import { useToast } from "@/hooks/use-toast";
 import LeftSidebar from "@/components/scenarios/LeftSidebar";
 import type { Scenario } from "@/hooks/useScenarios";
 
-type SessionState = "idle" | "connecting" | "active" | "evaluating" | "timeup";
+type SessionState = "idle" | "connecting" | "active" | "evaluating" | "evaluated" | "timeup";
 
 interface TranscriptMessage {
   id: string;
   text: string;
   isUser: boolean;
   timestamp: Date;
+}
+
+interface EvaluationResult {
+  score: number;
+  passed: boolean;
+  feedback: string;
+  breakdown?: {
+    apertura: number;
+    escucha_activa: number;
+    manejo_objeciones: number;
+    propuesta_valor: number;
+    cierre: number;
+  };
 }
 
 // Character configuration - Only Álvaro as coach
@@ -62,14 +75,10 @@ const Practice = () => {
   const [transcriptMessages, setTranscriptMessages] = useState<TranscriptMessage[]>([]);
   const [showTranscript, setShowTranscript] = useState(true);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [agentEvaluation, setAgentEvaluation] = useState<EvaluationResult | null>(null);
   const sessionDurationRef = useRef<number>(0);
   
-  const { 
-    savePracticeSession, 
-    evaluateSession, 
-    isEvaluating, 
-    lastEvaluation 
-  } = usePracticeSessions();
+  const { savePracticeSession } = usePracticeSessions();
 
   // Scribe Realtime for live user transcription
   const {
@@ -131,6 +140,12 @@ const Practice = () => {
     setConnectionStatus("");
   }, [toast]);
 
+  const handleEvaluation = useCallback((evaluation: EvaluationResult) => {
+    console.log("Received evaluation from agent:", evaluation);
+    setAgentEvaluation(evaluation);
+    setSessionState("evaluated");
+  }, []);
+
   const {
     isConnected,
     isConnecting,
@@ -142,7 +157,9 @@ const Practice = () => {
     toggleMute,
   } = useElevenLabsConversation({
     scenarioId,
+    sessionId: currentSessionId,
     onTranscript: handleTranscript,
+    onEvaluation: handleEvaluation,
     onError: handleError,
   });
 
@@ -175,8 +192,17 @@ const Practice = () => {
     setSessionState("connecting");
     setConnectionStatus("Solicitando permisos de micrófono...");
     setTranscriptMessages([]); // Clear previous messages
-    setCurrentSessionId(null);
+    setAgentEvaluation(null);
     clearTranscripts();
+    
+    // Save the session first to get a session ID for evaluation
+    if (user && scenarioId) {
+      const sessionId = await savePracticeSession(0, undefined, scenarioId);
+      setCurrentSessionId(sessionId);
+    } else {
+      setCurrentSessionId(null);
+    }
+    
     connect();
     // Also start Scribe for real-time user transcription
     connectScribe();
@@ -192,34 +218,31 @@ const Practice = () => {
       return;
     }
     
-    // For authenticated users, save and evaluate the session
+    // For authenticated users, wait for agent evaluation
+    // The evaluation will come through the onEvaluation callback
+    // If no evaluation received within timeout, show error state
     if (user && scenarioId) {
       setSessionState("evaluating");
       
-      // Save the session first
-      const sessionId = await savePracticeSession(
-        sessionDurationRef.current,
-        undefined,
-        scenarioId
-      );
-      
-      if (sessionId) {
-        setCurrentSessionId(sessionId);
-        
-        // Convert transcript for evaluation
-        const transcriptForEval = transcriptMessages.map((msg) => ({
-          role: msg.isUser ? "user" as const : "assistant" as const,
-          content: msg.text,
-        }));
-        
-        // Evaluate the session with AI
-        await evaluateSession(
-          sessionId,
-          transcriptForEval,
-          scenarioId,
-          sessionDurationRef.current
-        );
+      // Update session duration
+      if (currentSessionId) {
+        await supabase
+          .from("practice_sessions")
+          .update({ duration_seconds: sessionDurationRef.current })
+          .eq("id", currentSessionId);
       }
+      
+      // Set a timeout - if agent doesn't send evaluation, show message
+      setTimeout(() => {
+        if (sessionState === "evaluating") {
+          toast({
+            variant: "destructive",
+            title: "Evaluación no recibida",
+            description: "El agente no envió la evaluación. Puedes intentar de nuevo.",
+          });
+          setSessionState("idle");
+        }
+      }, 15000); // 15 second timeout
     } else {
       // No scenario selected, just go back
       navigate("/scenarios");
@@ -228,6 +251,7 @@ const Practice = () => {
 
   const handleContinue = () => {
     setSessionState("idle");
+    setAgentEvaluation(null);
     navigate("/scenarios");
   };
 
@@ -235,6 +259,7 @@ const Practice = () => {
     setSessionState("idle");
     setTranscriptMessages([]);
     setCurrentSessionId(null);
+    setAgentEvaluation(null);
     // Start a new session
     handleStart();
   };
@@ -260,12 +285,12 @@ const Practice = () => {
     );
   }
 
-  // Evaluation screen (with AI scoring)
-  if (sessionState === "evaluating") {
+  // Evaluation screen (waiting for agent evaluation or showing results)
+  if (sessionState === "evaluating" || sessionState === "evaluated") {
     return (
       <EvaluationScreen
-        isEvaluating={isEvaluating}
-        evaluation={lastEvaluation}
+        isEvaluating={sessionState === "evaluating"}
+        evaluation={agentEvaluation}
         scenarioName={scenario?.name}
         sessionDuration={sessionDurationRef.current}
         onContinue={handleContinue}
