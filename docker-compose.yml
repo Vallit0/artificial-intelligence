@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  # ============================================
+  # Aplicación Principal (Frontend + Backend)
+  # ============================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=postgresql://senoriales:senoriales@db:5432/senoriales
+      - JWT_SECRET=${JWT_SECRET:-change-this-in-production-please}
+      - APP_URL=${APP_URL:-http://localhost:3000}
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:3000}
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
+      - ELEVENLABS_AGENT_ID=${ELEVENLABS_AGENT_ID}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - senoriales-network
+
+  # ============================================
+  # Base de Datos PostgreSQL
+  # ============================================
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=senoriales
+      - POSTGRES_PASSWORD=senoriales
+      - POSTGRES_DB=senoriales
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./server/src/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U senoriales -d senoriales"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - senoriales-network
+
+volumes:
+  postgres_data:
+
+networks:
+  senoriales-network:
+    driver: bridge

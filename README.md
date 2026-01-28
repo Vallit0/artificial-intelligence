@@ -1,73 +1,144 @@
-# Welcome to your Lovable project
+# Señoriales - Plataforma de Entrenamiento de Ventas
 
-## Project info
+Plataforma de entrenamiento de ventas con IA conversacional.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Arquitectura
 
-## How can I edit this code?
+```
+┌─────────────────────────────────────────────────────┐
+│                   Docker Container                   │
+│  ┌───────────────────────────────────────────────┐  │
+│  │              Node.js / Express                 │  │
+│  │  ├─ /                 → React SPA (static)    │  │
+│  │  ├─ /auth/*           → Autenticación JWT     │  │
+│  │  ├─ /api/scenarios    → Escenarios            │  │
+│  │  ├─ /api/sessions     → Sesiones de práctica  │  │
+│  │  ├─ /api/progress     → Progreso del usuario  │  │
+│  │  ├─ /api/elevenlabs/* → Tokens ElevenLabs     │  │
+│  │  └─ /lti/*            → Integración Moodle    │  │
+│  └───────────────────────────────────────────────┘  │
+│                         ↓                            │
+│  ┌───────────────────────────────────────────────┐  │
+│  │              PostgreSQL 15                     │  │
+│  └───────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────┘
+                          ↓
+            APIs Externas: ElevenLabs, OpenAI
+```
 
-There are several ways of editing your application.
+## Inicio Rápido
 
-**Use Lovable**
+### Desarrollo Local
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+```bash
+# 1. Clonar el repositorio
+git clone <repository-url>
+cd senoriales
 
-Changes made via Lovable will be committed automatically to this repo.
+# 2. Copiar variables de entorno
+cp .env.example .env
+# Editar .env con tus API keys
 
-**Use your preferred IDE**
+# 3. Iniciar con Docker Compose
+docker-compose up --build
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+# 4. Abrir en navegador
+open http://localhost:3000
+```
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Solo Frontend (desarrollo)
 
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```bash
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### Solo Backend (desarrollo)
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```bash
+cd server
+npm install
+npm run dev
+```
 
-**Use GitHub Codespaces**
+## Variables de Entorno
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+| Variable | Descripción | Requerida |
+|----------|-------------|-----------|
+| `JWT_SECRET` | Secreto para firmar tokens JWT | ✅ |
+| `DATABASE_URL` | URL de conexión PostgreSQL | ✅ (o usar docker-compose) |
+| `ELEVENLABS_API_KEY` | API key de ElevenLabs | ✅ |
+| `ELEVENLABS_AGENT_ID` | ID del agente ElevenLabs | ✅ |
+| `OPENAI_API_KEY` | API key de OpenAI (evaluaciones) | Opcional |
+| `APP_URL` | URL pública de la aplicación | ✅ |
+| `CORS_ORIGIN` | Orígenes permitidos para CORS | ✅ |
 
-## What technologies are used for this project?
+## Estructura del Proyecto
 
-This project is built with:
+```
+senoriales/
+├── src/                    # Frontend React
+│   ├── components/         # Componentes UI
+│   ├── hooks/              # Custom hooks
+│   ├── lib/                # Utilidades y API client
+│   └── pages/              # Páginas/rutas
+├── server/                 # Backend Express
+│   ├── src/
+│   │   ├── db/             # Schema y conexión DB
+│   │   ├── middleware/     # Auth middleware
+│   │   └── routes/         # API routes
+│   ├── Dockerfile
+│   └── package.json
+├── Dockerfile              # Build unificado
+├── docker-compose.yml      # Orquestación local
+└── .env.example            # Template de variables
+```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Despliegue en Producción
 
-## How can I deploy this project?
+Ver [server/DEPLOYMENT.md](server/DEPLOYMENT.md) para instrucciones detalladas de despliegue en Huawei Cloud o cualquier infraestructura con Docker.
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+## Comandos Útiles
 
-## Can I connect a custom domain to my Lovable project?
+```bash
+# Construir imagen Docker
+docker build -t senoriales .
 
-Yes, you can!
+# Ver logs
+docker-compose logs -f app
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+# Reiniciar servicios
+docker-compose restart
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+# Limpiar todo
+docker-compose down -v
+```
+
+## API Endpoints
+
+### Autenticación
+- `POST /auth/signup` - Registro
+- `POST /auth/login` - Login
+- `POST /auth/logout` - Logout
+- `POST /auth/refresh` - Refrescar token
+- `GET /auth/me` - Usuario actual
+
+### Escenarios
+- `GET /api/scenarios` - Listar escenarios
+- `GET /api/scenarios/:id` - Obtener escenario
+
+### Sesiones de Práctica
+- `GET /api/sessions` - Mis sesiones
+- `POST /api/sessions` - Crear sesión
+- `PATCH /api/sessions/:id` - Actualizar sesión
+- `POST /api/sessions/evaluate` - Evaluar con IA
+- `GET /api/sessions/stats` - Estadísticas
+
+### ElevenLabs
+- `POST /api/elevenlabs/conversation-token` - Token para conversación
+- `POST /api/elevenlabs/scribe-token` - Token para transcripción
+- `POST /api/elevenlabs/agent-evaluation` - Guardar evaluación del agente
+
+## Licencia
+
+Propietario - Capillas Señoriales
