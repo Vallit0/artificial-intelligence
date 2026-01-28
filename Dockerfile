@@ -9,7 +9,8 @@ WORKDIR /app/client
 
 # Copy frontend package files
 COPY package*.json ./
-RUN npm ci
+COPY bun.lockb* ./
+RUN npm install --legacy-peer-deps
 
 # Copy frontend source and build
 COPY . .
@@ -22,7 +23,7 @@ WORKDIR /app/server
 
 # Copy backend package files
 COPY server/package*.json ./
-RUN npm ci
+RUN npm install
 
 # Copy backend source and build
 COPY server/ .
@@ -35,7 +36,7 @@ WORKDIR /app
 
 # Install production dependencies for backend only
 COPY server/package*.json ./
-RUN npm ci --only=production
+RUN npm install --omit=dev
 
 # Copy built backend
 COPY --from=backend-builder /app/server/dist ./dist
