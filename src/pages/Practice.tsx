@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2, Wifi, WifiOff, MessageSquare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import LeftSidebar from "@/components/scenarios/LeftSidebar";
+import { cn } from "@/lib/utils";
 import type { Scenario } from "@/hooks/useScenarios";
 
 type SessionState = "idle" | "connecting" | "active" | "feedback" | "timeup";
@@ -276,19 +277,19 @@ const Practice = () => {
       )}
 
       {sessionState === "active" && (
-        <div className="flex w-full max-w-4xl mx-auto px-6 gap-8">
+        <div className="flex flex-col lg:flex-row w-full max-w-4xl mx-auto px-4 sm:px-6 gap-4 sm:gap-8">
           {/* Left side - Voice interaction */}
-          <div className="flex-1 flex flex-col items-center gap-8 animate-fade-in">
+          <div className="flex-1 flex flex-col items-center gap-4 sm:gap-8 animate-fade-in">
             {character ? (
               <p 
-                className="text-base font-bold text-muted-foreground"
+                className="text-sm sm:text-base font-bold text-muted-foreground text-center px-4"
                 style={{ fontFamily: "'Nunito', 'DIN Rounded', -apple-system, sans-serif" }}
               >
                 Hablando con {character.name} ({character.role === "coach" ? "Coach" : "Cliente"})
               </p>
             ) : scenario ? (
               <p 
-                className="text-base font-bold text-muted-foreground"
+                className="text-sm sm:text-base font-bold text-muted-foreground text-center px-4"
                 style={{ fontFamily: "'Nunito', 'DIN Rounded', -apple-system, sans-serif" }}
               >
                 Practicando: "{scenario.objection}"
@@ -306,9 +307,9 @@ const Practice = () => {
             />
           </div>
 
-          {/* Right side - Live transcript */}
+          {/* Right side - Live transcript (hidden on mobile by default, toggleable) */}
           {showTranscript && (
-            <div className="w-80 h-[400px] bg-card border-2 border-border rounded-2xl flex flex-col animate-fade-in shadow-[0_4px_0_0_hsl(var(--border))]">
+            <div className="hidden sm:flex w-80 h-[400px] bg-card border-2 border-border rounded-2xl flex-col animate-fade-in shadow-[0_4px_0_0_hsl(var(--border))]">
               <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border">
                 <div className="flex items-center gap-2">
                   <MessageSquare className="h-4 w-4 text-muted-foreground" />
@@ -334,16 +335,20 @@ const Practice = () => {
             </div>
           )}
 
-          {/* Toggle transcript button when hidden */}
-          {!showTranscript && (
+          {/* Toggle transcript button - visible on desktop when hidden, always visible on mobile */}
+          {(!showTranscript || true) && (
             <Button
               variant="outline"
               size="sm"
-              className="absolute bottom-6 right-6 rounded-xl font-bold uppercase tracking-wider border-2"
-              onClick={() => setShowTranscript(true)}
+              className={cn(
+                "fixed bottom-20 right-4 sm:absolute sm:bottom-6 sm:right-6 rounded-xl font-bold uppercase tracking-wider border-2 z-10",
+                showTranscript && "sm:hidden"
+              )}
+              onClick={() => setShowTranscript(!showTranscript)}
             >
               <MessageSquare className="h-4 w-4 mr-2" />
-              Mostrar transcripción
+              <span className="hidden sm:inline">{showTranscript ? "Ocultar" : "Mostrar"} transcripción</span>
+              <span className="sm:hidden">Chat</span>
             </Button>
           )}
         </div>
