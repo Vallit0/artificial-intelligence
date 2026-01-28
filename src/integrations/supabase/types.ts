@@ -111,27 +111,36 @@ export type Database = {
       }
       practice_sessions: {
         Row: {
+          ai_feedback: string | null
           created_at: string
           duration_seconds: number
           id: string
+          passed: boolean | null
           rating: number | null
           scenario_id: string | null
+          score: number | null
           user_id: string
         }
         Insert: {
+          ai_feedback?: string | null
           created_at?: string
           duration_seconds?: number
           id?: string
+          passed?: boolean | null
           rating?: number | null
           scenario_id?: string | null
+          score?: number | null
           user_id: string
         }
         Update: {
+          ai_feedback?: string | null
           created_at?: string
           duration_seconds?: number
           id?: string
+          passed?: boolean | null
           rating?: number | null
           scenario_id?: string | null
+          score?: number | null
           user_id?: string
         }
         Relationships: [
@@ -150,6 +159,7 @@ export type Database = {
           created_at: string | null
           description: string | null
           difficulty: string | null
+          display_order: number | null
           first_message: string | null
           id: string
           is_active: boolean | null
@@ -163,6 +173,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           difficulty?: string | null
+          display_order?: number | null
           first_message?: string | null
           id?: string
           is_active?: boolean | null
@@ -176,6 +187,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           difficulty?: string | null
+          display_order?: number | null
           first_message?: string | null
           id?: string
           is_active?: boolean | null
@@ -185,6 +197,56 @@ export type Database = {
           voice_type?: string | null
         }
         Relationships: []
+      }
+      user_scenario_progress: {
+        Row: {
+          attempts: number
+          best_score: number | null
+          created_at: string
+          first_completed_at: string | null
+          id: string
+          is_completed: boolean
+          is_unlocked: boolean
+          last_attempt_at: string | null
+          scenario_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          best_score?: number | null
+          created_at?: string
+          first_completed_at?: string | null
+          id?: string
+          is_completed?: boolean
+          is_unlocked?: boolean
+          last_attempt_at?: string | null
+          scenario_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          best_score?: number | null
+          created_at?: string
+          first_completed_at?: string | null
+          id?: string
+          is_completed?: boolean
+          is_unlocked?: boolean
+          last_attempt_at?: string | null
+          scenario_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_scenario_progress_scenario_id_fkey"
+            columns: ["scenario_id"]
+            isOneToOne: false
+            referencedRelation: "scenarios"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
