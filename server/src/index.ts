@@ -1,34 +1,48 @@
+// ============================================
+// Main Server Entry Point
+// ============================================
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import dotenv from 'dotenv';
 
+import config, { validateConfig } from './config/index.js';
 import { authRouter } from './routes/auth.js';
 import { ltiRouter } from './routes/lti.js';
 import { apiRouter } from './routes/api.js';
 import { elevenlabsRouter } from './routes/elevenlabs.js';
 import { db } from './db/index.js';
-
-dotenv.config();
+import { AppError } from './utils/errors.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+// Validate configuration
+validateConfig();
 
+const app = express();
+
+// ============================================
 // Middleware
+// ============================================
+
 app.use(helmet({
   contentSecurityPolicy: false, // Disable for SPA
 }));
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
+  origin: config.corsOrigin,
   credentials: true,
 }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// ============================================
+// Routes
+// ============================================
 
 // API Routes
 app.use('/auth', authRouter);
@@ -37,16 +51,41 @@ app.use('/api', apiRouter);
 app.use('/api/elevenlabs', elevenlabsRouter);
 
 // Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+app.get('/health', async (req, res) => {
+  try {
+    // Check database connection
+    await db.query('SELECT 1');
+    
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      version: process.env.npm_package_version || '1.0.0',
+      environment: config.nodeEnv,
+      services: {
+        database: 'connected',
+        elevenlabs: config.elevenlabs.apiKey ? 'configured' : 'not configured',
+      },
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: 'error',
+      timestamp: new Date().toISOString(),
+      services: {
+        database: 'disconnected',
+      },
+    });
+  }
 });
 
-// Serve static React build in production
-if (process.env.NODE_ENV === 'production') {
+// ============================================
+// Static Files (Production)
+// ============================================
+
+if (config.isProduction) {
   const staticPath = path.join(__dirname, '../../client/dist');
   app.use(express.static(staticPath));
   
-  // SPA fallback - serve index.html for all non-API routes
+  // SPA fallback
   app.get('*', (req, res) => {
     if (!req.path.startsWith('/api') && !req.path.startsWith('/auth') && !req.path.startsWith('/lti')) {
       res.sendFile(path.join(staticPath, 'index.html'));
@@ -54,16 +93,34 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-// Error handler
+// ============================================
+// Error Handler
+// ============================================
+
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error('Error:', err.message);
-  res.status(500).json({ error: 'Internal server error' });
+  
+  if (err instanceof AppError) {
+    res.status(err.statusCode).json({ error: err.message });
+  } else {
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+// ============================================
+// Start Server
+// ============================================
+
+app.listen(config.port, () => {
+  console.log(`
+╔════════════════════════════════════════════╗
+║     Señoriales - Sales Training Platform    ║
+╠════════════════════════════════════════════╣
+║  🚀 Server running on port ${config.port}             ║
+║  📊 Environment: ${config.nodeEnv.padEnd(21)}║
+║  🔗 URL: ${config.appUrl.padEnd(29)}║
+╚════════════════════════════════════════════╝
+  `);
 });
 
 export default app;

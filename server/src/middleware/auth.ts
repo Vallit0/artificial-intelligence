@@ -1,105 +1,104 @@
-import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+// ============================================
+// Authentication Middleware
+// ============================================
+
+import { Response, NextFunction } from 'express';
+import { verifyToken, getUserById } from '../services/auth.service.js';
+import { AuthRequest, AuthUser, AppRole } from '../types/index.js';
+import { UnauthorizedError, ForbiddenError, handleError } from '../utils/errors.js';
 import db from '../db/index.js';
 
-export interface AuthUser {
-  id: string;
-  email: string;
-  fullName?: string;
-}
-
-export interface AuthRequest extends Request {
-  user?: AuthUser;
-}
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-
-export function generateToken(user: AuthUser, expiresIn = '1h'): string {
-  return jwt.sign(
-    { sub: user.id, email: user.email },
-    JWT_SECRET,
-    { expiresIn }
-  );
-}
-
-export function generateRefreshToken(user: AuthUser): string {
-  return jwt.sign(
-    { sub: user.id, type: 'refresh' },
-    JWT_SECRET,
-    { expiresIn: '7d' }
-  );
-}
-
-export function verifyToken(token: string): { sub: string; email: string } | null {
-  try {
-    return jwt.verify(token, JWT_SECRET) as { sub: string; email: string };
-  } catch {
-    return null;
-  }
-}
+// ============================================
+// JWT Authentication Middleware
+// ============================================
 
 export async function authMiddleware(
   req: AuthRequest,
   res: Response,
   next: NextFunction
 ): Promise<void> {
+  try {
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader?.startsWith('Bearer ')) {
+      throw new UnauthorizedError('No token provided');
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const decoded = verifyToken(token);
+    
+    if (!decoded) {
+      throw new UnauthorizedError('Invalid token');
+    }
+
+    // Fetch user from database
+    const user = await getUserById(decoded.sub);
+    
+    if (!user) {
+      throw new UnauthorizedError('User not found');
+    }
+
+    req.user = user;
+    next();
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+}
+
+// ============================================
+// Role-based Access Control
+// ============================================
+
+export function requireRole(...roles: AppRole[]) {
+  return async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user) {
+        throw new UnauthorizedError('Not authenticated');
+      }
+
+      const result = await db.query(
+        'SELECT role FROM user_roles WHERE user_id = $1',
+        [req.user.id]
+      );
+
+      const userRoles = result.rows.map(r => r.role as AppRole);
+      const hasRequiredRole = roles.some(role => userRoles.includes(role));
+
+      if (!hasRequiredRole) {
+        throw new ForbiddenError('Insufficient permissions');
+      }
+
+      next();
+    } catch (error) {
+      const appError = handleError(error);
+      res.status(appError.statusCode).json({ error: appError.message });
+    }
+  };
+}
+
+// ============================================
+// Optional Authentication
+// ============================================
+
+export async function optionalAuth(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
   const authHeader = req.headers.authorization;
   
-  if (!authHeader?.startsWith('Bearer ')) {
-    res.status(401).json({ error: 'Unauthorized - No token provided' });
-    return;
+  if (authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.replace('Bearer ', '');
+    const decoded = verifyToken(token);
+    
+    if (decoded) {
+      const user = await getUserById(decoded.sub);
+      if (user) {
+        req.user = user;
+      }
+    }
   }
-
-  const token = authHeader.replace('Bearer ', '');
-  const decoded = verifyToken(token);
   
-  if (!decoded) {
-    res.status(401).json({ error: 'Unauthorized - Invalid token' });
-    return;
-  }
-
-  // Fetch user from database
-  const result = await db.query(
-    'SELECT id, email, full_name FROM users WHERE id = $1',
-    [decoded.sub]
-  );
-
-  if (result.rows.length === 0) {
-    res.status(401).json({ error: 'Unauthorized - User not found' });
-    return;
-  }
-
-  req.user = {
-    id: result.rows[0].id,
-    email: result.rows[0].email,
-    fullName: result.rows[0].full_name,
-  };
-
   next();
-}
-
-// Check if user has specific role
-export async function hasRole(userId: string, role: string): Promise<boolean> {
-  const result = await db.query(
-    'SELECT 1 FROM user_roles WHERE user_id = $1 AND role = $2',
-    [userId, role]
-  );
-  return result.rows.length > 0;
-}
-
-export async function requireRole(role: string) {
-  return async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
-    if (!req.user) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
-
-    const userHasRole = await hasRole(req.user.id, role);
-    if (!userHasRole) {
-      res.status(403).json({ error: 'Forbidden - Insufficient permissions' });
-      return;
-    }
-
-    next();
-  };
 }
