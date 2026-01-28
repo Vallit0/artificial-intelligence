@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { scenariosApi, progressApi } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 
 export interface Scenario {
@@ -47,38 +47,32 @@ export const useScenarios = (): UseScenariosReturn => {
       setError(null);
       
       // Fetch scenarios
-      const { data: scenariosData, error: fetchError } = await supabase
-        .from("scenarios")
-        .select("*")
-        .eq("is_active", true)
-        .order("display_order", { ascending: true });
-
-      if (fetchError) throw fetchError;
+      const scenariosData = await scenariosApi.getAll();
 
       // Fetch user progress if authenticated
       let progressMap = new Map<string, ScenarioProgress>();
       
       if (user) {
-        const { data: progressData } = await supabase
-          .from("user_scenario_progress")
-          .select("scenario_id, is_unlocked, is_completed, best_score, attempts")
-          .eq("user_id", user.id);
-
-        if (progressData) {
-          progressData.forEach((p) => {
-            progressMap.set(p.scenario_id, p as ScenarioProgress);
-          });
+        try {
+          const progressData = await progressApi.getMyProgress();
+          if (progressData) {
+            progressData.forEach((p: ScenarioProgress) => {
+              progressMap.set(p.scenario_id, p);
+            });
+          }
+        } catch (e) {
+          console.warn("Could not fetch progress:", e);
         }
       }
 
       // Combine scenarios with progress
       const scenariosWithProgress: ScenarioWithProgress[] = (scenariosData || []).map(
-        (scenario, index) => {
+        (scenario: Scenario, index: number) => {
           const progress = progressMap.get(scenario.id) || null;
           
           // First scenario is always unlocked, others depend on progress
           const isFirstScenario = index === 0;
-          const defaultUnlocked = isFirstScenario || !user; // Non-authenticated users see all as "playable" visually
+          const defaultUnlocked = isFirstScenario || !user;
           
           return {
             ...scenario,

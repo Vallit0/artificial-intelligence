@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { sessionsApi } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 
 interface PracticeSession {
@@ -68,13 +68,7 @@ export const usePracticeSessions = (): UsePracticeSessionsReturn => {
 
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
-        .from("practice_sessions")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
+      const data = await sessionsApi.getAll();
       setSessions(data || []);
     } catch (error) {
       console.error("Error fetching practice sessions:", error);
@@ -92,18 +86,11 @@ export const usePracticeSessions = (): UsePracticeSessionsReturn => {
       if (!user) return null;
 
       try {
-        const { data, error } = await supabase
-          .from("practice_sessions")
-          .insert({
-            user_id: user.id,
-            duration_seconds: durationSeconds,
-            rating: rating ?? null,
-            scenario_id: scenarioId ?? null,
-          })
-          .select("id")
-          .single();
-
-        if (error) throw error;
+        const data = await sessionsApi.create({
+          durationSeconds,
+          rating,
+          scenarioId,
+        });
         return data?.id || null;
       } catch (error) {
         console.error("Error saving practice session:", error);
@@ -126,16 +113,11 @@ export const usePracticeSessions = (): UsePracticeSessionsReturn => {
       setLastEvaluation(null);
 
       try {
-        const { data, error } = await supabase.functions.invoke("evaluate-session", {
-          body: {
-            transcript,
-            scenario_id: scenarioId,
-            session_id: sessionId,
-            duration_seconds: durationSeconds,
-          },
+        const data = await sessionsApi.evaluate(sessionId, {
+          transcript,
+          scenarioId: scenarioId || undefined,
+          durationSeconds,
         });
-
-        if (error) throw error;
 
         const evaluation: EvaluationResult = {
           score: data.score,

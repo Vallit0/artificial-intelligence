@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { elevenlabsApi } from "@/lib/api";
 
 interface TranscriptSegment {
   id: string;
@@ -82,11 +82,11 @@ export const useScribeRealtime = (options: UseScribeRealtimeOptions = {}) => {
     isCleaningUpRef.current = false;
 
     try {
-      // Get scribe token from edge function
-      const { data, error } = await supabase.functions.invoke("elevenlabs-scribe-token");
+      // Get scribe token from API
+      const data = await elevenlabsApi.getScribeToken();
 
-      if (error || !data?.token) {
-        throw new Error(error?.message || "No se pudo obtener el token de transcripción");
+      if (!data?.token) {
+        throw new Error("No se pudo obtener el token de transcripción");
       }
 
       // Get microphone access with optimal settings

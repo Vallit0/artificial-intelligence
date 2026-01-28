@@ -15,7 +15,7 @@ import { useScribeRealtime } from "@/hooks/useScribeRealtime";
 import { usePracticeSessions } from "@/hooks/usePracticeSessions";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { supabase } from "@/integrations/supabase/client";
+import { scenariosApi, sessionsApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2, Wifi, WifiOff, MessageSquare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -105,14 +105,11 @@ const Practice = () => {
   // Fetch scenario details
   useEffect(() => {
     if (scenarioId) {
-      supabase
-        .from("scenarios")
-        .select("*")
-        .eq("id", scenarioId)
-        .single()
-        .then(({ data }) => {
+      scenariosApi.getById(scenarioId)
+        .then((data) => {
           if (data) setScenario(data);
-        });
+        })
+        .catch((err) => console.error("Error fetching scenario:", err));
     }
   }, [scenarioId]);
 
@@ -219,17 +216,14 @@ const Practice = () => {
     }
     
     // For authenticated users, wait for agent evaluation
-    // The evaluation will come through the onEvaluation callback
-    // If no evaluation received within timeout, show error state
     if (user && scenarioId) {
       setSessionState("evaluating");
       
       // Update session duration
       if (currentSessionId) {
-        await supabase
-          .from("practice_sessions")
-          .update({ duration_seconds: sessionDurationRef.current })
-          .eq("id", currentSessionId);
+        await sessionsApi.update(currentSessionId, {
+          durationSeconds: sessionDurationRef.current,
+        });
       }
       
       // Set a timeout - if agent doesn't send evaluation, show message

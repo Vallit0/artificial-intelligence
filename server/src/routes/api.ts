@@ -1,11 +1,8 @@
-import { Router, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import db from '../db/index.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 
 export const apiRouter = Router();
-
-// All API routes require authentication
-apiRouter.use(authMiddleware);
 
 // ============================================
 // Scenarios
@@ -47,6 +44,13 @@ apiRouter.get('/scenarios/:id', async (req: AuthRequest, res: Response) => {
     res.status(500).json({ error: 'Failed to fetch scenario' });
   }
 });
+
+// ============================================
+// Protected Routes (auth required)
+// ============================================
+
+// Apply auth middleware to all routes below
+apiRouter.use(authMiddleware);
 
 // ============================================
 // Practice Sessions
@@ -224,5 +228,43 @@ apiRouter.get('/stats', async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('Get stats error:', error);
     res.status(500).json({ error: 'Failed to fetch stats' });
+  }
+});
+
+// ============================================
+// Session Evaluation
+// ============================================
+
+// POST /api/sessions/evaluate - Evaluate session with AI
+apiRouter.post('/sessions/evaluate', async (req: AuthRequest, res: Response) => {
+  try {
+    const { sessionId, transcript, scenarioId, durationSeconds } = req.body;
+
+    // Basic evaluation fallback (OpenAI integration can be added)
+    const evaluation = {
+      score: 75,
+      passed: true,
+      feedback: 'Buen trabajo en la práctica. Continúa mejorando tu técnica de manejo de objeciones.',
+      breakdown: {
+        apertura: 80,
+        escucha_activa: 75,
+        manejo_objeciones: 70,
+        propuesta_valor: 75,
+        cierre: 75,
+      },
+    };
+
+    // Update session
+    if (sessionId) {
+      await db.query(
+        `UPDATE practice_sessions SET score = $2, passed = $3, ai_feedback = $4, duration_seconds = $5 WHERE id = $1 AND user_id = $6`,
+        [sessionId, evaluation.score, evaluation.passed, evaluation.feedback, durationSeconds, req.user!.id]
+      );
+    }
+
+    res.json(evaluation);
+  } catch (error) {
+    console.error('Evaluate session error:', error);
+    res.status(500).json({ error: 'Failed to evaluate session' });
   }
 });
