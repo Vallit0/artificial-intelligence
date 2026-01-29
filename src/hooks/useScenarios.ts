@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { scenariosApi, progressApi } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
 export interface Scenario {
@@ -46,28 +46,40 @@ export const useScenarios = (): UseScenariosReturn => {
       setIsLoading(true);
       setError(null);
       
-      // Fetch scenarios
-      const scenariosData = await scenariosApi.getAll();
+      // Fetch scenarios from Supabase
+      const { data: scenariosData, error: scenariosError } = await supabase
+        .from("scenarios")
+        .select("*")
+        .eq("is_active", true)
+        .order("display_order", { ascending: true });
+
+      if (scenariosError) throw scenariosError;
 
       // Fetch user progress if authenticated
       let progressMap = new Map<string, ScenarioProgress>();
       
       if (user) {
-        try {
-          const progressData = await progressApi.getMyProgress();
-          if (progressData) {
-            progressData.forEach((p: ScenarioProgress) => {
-              progressMap.set(p.scenario_id, p);
+        const { data: progressData } = await supabase
+          .from("user_scenario_progress")
+          .select("*")
+          .eq("user_id", user.id);
+        
+        if (progressData) {
+          progressData.forEach((p) => {
+            progressMap.set(p.scenario_id, {
+              scenario_id: p.scenario_id,
+              is_unlocked: p.is_unlocked,
+              is_completed: p.is_completed,
+              best_score: p.best_score,
+              attempts: p.attempts,
             });
-          }
-        } catch (e) {
-          console.warn("Could not fetch progress:", e);
+          });
         }
       }
 
       // Combine scenarios with progress
       const scenariosWithProgress: ScenarioWithProgress[] = (scenariosData || []).map(
-        (scenario: Scenario, index: number) => {
+        (scenario, index: number) => {
           const progress = progressMap.get(scenario.id) || null;
           
           // First scenario is always unlocked, others depend on progress

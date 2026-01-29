@@ -1,6 +1,6 @@
 import { useConversation } from "@elevenlabs/react";
 import { useState, useCallback, useRef, useEffect } from "react";
-import { elevenlabsApi } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 
 interface EvaluationResult {
   score: number;
@@ -128,12 +128,16 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
           },
         };
 
-        // Save evaluation to database via API
+        // Save evaluation via edge function
         if (sessionIdRef.current) {
-          elevenlabsApi.saveAgentEvaluation(sessionIdRef.current, evaluation)
-            .catch((error) => {
-              console.error("Error saving evaluation:", error);
-            });
+          supabase.functions.invoke("agent-evaluation", {
+            body: {
+              sessionId: sessionIdRef.current,
+              ...evaluation,
+            },
+          }).catch((error) => {
+            console.error("Error saving evaluation:", error);
+          });
         }
 
         onEvaluationRef.current?.(evaluation);
@@ -169,8 +173,12 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
       });
       mediaStreamRef.current = stream;
 
-      // Get signed URL from API
-      const data = await elevenlabsApi.getConversationToken(scenarioIdRef.current || undefined);
+      // Get signed URL from Supabase Edge Function
+      const { data, error } = await supabase.functions.invoke("elevenlabs-conversation-token", {
+        body: { scenarioId: scenarioIdRef.current },
+      });
+
+      if (error) throw error;
 
       if (!data?.signedUrl) {
         throw new Error("No signed URL received from server");

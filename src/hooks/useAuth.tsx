@@ -1,14 +1,10 @@
 import { useState, useEffect, createContext, useContext, ReactNode, useCallback } from "react";
-import { authApi, clearTokens, getAccessToken } from "@/lib/api";
-
-interface User {
-  id: string;
-  email: string;
-  fullName?: string;
-}
+import { supabase } from "@/integrations/supabase/client";
+import type { User, Session } from "@supabase/supabase-js";
 
 interface AuthContextType {
   user: User | null;
+  session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, fullName?: string) => Promise<void>;
@@ -19,43 +15,57 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Check for existing session on mount
   useEffect(() => {
-    const checkAuth = async () => {
-      if (getAccessToken()) {
-        try {
-          const data = await authApi.getMe();
-          setUser(data.user);
-        } catch (error) {
-          console.error("Auth check failed:", error);
-          clearTokens();
-        }
-      }
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
       setLoading(false);
-    };
+    });
 
-    checkAuth();
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
-    const data = await authApi.login(email, password);
-    setUser(data.user);
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) throw error;
   }, []);
 
   const signUp = useCallback(async (email: string, password: string, fullName?: string) => {
-    const data = await authApi.signup(email, password, fullName);
-    setUser(data.user);
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: fullName,
+        },
+      },
+    });
+    if (error) throw error;
   }, []);
 
   const signOut = useCallback(async () => {
-    await authApi.logout();
-    setUser(null);
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signOut }}>
       {children}
     </AuthContext.Provider>
   );

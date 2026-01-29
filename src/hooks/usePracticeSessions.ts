@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { sessionsApi } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
 interface PracticeSession {
@@ -68,7 +68,13 @@ export const usePracticeSessions = (): UsePracticeSessionsReturn => {
 
     try {
       setIsLoading(true);
-      const data = await sessionsApi.getAll();
+      const { data, error } = await supabase
+        .from("practice_sessions")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
       setSessions(data || []);
     } catch (error) {
       console.error("Error fetching practice sessions:", error);
@@ -86,11 +92,18 @@ export const usePracticeSessions = (): UsePracticeSessionsReturn => {
       if (!user) return null;
 
       try {
-        const data = await sessionsApi.create({
-          durationSeconds,
-          rating,
-          scenarioId,
-        });
+        const { data, error } = await supabase
+          .from("practice_sessions")
+          .insert({
+            user_id: user.id,
+            duration_seconds: durationSeconds,
+            rating: rating || null,
+            scenario_id: scenarioId || null,
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
         return data?.id || null;
       } catch (error) {
         console.error("Error saving practice session:", error);
@@ -113,11 +126,17 @@ export const usePracticeSessions = (): UsePracticeSessionsReturn => {
       setLastEvaluation(null);
 
       try {
-        const data = await sessionsApi.evaluate(sessionId, {
-          transcript,
-          scenarioId: scenarioId || undefined,
-          durationSeconds,
+        // Call evaluate-session edge function
+        const { data, error } = await supabase.functions.invoke("evaluate-session", {
+          body: {
+            sessionId,
+            transcript,
+            scenarioId,
+            durationSeconds,
+          },
         });
+
+        if (error) throw error;
 
         const evaluation: EvaluationResult = {
           score: data.score,
