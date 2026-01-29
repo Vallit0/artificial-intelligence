@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { elevenlabsApi } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 
 interface TranscriptSegment {
   id: string;
@@ -82,8 +82,10 @@ export const useScribeRealtime = (options: UseScribeRealtimeOptions = {}) => {
     isCleaningUpRef.current = false;
 
     try {
-      // Get scribe token from API
-      const data = await elevenlabsApi.getScribeToken();
+      // Get scribe token from Supabase Edge Function
+      const { data, error } = await supabase.functions.invoke("elevenlabs-scribe-token");
+
+      if (error) throw error;
 
       if (!data?.token) {
         throw new Error("No se pudo obtener el token de transcripción");
