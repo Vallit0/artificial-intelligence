@@ -12,6 +12,7 @@ import Quests from "./pages/Quests";
 import Auth from "./pages/Auth";
 import Prospecting from "./pages/Prospecting";
 import Admin from "./pages/Admin";
+import ResetPassword from "./pages/ResetPassword";
 
 const queryClient = new QueryClient();
 
@@ -97,6 +98,9 @@ const AppRoutes = () => (
         </PublicRoute>
       }
     />
+    
+    {/* Password reset route */}
+    <Route path="/reset-password" element={<ResetPassword />} />
     
     {/* Admin route - protected by admin check inside the component */}
     <Route path="/admin" element={<Admin />} />
