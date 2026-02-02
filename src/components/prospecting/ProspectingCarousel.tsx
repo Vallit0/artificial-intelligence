@@ -80,6 +80,7 @@ const prospectingScenarios: ProspectingScenario[] = [
     location: "Centro Comercial",
     targetAge: "40 años",
     icon: "mall",
+    videoUrl: "/videos/prospecting/scenario-8-senora-compras.mp4",
   },
   {
     id: 9,
