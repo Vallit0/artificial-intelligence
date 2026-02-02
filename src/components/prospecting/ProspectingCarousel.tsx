@@ -31,6 +31,7 @@ export const prospectingScenarios: (ProspectingScenario & { agentId?: string })[
     targetAge: "40 años",
     icon: "supermarket",
     videoUrl: "/videos/prospecting/scenario-2-frutas.mp4",
+    agentId: "ELEVENLABS_AGENT_PROSPECTING_FRUTAS",
   },
   {
     id: 3,
