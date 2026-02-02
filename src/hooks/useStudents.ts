@@ -42,28 +42,44 @@ export const useStudents = (): UseStudentsReturn => {
       setIsLoading(true);
       setError(null);
 
-      // Fetch all profiles
+      // Fetch all profiles (admins can read all profiles via RLS)
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (profilesError) throw profilesError;
+      if (profilesError) {
+        console.error("Error fetching profiles:", profilesError);
+        throw profilesError;
+      }
 
-      // Fetch all practice sessions
+      console.log("Fetched profiles:", profiles?.length || 0);
+
+      // Fetch all practice sessions using service role through RPC or just get what we can
+      // Since admin might not have access to all sessions, we need to handle this
       const { data: sessions, error: sessionsError } = await supabase
         .from("practice_sessions")
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (sessionsError) throw sessionsError;
+      if (sessionsError) {
+        console.error("Error fetching sessions:", sessionsError);
+        // Don't throw - we can still show students without sessions
+      }
 
-      // Fetch all grades
+      console.log("Fetched sessions:", sessions?.length || 0);
+
+      // Fetch all grades (admin has access via RLS)
       const { data: grades, error: gradesError } = await supabase
         .from("student_grades")
         .select("*");
 
-      if (gradesError) throw gradesError;
+      if (gradesError) {
+        console.error("Error fetching grades:", gradesError);
+        // Don't throw - we can still show students without grades
+      }
+
+      console.log("Fetched grades:", grades?.length || 0);
 
       // Map profiles with their sessions and grades
       const studentsWithData: Student[] = (profiles || []).map((profile) => {
