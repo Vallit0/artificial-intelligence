@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import UserMenu from "@/components/UserMenu";
-
+import GreetingMessage from "@/components/GreetingMessage";
 const Header = () => {
   const location = useLocation();
   const { user } = useAuth();
@@ -42,7 +42,10 @@ const Header = () => {
 
         <div className="flex items-center gap-3">
           {user ? (
-            <UserMenu />
+            <>
+              <GreetingMessage />
+              <UserMenu />
+            </>
           ) : (
             <>
               <Link to="/auth">
