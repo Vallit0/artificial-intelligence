@@ -1,18 +1,24 @@
+import { useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAuth } from "@/hooks/useAuth";
 import { useStudents } from "@/hooks/useStudents";
-import { Loader2, LogOut, Shield, Users } from "lucide-react";
+import { Loader2, LogOut, Plus, Shield, Upload, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import StudentList from "@/components/admin/StudentList";
+import CreateUserModal from "@/components/admin/CreateUserModal";
+import BulkUploadModal from "@/components/admin/BulkUploadModal";
 
 export default function Admin() {
   const navigate = useNavigate();
   const { user, loading: authLoading, signOut } = useAuth();
   const { isAdmin, isLoading: adminLoading } = useAdmin();
   const { students, isLoading: studentsLoading, assignGrade, refetch } = useStudents();
+  
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showBulkModal, setShowBulkModal] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -104,11 +110,21 @@ export default function Admin() {
 
         {/* Students List */}
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Estudiantes</CardTitle>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setShowBulkModal(true)}>
+                <Upload className="w-4 h-4 mr-2" />
+                Carga Masiva
+              </Button>
+              <Button size="sm" onClick={() => setShowCreateModal(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Nuevo Usuario
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
-            <ScrollArea className="h-[calc(100vh-350px)]">
+            <ScrollArea className="h-[calc(100vh-400px)]">
               {studentsLoading ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -124,6 +140,19 @@ export default function Admin() {
           </CardContent>
         </Card>
       </main>
+
+      {/* Modals */}
+      <CreateUserModal
+        open={showCreateModal}
+        onOpenChange={setShowCreateModal}
+        onSuccess={refetch}
+      />
+      
+      <BulkUploadModal
+        open={showBulkModal}
+        onOpenChange={setShowBulkModal}
+        onSuccess={refetch}
+      />
     </div>
   );
 }
