@@ -54,6 +54,7 @@ const prospectingScenarios: ProspectingScenario[] = [
     location: "Parqueo",
     targetAge: "35 años",
     icon: "parking",
+    videoUrl: "/videos/prospecting/scenario-5-parqueo.mp4",
   },
   {
     id: 6,
