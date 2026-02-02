@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_emails: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+        }
+        Relationships: []
+      }
       lti_platforms: {
         Row: {
           auth_endpoint: string
@@ -153,6 +171,30 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       scenarios: {
         Row: {
           client_persona: string
@@ -195,6 +237,39 @@ export type Database = {
           objection?: string
           script_content?: Json | null
           voice_type?: string | null
+        }
+        Relationships: []
+      }
+      student_grades: {
+        Row: {
+          certificate_generated_at: string | null
+          created_at: string
+          final_grade: number
+          graded_by: string
+          id: string
+          notes: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          certificate_generated_at?: string | null
+          created_at?: string
+          final_grade: number
+          graded_by: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          certificate_generated_at?: string | null
+          created_at?: string
+          final_grade?: number
+          graded_by?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -253,7 +328,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
       lti_role: "instructor" | "learner" | "admin" | "content_developer"

@@ -11,6 +11,7 @@ import Progress from "./pages/Progress";
 import Quests from "./pages/Quests";
 import Auth from "./pages/Auth";
 import Prospecting from "./pages/Prospecting";
+import Admin from "./pages/Admin";
 
 const queryClient = new QueryClient();
 
@@ -96,6 +97,9 @@ const AppRoutes = () => (
         </PublicRoute>
       }
     />
+    
+    {/* Admin route - protected by admin check inside the component */}
+    <Route path="/admin" element={<Admin />} />
     
     <Route path="*" element={<Navigate to="/" replace />} />
   </Routes>
