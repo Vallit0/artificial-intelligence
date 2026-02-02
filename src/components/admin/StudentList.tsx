@@ -1,7 +1,5 @@
 import { useState } from "react";
 import { Student } from "@/hooks/useStudents";
-import { formatDistanceToNow } from "date-fns";
-import { es } from "date-fns/locale";
 import {
   Table,
   TableBody,
@@ -12,10 +10,11 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Award, ChevronDown, ChevronUp, Clock, FileText } from "lucide-react";
+import { Award, Check, ChevronDown, ChevronUp, Clock, Eye, FileText, Pencil } from "lucide-react";
 import StudentDetailModal from "./StudentDetailModal";
 import GradeModal from "./GradeModal";
 import CertificateModal from "./CertificateModal";
+import { useToast } from "@/hooks/use-toast";
 
 interface StudentListProps {
   students: Student[];
@@ -33,11 +32,33 @@ const formatDuration = (seconds: number): string => {
 };
 
 export default function StudentList({ students, onAssignGrade, onRefetch }: StudentListProps) {
+  const { toast } = useToast();
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [gradeStudent, setGradeStudent] = useState<Student | null>(null);
   const [certificateStudent, setCertificateStudent] = useState<Student | null>(null);
   const [sortBy, setSortBy] = useState<"name" | "sessions" | "grade">("sessions");
   const [sortAsc, setSortAsc] = useState(false);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+
+  const handleApprove = async (student: Student) => {
+    setApprovingId(student.id);
+    // Approve with grade 100 and note
+    const success = await onAssignGrade(student.id, 100, "Aprobado manualmente por el administrador");
+    setApprovingId(null);
+    
+    if (success) {
+      toast({
+        title: "Estudiante aprobado",
+        description: `${student.full_name || student.email} ha sido dado de alta exitosamente.`,
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: "No se pudo aprobar al estudiante. Intenta de nuevo.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleSort = (column: "name" | "sessions" | "grade") => {
     if (sortBy === column) {
@@ -156,22 +177,26 @@ export default function StudentList({ students, onAssignGrade, onRefetch }: Stud
                 )}
               </TableCell>
               <TableCell className="text-right">
-                <div className="flex items-center justify-end gap-2">
+                <div className="flex items-center justify-end gap-1">
                   <Button
                     variant="ghost"
-                    size="sm"
+                    size="icon"
+                    className="h-8 w-8"
                     onClick={() => setSelectedStudent(student)}
+                    title="Ver detalle"
                   >
-                    Ver Detalle
+                    <Eye className="w-4 h-4" />
                   </Button>
                   <Button
-                    variant="outline"
-                    size="sm"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
                     onClick={() => setGradeStudent(student)}
+                    title="Editar calificación"
                   >
-                    Calificar
+                    <Pencil className="w-4 h-4" />
                   </Button>
-                  {student.finalGrade !== null && (
+                  {student.finalGrade !== null ? (
                     <Button
                       variant="secondary"
                       size="sm"
@@ -179,6 +204,16 @@ export default function StudentList({ students, onAssignGrade, onRefetch }: Stud
                     >
                       <Award className="w-4 h-4 mr-1" />
                       Certificado
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => handleApprove(student)}
+                      disabled={approvingId === student.id}
+                    >
+                      <Check className="w-4 h-4 mr-1" />
+                      {approvingId === student.id ? "Aprobando..." : "Dar de Alta"}
                     </Button>
                   )}
                 </div>
