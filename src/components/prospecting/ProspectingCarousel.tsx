@@ -36,6 +36,7 @@ const prospectingScenarios: ProspectingScenario[] = [
     location: "Supermercado",
     targetAge: "50 años",
     icon: "supermarket",
+    videoUrl: "/videos/prospecting/scenario-3-neumaticos.mp4",
   },
   {
     id: 4,
