@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 import { X } from "lucide-react";
+import { ForgotPasswordModal } from "@/components/auth/ForgotPasswordModal";
 
 const authSchema = z.object({
   email: z.string().email("Email inválido"),
@@ -29,6 +30,7 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const { signIn, signUp } = useAuth();
@@ -142,6 +144,7 @@ const Auth = () => {
               {isLogin && (
                 <button
                   type="button"
+                  onClick={() => setForgotPasswordOpen(true)}
                   className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground hover:text-primary uppercase tracking-wider"
                 >
                   ¿Olvidaste?
@@ -176,6 +179,11 @@ const Auth = () => {
           </p>
         </div>
       </div>
+
+      <ForgotPasswordModal
+        open={forgotPasswordOpen}
+        onOpenChange={setForgotPasswordOpen}
+      />
     </div>
   );
 };
