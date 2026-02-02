@@ -10,6 +10,7 @@ import Practice from "./pages/Practice";
 import Progress from "./pages/Progress";
 import Quests from "./pages/Quests";
 import Auth from "./pages/Auth";
+import Prospecting from "./pages/Prospecting";
 
 const queryClient = new QueryClient();
 
@@ -56,6 +57,9 @@ const AppRoutes = () => (
     
     {/* Practice can be accessed by anyone (free tier) or authenticated users */}
     <Route path="/practice" element={<Practice />} />
+    
+    {/* Prospecting scenarios - accessible to anyone */}
+    <Route path="/prospecting" element={<Prospecting />} />
     
     {/* Protected routes */}
     <Route
