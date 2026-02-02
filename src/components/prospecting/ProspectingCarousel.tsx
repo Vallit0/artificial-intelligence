@@ -41,6 +41,7 @@ export const prospectingScenarios: (ProspectingScenario & { agentId?: string })[
     targetAge: "50 años",
     icon: "supermarket",
     videoUrl: "/videos/prospecting/scenario-3-neumaticos.mp4",
+    agentId: "ELEVENLABS_AGENT_PROSPECTING_NEUMATICOS",
   },
   {
     id: 4,
