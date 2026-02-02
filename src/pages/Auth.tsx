@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 import { X } from "lucide-react";
 
@@ -11,6 +12,15 @@ const authSchema = z.object({
   email: z.string().email("Email inválido"),
   password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres"),
 });
+
+const checkIsAdmin = async (email: string): Promise<boolean> => {
+  const { data } = await supabase
+    .from("admin_emails")
+    .select("id")
+    .eq("email", email)
+    .maybeSingle();
+  return !!data;
+};
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
@@ -42,7 +52,10 @@ const Auth = () => {
       if (isLogin) {
         await signIn(email, password);
         toast({ title: "¡Bienvenido!", description: "Sesión iniciada correctamente" });
-        navigate("/scenarios");
+        
+        // Check if user is admin and redirect accordingly
+        const isAdmin = await checkIsAdmin(email);
+        navigate(isAdmin ? "/admin" : "/scenarios");
       } else {
         await signUp(email, password, fullName || undefined);
         toast({
