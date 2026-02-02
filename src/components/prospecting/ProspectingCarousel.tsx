@@ -62,6 +62,7 @@ const prospectingScenarios: ProspectingScenario[] = [
     location: "Calle",
     targetAge: "28 años",
     icon: "street",
+    videoUrl: "/videos/prospecting/scenario-6-profesional-caminando.mp4",
   },
   {
     id: 7,
