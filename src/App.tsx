@@ -60,8 +60,15 @@ const AppRoutes = () => (
     {/* Practice can be accessed by anyone (free tier) or authenticated users */}
     <Route path="/practice" element={<Practice />} />
     
-    {/* Prospecting scenarios - accessible to anyone */}
-    <Route path="/prospecting" element={<Prospecting />} />
+    {/* Prospecting scenarios - requires authentication */}
+    <Route
+      path="/prospecting"
+      element={
+        <ProtectedRoute>
+          <Prospecting />
+        </ProtectedRoute>
+      }
+    />
     
     {/* Protected routes */}
     <Route
