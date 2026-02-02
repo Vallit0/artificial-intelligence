@@ -18,6 +18,7 @@ interface EvaluationResult {
 interface UseElevenLabsConversationOptions {
   scenarioId?: string | null;
   sessionId?: string | null;
+  agentSecretName?: string | null; // Optional custom agent secret name
   onTranscript?: (text: string, isUser: boolean) => void;
   onEvaluation?: (evaluation: EvaluationResult) => void;
   onError?: (error: string) => void;
@@ -30,6 +31,7 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
   const onErrorRef = useRef(options.onError);
   const scenarioIdRef = useRef(options.scenarioId);
   const sessionIdRef = useRef(options.sessionId);
+  const agentSecretNameRef = useRef(options.agentSecretName);
   
   // Update refs when options change
   useEffect(() => {
@@ -38,7 +40,8 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     onErrorRef.current = options.onError;
     scenarioIdRef.current = options.scenarioId;
     sessionIdRef.current = options.sessionId;
-  }, [options.onTranscript, options.onEvaluation, options.onError, options.scenarioId, options.sessionId]);
+    agentSecretNameRef.current = options.agentSecretName;
+  }, [options.onTranscript, options.onEvaluation, options.onError, options.scenarioId, options.sessionId, options.agentSecretName]);
   
   const [isConnecting, setIsConnecting] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -175,7 +178,10 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
 
       // Get signed URL from Supabase Edge Function
       const { data, error } = await supabase.functions.invoke("elevenlabs-conversation-token", {
-        body: { scenarioId: scenarioIdRef.current },
+        body: { 
+          scenarioId: scenarioIdRef.current,
+          agentSecretName: agentSecretNameRef.current,
+        },
       });
 
       if (error) throw error;

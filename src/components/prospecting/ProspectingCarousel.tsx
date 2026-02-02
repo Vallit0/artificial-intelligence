@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import ProspectingScenarioCard, { ProspectingScenario } from "./ProspectingScenarioCard";
+import ProspectingPreviewModal from "./ProspectingPreviewModal";
 import {
   Carousel,
   CarouselContent,
@@ -10,7 +11,8 @@ import {
   type CarouselApi,
 } from "@/components/ui/carousel";
 
-const prospectingScenarios: ProspectingScenario[] = [
+// Export scenarios with agent IDs for prospecting
+export const prospectingScenarios: (ProspectingScenario & { agentId?: string })[] = [
   {
     id: 1,
     title: "Pareja en la Fila de Caja",
@@ -19,6 +21,7 @@ const prospectingScenarios: ProspectingScenario[] = [
     targetAge: "28-30 años",
     icon: "supermarket",
     videoUrl: "/videos/prospecting/scenario-1-pareja.mp4",
+    agentId: "ELEVENLABS_AGENT_PROSPECTING_PAREJA", // Secret name for this agent
   },
   {
     id: 2,
@@ -103,11 +106,13 @@ const prospectingScenarios: ProspectingScenario[] = [
 ];
 
 interface ProspectingCarouselProps {
-  onStartPractice?: (scenarioId: number) => void;
+  onStartPractice?: (scenarioId: number, agentId?: string) => void;
 }
 
 const ProspectingCarousel = ({ onStartPractice }: ProspectingCarouselProps) => {
   const [selectedScenario, setSelectedScenario] = useState<number | null>(null);
+  const [previewScenario, setPreviewScenario] = useState<(ProspectingScenario & { agentId?: string }) | null>(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
   const [count, setCount] = useState(0);
@@ -135,9 +140,22 @@ const ProspectingCarousel = ({ onStartPractice }: ProspectingCarouselProps) => {
     api?.scrollNext();
   }, [api]);
 
-  const handleStartPractice = () => {
-    if (selectedScenario !== null && onStartPractice) {
-      onStartPractice(selectedScenario);
+  // Open preview modal when clicking "Iniciar Práctica"
+  const handleOpenPreview = () => {
+    if (selectedScenario !== null) {
+      const scenario = prospectingScenarios.find(s => s.id === selectedScenario);
+      if (scenario) {
+        setPreviewScenario(scenario);
+        setShowPreviewModal(true);
+      }
+    }
+  };
+
+  // Start practice from modal
+  const handleStartFromModal = (scenarioId: number) => {
+    setShowPreviewModal(false);
+    if (onStartPractice && previewScenario) {
+      onStartPractice(scenarioId, previewScenario.agentId);
     }
   };
 
@@ -214,7 +232,7 @@ const ProspectingCarousel = ({ onStartPractice }: ProspectingCarouselProps) => {
       {/* Start Practice Button */}
       <div className="mt-6 flex justify-center">
         <Button
-          onClick={handleStartPractice}
+          onClick={handleOpenPreview}
           disabled={selectedScenario === null}
           className={cn(
             "h-12 px-8 rounded-xl text-base font-bold gap-2 transition-all duration-300",
@@ -237,6 +255,14 @@ const ProspectingCarousel = ({ onStartPractice }: ProspectingCarouselProps) => {
           </p>
         </div>
       )}
+
+      {/* Preview Modal */}
+      <ProspectingPreviewModal
+        scenario={previewScenario}
+        open={showPreviewModal}
+        onOpenChange={setShowPreviewModal}
+        onStartPractice={handleStartFromModal}
+      />
     </div>
   );
 };
