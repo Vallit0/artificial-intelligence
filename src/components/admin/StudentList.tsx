@@ -10,10 +10,11 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Award, Check, ChevronDown, ChevronUp, Clock, Eye, FileText, Pencil } from "lucide-react";
+import { Award, Check, ChevronDown, ChevronUp, Clock, Eye, FileText, Pencil, Trash2 } from "lucide-react";
 import StudentDetailModal from "./StudentDetailModal";
 import GradeModal from "./GradeModal";
 import CertificateModal from "./CertificateModal";
+import DeleteUserModal from "./DeleteUserModal";
 import { useToast } from "@/hooks/use-toast";
 
 interface StudentListProps {
@@ -36,13 +37,13 @@ export default function StudentList({ students, onAssignGrade, onRefetch }: Stud
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [gradeStudent, setGradeStudent] = useState<Student | null>(null);
   const [certificateStudent, setCertificateStudent] = useState<Student | null>(null);
+  const [deleteStudent, setDeleteStudent] = useState<Student | null>(null);
   const [sortBy, setSortBy] = useState<"name" | "sessions" | "grade">("sessions");
   const [sortAsc, setSortAsc] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
 
   const handleApprove = async (student: Student) => {
     setApprovingId(student.id);
-    // Approve with grade 100 and note
     const success = await onAssignGrade(student.id, 100, "Aprobado manualmente por el administrador");
     setApprovingId(null);
     
@@ -196,6 +197,15 @@ export default function StudentList({ students, onAssignGrade, onRefetch }: Stud
                   >
                     <Pencil className="w-4 h-4" />
                   </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-destructive hover:text-destructive"
+                    onClick={() => setDeleteStudent(student)}
+                    title="Eliminar usuario"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
                   {student.finalGrade !== null ? (
                     <Button
                       variant="secondary"
@@ -250,6 +260,13 @@ export default function StudentList({ students, onAssignGrade, onRefetch }: Stud
         student={certificateStudent}
         open={!!certificateStudent}
         onOpenChange={(open) => !open && setCertificateStudent(null)}
+      />
+
+      <DeleteUserModal
+        student={deleteStudent}
+        open={!!deleteStudent}
+        onOpenChange={(open) => !open && setDeleteStudent(null)}
+        onSuccess={onRefetch}
       />
     </>
   );
