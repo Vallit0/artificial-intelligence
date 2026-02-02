@@ -97,6 +97,7 @@ const prospectingScenarios: ProspectingScenario[] = [
     location: "Cementerio Los Parques",
     targetAge: "30 años",
     icon: "cemetery",
+    videoUrl: "/videos/prospecting/scenario-10-cementerio.mp4",
   },
 ];
 
