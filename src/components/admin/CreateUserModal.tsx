@@ -9,7 +9,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2, AlertCircle, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -18,6 +19,12 @@ interface CreateUserModalProps {
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
 }
+
+// Email validation regex
+const isValidEmail = (email: string): boolean => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
 
 export default function CreateUserModal({
   open,
@@ -29,25 +36,41 @@ export default function CreateUserModal({
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  const resetForm = () => {
+    setEmail("");
+    setPassword("");
+    setFullName("");
+    setError(null);
+    setSuccess(false);
+  };
+
+  const validateForm = (): string | null => {
+    if (!email.trim()) {
+      return "El email es requerido";
+    }
+    if (!isValidEmail(email.trim())) {
+      return "Formato de email inválido";
+    }
+    if (!password) {
+      return "La contraseña es requerida";
+    }
+    if (password.length < 6) {
+      return "La contraseña debe tener al menos 6 caracteres";
+    }
+    return null;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+    setSuccess(false);
     
-    if (!email || !password) {
-      toast({
-        title: "Error",
-        description: "Email y contraseña son requeridos",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (password.length < 6) {
-      toast({
-        title: "Error",
-        description: "La contraseña debe tener al menos 6 caracteres",
-        variant: "destructive",
-      });
+    const validationError = validateForm();
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
@@ -56,41 +79,58 @@ export default function CreateUserModal({
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
+      if (!session?.access_token) {
+        throw new Error("Sesión expirada. Por favor, recarga la página e inicia sesión nuevamente.");
+      }
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-users?action=create`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${session?.access_token}`,
+            Authorization: `Bearer ${session.access_token}`,
           },
-          body: JSON.stringify({ email, password, fullName }),
+          body: JSON.stringify({ 
+            email: email.trim().toLowerCase(), 
+            password, 
+            fullName: fullName.trim() 
+          }),
         }
       );
 
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || "Error al crear usuario");
+        // Handle specific error codes
+        if (result.code === "USER_EXISTS" || response.status === 409) {
+          setError("Este email ya está registrado en el sistema");
+        } else if (response.status === 401) {
+          setError("Tu sesión ha expirado. Por favor, recarga la página.");
+        } else if (response.status === 403) {
+          setError("No tienes permisos para crear usuarios");
+        } else {
+          setError(result.error || "Error al crear usuario");
+        }
+        return;
       }
 
+      setSuccess(true);
       toast({
         title: "Usuario creado",
         description: `${email} ha sido creado exitosamente`,
       });
 
-      setEmail("");
-      setPassword("");
-      setFullName("");
-      onOpenChange(false);
-      onSuccess();
+      // Wait a moment to show success state, then close
+      setTimeout(() => {
+        resetForm();
+        onOpenChange(false);
+        onSuccess();
+      }, 1000);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Error desconocido";
-      toast({
-        title: "Error",
-        description: message,
-        variant: "destructive",
-      });
+      console.error("Error creating user:", error);
+      const message = error instanceof Error ? error.message : "Error de conexión. Verifica tu conexión a internet.";
+      setError(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -98,9 +138,7 @@ export default function CreateUserModal({
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
-      setEmail("");
-      setPassword("");
-      setFullName("");
+      resetForm();
     }
     onOpenChange(newOpen);
   };
@@ -113,6 +151,22 @@ export default function CreateUserModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          {success && (
+            <Alert className="border-primary bg-primary/10">
+              <CheckCircle className="h-4 w-4 text-primary" />
+              <AlertDescription className="text-primary">
+                Usuario creado exitosamente
+              </AlertDescription>
+            </Alert>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="fullName">Nombre Completo</Label>
             <Input
@@ -121,6 +175,8 @@ export default function CreateUserModal({
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder="Juan Pérez"
+              disabled={isSubmitting || success}
+              maxLength={100}
             />
           </div>
 
@@ -130,9 +186,14 @@ export default function CreateUserModal({
               id="email"
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setError(null);
+              }}
               placeholder="usuario@ejemplo.com"
               required
+              disabled={isSubmitting || success}
+              maxLength={255}
             />
           </div>
 
@@ -142,22 +203,40 @@ export default function CreateUserModal({
               id="password"
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setError(null);
+              }}
               placeholder="Mínimo 6 caracteres"
               minLength={6}
               required
+              disabled={isSubmitting || success}
+              maxLength={72}
             />
+            <p className="text-xs text-muted-foreground">
+              La contraseña debe tener al menos 6 caracteres
+            </p>
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => handleOpenChange(false)}
+              disabled={isSubmitting}
+            >
               Cancelar
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting || success}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Creando...
+                </>
+              ) : success ? (
+                <>
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Creado
                 </>
               ) : (
                 "Crear Usuario"
