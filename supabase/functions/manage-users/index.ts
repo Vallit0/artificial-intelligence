@@ -10,6 +10,7 @@ interface CreateUserRequest {
   email: string;
   password: string;
   fullName?: string;
+  isAdmin?: boolean;
 }
 
 interface BulkCreateRequest {
@@ -139,7 +140,7 @@ serve(async (req) => {
     }
 
     if (action === "create") {
-      const { email, password, fullName }: CreateUserRequest = body;
+      const { email, password, fullName, isAdmin }: CreateUserRequest = body;
       
       // Validate input
       const validation = validateUserData({ email, password, fullName });
@@ -193,8 +194,32 @@ serve(async (req) => {
           throw createError;
         }
 
+        // If isAdmin is true, add email to admin_emails table
+        if (isAdmin && newUser.user) {
+          const { error: adminError } = await supabaseAdmin
+            .from("admin_emails")
+            .insert({ email: cleanEmail });
+
+          if (adminError) {
+            console.error("Error adding admin email:", adminError);
+            // User was created but admin status failed - return partial success
+            return new Response(
+              JSON.stringify({ 
+                success: true, 
+                user: { id: newUser.user.id, email: newUser.user.email },
+                warning: "Usuario creado pero no se pudo asignar permisos de administrador"
+              }),
+              { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+        }
+
         return new Response(
-          JSON.stringify({ success: true, user: { id: newUser.user.id, email: newUser.user.email } }),
+          JSON.stringify({ 
+            success: true, 
+            user: { id: newUser.user.id, email: newUser.user.email },
+            isAdmin: isAdmin || false
+          }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       } catch (createError) {

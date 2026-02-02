@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, AlertCircle, CheckCircle } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Loader2, AlertCircle, CheckCircle, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -35,6 +36,7 @@ export default function CreateUserModal({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -43,6 +45,7 @@ export default function CreateUserModal({
     setEmail("");
     setPassword("");
     setFullName("");
+    setIsAdmin(false);
     setError(null);
     setSuccess(false);
   };
@@ -94,7 +97,8 @@ export default function CreateUserModal({
           body: JSON.stringify({ 
             email: email.trim().toLowerCase(), 
             password, 
-            fullName: fullName.trim() 
+            fullName: fullName.trim(),
+            isAdmin 
           }),
         }
       );
@@ -216,6 +220,21 @@ export default function CreateUserModal({
             <p className="text-xs text-muted-foreground">
               La contraseña debe tener al menos 6 caracteres
             </p>
+          </div>
+
+          <div className="flex items-center space-x-3 p-3 rounded-lg bg-muted/50 border border-border">
+            <Checkbox
+              id="isAdmin"
+              checked={isAdmin}
+              onCheckedChange={(checked) => setIsAdmin(checked === true)}
+              disabled={isSubmitting || success}
+            />
+            <div className="flex items-center gap-2">
+              <Shield className="h-4 w-4 text-primary" />
+              <Label htmlFor="isAdmin" className="text-sm font-medium cursor-pointer">
+                Permisos de Administrador
+              </Label>
+            </div>
           </div>
 
           <DialogFooter>
