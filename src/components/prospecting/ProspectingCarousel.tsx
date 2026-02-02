@@ -18,6 +18,7 @@ const prospectingScenarios: ProspectingScenario[] = [
     location: "Supermercado",
     targetAge: "28-30 años",
     icon: "supermarket",
+    videoUrl: "/videos/prospecting/scenario-1-pareja.mp4",
   },
   {
     id: 2,
