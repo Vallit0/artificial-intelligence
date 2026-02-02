@@ -61,6 +61,7 @@ export const prospectingScenarios: (ProspectingScenario & { agentId?: string })[
     targetAge: "35 años",
     icon: "parking",
     videoUrl: "/videos/prospecting/scenario-5-parqueo.mp4",
+    agentId: "ELEVENLABS_AGENT_PROSPECTING_PARQUEO",
   },
   {
     id: 6,
