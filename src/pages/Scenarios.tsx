@@ -3,14 +3,18 @@ import { useMemo } from "react";
 import { useScenarios } from "@/hooks/useScenarios";
 import { useAuth } from "@/hooks/useAuth";
 import { usePracticeSessions } from "@/hooks/usePracticeSessions";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import LeftSidebar from "@/components/scenarios/LeftSidebar";
 import RightSidebar from "@/components/scenarios/RightSidebar";
 import LessonPath from "@/components/scenarios/LessonPath";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { startOfWeek, endOfWeek, isWithinInterval, startOfDay, differenceInCalendarDays } from "date-fns";
+
+// Feature flag - set to true when APRENDER module is ready
+const APRENDER_ENABLED = false;
 
 export default function Scenarios() {
   const navigate = useNavigate();
@@ -103,37 +107,63 @@ export default function Scenarios() {
       {/* Main Content - Centered */}
       <main className="lg:ml-56 xl:mr-80 min-h-screen">
         <ScrollArea className="h-screen">
-          <div className="max-w-xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+          <div className="max-w-xl mx-auto px-3 sm:px-4 py-4 sm:py-6 relative">
 
-            {/* Content */}
-            {isLoading ? (
-              <div className="flex flex-col items-center gap-4 py-12">
-                {[1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className="w-20 h-20 rounded-full bg-muted animate-pulse"
-                  />
-                ))}
+            {/* LOCKED OVERLAY - Show when APRENDER is disabled */}
+            {!APRENDER_ENABLED && (
+              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
+                <div className="flex flex-col items-center gap-4 p-8 text-center max-w-sm">
+                  <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center">
+                    <Lock className="w-10 h-10 text-muted-foreground" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-foreground">
+                    Módulo en Desarrollo
+                  </h2>
+                  <p className="text-muted-foreground">
+                    El camino de aprendizaje estará disponible próximamente. 
+                    Mientras tanto, practica tus habilidades de prospección.
+                  </p>
+                  <Button 
+                    onClick={() => navigate("/prospecting")}
+                    className="mt-4"
+                  >
+                    Ir a Prospección
+                  </Button>
+                </div>
               </div>
-            ) : error ? (
-              <Card className="border-destructive mt-8">
-                <CardContent className="flex items-center gap-3 py-6">
-                  <AlertCircle className="h-5 w-5 text-destructive" />
-                  <p className="text-destructive">{error}</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <LessonPath
-                scenarios={scenarios}
-                onSelectScenario={handleSelectScenario}
-              />
             )}
+
+            {/* Content (blurred/greyed when locked) */}
+            <div className={cn(!APRENDER_ENABLED && "opacity-30 pointer-events-none select-none filter blur-[2px]")}>
+              {isLoading ? (
+                <div className="flex flex-col items-center gap-4 py-12">
+                  {[1, 2, 3].map((i) => (
+                    <div
+                      key={i}
+                      className="w-20 h-20 rounded-full bg-muted animate-pulse"
+                    />
+                  ))}
+                </div>
+              ) : error ? (
+                <Card className="border-destructive mt-8">
+                  <CardContent className="flex items-center gap-3 py-6">
+                    <AlertCircle className="h-5 w-5 text-destructive" />
+                    <p className="text-destructive">{error}</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <LessonPath
+                  scenarios={scenarios}
+                  onSelectScenario={handleSelectScenario}
+                />
+              )}
+            </div>
           </div>
         </ScrollArea>
       </main>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border py-2 px-2 lg:hidden shadow-lg">
+      <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border py-2 px-2 lg:hidden shadow-lg z-30">
         <div className="flex items-center justify-around">
           <MobileNavItem icon="home" label="Aprender" href="/scenarios" disabled />
           <MobileNavItem icon="users" label="Prospectar" href="/prospecting" />
