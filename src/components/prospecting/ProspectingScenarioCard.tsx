@@ -15,6 +15,7 @@ interface ProspectingScenarioCardProps {
   scenario: ProspectingScenario;
   isSelected: boolean;
   onClick: () => void;
+  isDisabled?: boolean;
 }
 
 const iconMap = {
@@ -26,18 +27,21 @@ const iconMap = {
   cemetery: TreePine,
 };
 
-const ProspectingScenarioCard = ({ scenario, isSelected, onClick }: ProspectingScenarioCardProps) => {
+const ProspectingScenarioCard = ({ scenario, isSelected, onClick, isDisabled = false }: ProspectingScenarioCardProps) => {
   const Icon = iconMap[scenario.icon];
 
   return (
     <button
-      onClick={onClick}
+      onClick={isDisabled ? undefined : onClick}
+      disabled={isDisabled}
       className={cn(
         "relative w-full rounded-2xl border-2 transition-all duration-300 text-left overflow-hidden",
-        "hover:scale-[1.02] hover:shadow-lg",
-        isSelected
+        isDisabled
+          ? "opacity-50 grayscale cursor-not-allowed border-border bg-muted"
+          : "hover:scale-[1.02] hover:shadow-lg",
+        !isDisabled && isSelected
           ? "border-primary bg-primary/10 shadow-md"
-          : "border-border bg-card hover:border-primary/50"
+          : !isDisabled && "border-border bg-card hover:border-primary/50"
       )}
     >
       {/* Video Preview */}

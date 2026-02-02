@@ -186,15 +186,19 @@ const ProspectingCarousel = ({ onStartPractice }: ProspectingCarouselProps) => {
           className="w-full"
         >
           <CarouselContent className="-ml-2 md:-ml-4">
-            {prospectingScenarios.map((scenario) => (
-              <CarouselItem key={scenario.id} className="pl-2 md:pl-4 basis-[85%] sm:basis-[45%] lg:basis-[33%]">
-                <ProspectingScenarioCard
-                  scenario={scenario}
-                  isSelected={selectedScenario === scenario.id}
-                  onClick={() => setSelectedScenario(scenario.id)}
-                />
-              </CarouselItem>
-            ))}
+            {prospectingScenarios.map((scenario) => {
+              const isDisabled = scenario.id > 2; // Only scenarios 1 and 2 are enabled
+              return (
+                <CarouselItem key={scenario.id} className="pl-2 md:pl-4 basis-[85%] sm:basis-[45%] lg:basis-[33%]">
+                  <ProspectingScenarioCard
+                    scenario={scenario}
+                    isSelected={selectedScenario === scenario.id}
+                    onClick={() => setSelectedScenario(scenario.id)}
+                    isDisabled={isDisabled}
+                  />
+                </CarouselItem>
+              );
+            })}
           </CarouselContent>
         </Carousel>
 
