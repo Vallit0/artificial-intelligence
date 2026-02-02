@@ -64,10 +64,13 @@ const Practice = () => {
   
   const scenarioId = searchParams.get("scenario");
   const characterId = searchParams.get("character");
+  const prospectingId = searchParams.get("prospecting");
+  const agentSecretName = searchParams.get("agent"); // Custom agent secret name for prospecting
   const tier = searchParams.get("tier");
   
   const isFreeTier = tier === "free" && !user;
   const character = characterId ? characters[characterId] : null;
+  const isProspecting = !!prospectingId;
   
   const [sessionState, setSessionState] = useState<SessionState>("idle");
   const [scenario, setScenario] = useState<Scenario | null>(null);
@@ -155,6 +158,7 @@ const Practice = () => {
   } = useElevenLabsConversation({
     scenarioId,
     sessionId: currentSessionId,
+    agentSecretName: agentSecretName || undefined, // Pass custom agent for prospecting
     onTranscript: handleTranscript,
     onEvaluation: handleEvaluation,
     onError: handleError,

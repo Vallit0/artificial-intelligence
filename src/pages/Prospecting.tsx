@@ -7,9 +7,14 @@ import logoSenoriales from "@/assets/logo-senoriales.png";
 const Prospecting = () => {
   const navigate = useNavigate();
 
-  const handleStartPractice = (scenarioId: number) => {
-    // Navigate to practice page with the prospecting scenario
-    navigate(`/practice?prospecting=${scenarioId}`);
+  const handleStartPractice = (scenarioId: number, agentId?: string) => {
+    // Navigate to practice page with the prospecting scenario and optional agent ID
+    const params = new URLSearchParams();
+    params.set("prospecting", scenarioId.toString());
+    if (agentId) {
+      params.set("agent", agentId);
+    }
+    navigate(`/practice?${params.toString()}`);
   };
 
   return (
