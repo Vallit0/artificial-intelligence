@@ -16,117 +16,287 @@ interface BulkCreateRequest {
   users: CreateUserRequest[];
 }
 
+// Validate email format
+const isValidEmail = (email: string): boolean => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
+// Validate password strength
+const isValidPassword = (password: string): boolean => {
+  return password.length >= 6;
+};
+
+// Sanitize and validate user data
+const validateUserData = (user: CreateUserRequest): { valid: boolean; error?: string } => {
+  if (!user.email || typeof user.email !== "string") {
+    return { valid: false, error: "Email es requerido" };
+  }
+  
+  const email = user.email.trim().toLowerCase();
+  if (!isValidEmail(email)) {
+    return { valid: false, error: "Formato de email inválido" };
+  }
+  
+  if (!user.password || typeof user.password !== "string") {
+    return { valid: false, error: "Contraseña es requerida" };
+  }
+  
+  if (!isValidPassword(user.password)) {
+    return { valid: false, error: "La contraseña debe tener al menos 6 caracteres" };
+  }
+  
+  if (user.fullName && typeof user.fullName !== "string") {
+    return { valid: false, error: "Nombre inválido" };
+  }
+  
+  return { valid: true };
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error("Configuración del servidor incompleta");
+    }
+
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
 
     // Verify the requester is an admin
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
-      throw new Error("No authorization header");
+      return new Response(
+        JSON.stringify({ error: "No autorizado: Token de autenticación requerido" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
     
-    if (authError || !user) {
-      throw new Error("Unauthorized");
+    let user;
+    try {
+      const { data, error: authError } = await supabaseAdmin.auth.getUser(token);
+      if (authError || !data.user) {
+        throw new Error("Token inválido");
+      }
+      user = data.user;
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Sesión expirada. Por favor, inicia sesión nuevamente." }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Check if user is admin
-    const { data: adminCheck } = await supabaseAdmin
+    const { data: adminCheck, error: adminError } = await supabaseAdmin
       .from("admin_emails")
       .select("id")
       .eq("email", user.email)
       .maybeSingle();
 
+    if (adminError) {
+      console.error("Error checking admin status:", adminError);
+      return new Response(
+        JSON.stringify({ error: "Error al verificar permisos de administrador" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     if (!adminCheck) {
-      throw new Error("Forbidden: Admin access required");
+      return new Response(
+        JSON.stringify({ error: "Acceso denegado: Se requieren permisos de administrador" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const url = new URL(req.url);
     const action = url.searchParams.get("action");
 
-    if (action === "create") {
-      // Single user creation
-      const { email, password, fullName }: CreateUserRequest = await req.json();
-
-      if (!email || !password) {
-        throw new Error("Email and password are required");
-      }
-
-      const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true,
-        user_metadata: {
-          full_name: fullName || "",
-        },
-      });
-
-      if (createError) throw createError;
-
+    if (!action) {
       return new Response(
-        JSON.stringify({ success: true, user: { id: newUser.user.id, email: newUser.user.email } }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Acción no especificada. Use: create, bulk-create, delete, o update-password" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    if (action === "bulk-create") {
-      // Bulk user creation
-      const { users }: BulkCreateRequest = await req.json();
+    // Parse request body with error handling
+    let body;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Datos de solicitud inválidos" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
-      if (!users || !Array.isArray(users) || users.length === 0) {
-        throw new Error("Users array is required");
+    if (action === "create") {
+      const { email, password, fullName }: CreateUserRequest = body;
+      
+      // Validate input
+      const validation = validateUserData({ email, password, fullName });
+      if (!validation.valid) {
+        return new Response(
+          JSON.stringify({ error: validation.error }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const cleanEmail = email.trim().toLowerCase();
+
+      // Check if user already exists
+      try {
+        const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+        const existingUser = existingUsers?.users?.find(u => u.email?.toLowerCase() === cleanEmail);
+
+        if (existingUser) {
+          return new Response(
+            JSON.stringify({ 
+              error: "Este email ya está registrado",
+              code: "USER_EXISTS",
+              existingUserId: existingUser.id 
+            }),
+            { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      } catch (listError) {
+        console.error("Error listing users:", listError);
+        // Continue with creation attempt - the create call will fail if user exists
+      }
+
+      try {
+        const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+          email: cleanEmail,
+          password,
+          email_confirm: true,
+          user_metadata: {
+            full_name: fullName?.trim() || "",
+          },
+        });
+
+        if (createError) {
+          // Handle specific error cases
+          if (createError.message.includes("already been registered")) {
+            return new Response(
+              JSON.stringify({ error: "Este email ya está registrado", code: "USER_EXISTS" }),
+              { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+          throw createError;
+        }
+
+        return new Response(
+          JSON.stringify({ success: true, user: { id: newUser.user.id, email: newUser.user.email } }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } catch (createError) {
+        console.error("Error creating user:", createError);
+        const message = createError instanceof Error ? createError.message : "Error desconocido";
+        return new Response(
+          JSON.stringify({ error: `Error al crear usuario: ${message}` }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    if (action === "bulk-create") {
+      const { users }: BulkCreateRequest = body;
+
+      if (!users || !Array.isArray(users)) {
+        return new Response(
+          JSON.stringify({ error: "Se requiere un array de usuarios" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (users.length === 0) {
+        return new Response(
+          JSON.stringify({ error: "El array de usuarios está vacío" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
 
       if (users.length > 100) {
-        throw new Error("Maximum 100 users per batch");
+        return new Response(
+          JSON.stringify({ error: "Máximo 100 usuarios por lote" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
 
-      const results: { email: string; success: boolean; error?: string }[] = [];
+      // Get existing users once for efficiency
+      let existingEmails: Set<string> = new Set();
+      try {
+        const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+        existingEmails = new Set(
+          existingUsers?.users?.map(u => u.email?.toLowerCase()).filter(Boolean) as string[]
+        );
+      } catch (listError) {
+        console.error("Error listing existing users:", listError);
+        // Continue without pre-check - individual creates will fail if user exists
+      }
+
+      const results: { email: string; success: boolean; error?: string; action?: string }[] = [];
 
       for (const userData of users) {
         try {
-          if (!userData.email || !userData.password) {
-            results.push({ email: userData.email || "unknown", success: false, error: "Email and password required" });
+          // Validate user data
+          const validation = validateUserData(userData);
+          if (!validation.valid) {
+            results.push({ 
+              email: userData.email || "desconocido", 
+              success: false, 
+              error: validation.error 
+            });
             continue;
           }
 
-          // Check if user already exists
-          const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-          const existingUser = existingUsers?.users?.find(u => u.email === userData.email);
+          const cleanEmail = userData.email.trim().toLowerCase();
 
-          if (existingUser) {
-            results.push({ email: userData.email, success: false, error: "User already exists" });
+          // Check if already exists
+          if (existingEmails.has(cleanEmail)) {
+            results.push({ 
+              email: cleanEmail, 
+              success: false, 
+              error: "Usuario ya existe" 
+            });
             continue;
           }
 
           const { error: createError } = await supabaseAdmin.auth.admin.createUser({
-            email: userData.email,
+            email: cleanEmail,
             password: userData.password,
             email_confirm: true,
             user_metadata: {
-              full_name: userData.fullName || "",
+              full_name: userData.fullName?.trim() || "",
             },
           });
 
           if (createError) {
-            results.push({ email: userData.email, success: false, error: createError.message });
+            if (createError.message.includes("already been registered")) {
+              results.push({ email: cleanEmail, success: false, error: "Usuario ya existe" });
+              existingEmails.add(cleanEmail); // Add to set to prevent duplicate attempts
+            } else {
+              results.push({ email: cleanEmail, success: false, error: createError.message });
+            }
           } else {
-            results.push({ email: userData.email, success: true });
+            results.push({ email: cleanEmail, success: true, action: "created" });
+            existingEmails.add(cleanEmail); // Add to set to prevent duplicate attempts
           }
         } catch (err) {
-          const message = err instanceof Error ? err.message : "Unknown error";
-          results.push({ email: userData.email, success: false, error: message });
+          const message = err instanceof Error ? err.message : "Error desconocido";
+          results.push({ 
+            email: userData.email || "desconocido", 
+            success: false, 
+            error: message 
+          });
         }
       }
 
@@ -134,58 +304,116 @@ serve(async (req) => {
       const failCount = results.filter(r => !r.success).length;
 
       return new Response(
-        JSON.stringify({ 
-          success: true, 
+        JSON.stringify({
+          success: true,
           summary: { total: users.length, created: successCount, failed: failCount },
-          results 
+          results,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     if (action === "delete") {
-      const { userId } = await req.json();
+      const { userId } = body;
 
-      if (!userId) {
-        throw new Error("User ID is required");
+      if (!userId || typeof userId !== "string") {
+        return new Response(
+          JSON.stringify({ error: "ID de usuario es requerido" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
 
-      const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+      // Prevent admin from deleting themselves
+      if (userId === user.id) {
+        return new Response(
+          JSON.stringify({ error: "No puedes eliminar tu propia cuenta" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
 
-      if (deleteError) throw deleteError;
+      try {
+        const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
 
-      return new Response(
-        JSON.stringify({ success: true }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+        if (deleteError) {
+          if (deleteError.message.includes("not found")) {
+            return new Response(
+              JSON.stringify({ error: "Usuario no encontrado" }),
+              { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+          throw deleteError;
+        }
+
+        return new Response(
+          JSON.stringify({ success: true }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } catch (deleteError) {
+        console.error("Error deleting user:", deleteError);
+        const message = deleteError instanceof Error ? deleteError.message : "Error desconocido";
+        return new Response(
+          JSON.stringify({ error: `Error al eliminar usuario: ${message}` }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     if (action === "update-password") {
-      const { userId, password } = await req.json();
+      const { userId, password } = body;
 
-      if (!userId || !password) {
-        throw new Error("User ID and password are required");
+      if (!userId || typeof userId !== "string") {
+        return new Response(
+          JSON.stringify({ error: "ID de usuario es requerido" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
 
-      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
-        password,
-      });
+      if (!password || typeof password !== "string" || password.length < 6) {
+        return new Response(
+          JSON.stringify({ error: "La contraseña debe tener al menos 6 caracteres" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
 
-      if (updateError) throw updateError;
+      try {
+        const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+          password,
+        });
 
-      return new Response(
-        JSON.stringify({ success: true }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+        if (updateError) {
+          if (updateError.message.includes("not found")) {
+            return new Response(
+              JSON.stringify({ error: "Usuario no encontrado" }),
+              { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+          throw updateError;
+        }
+
+        return new Response(
+          JSON.stringify({ success: true }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } catch (updateError) {
+        console.error("Error updating password:", updateError);
+        const message = updateError instanceof Error ? updateError.message : "Error desconocido";
+        return new Response(
+          JSON.stringify({ error: `Error al actualizar contraseña: ${message}` }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
-    throw new Error("Invalid action. Use: create, bulk-create, delete, or update-password");
+    return new Response(
+      JSON.stringify({ error: "Acción inválida. Use: create, bulk-create, delete, o update-password" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    const status = message.includes("Unauthorized") || message.includes("Forbidden") ? 403 : 400;
-    return new Response(JSON.stringify({ error: message }), {
-      status,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    console.error("Unhandled error:", error);
+    const message = error instanceof Error ? error.message : "Error interno del servidor";
+    return new Response(
+      JSON.stringify({ error: message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 });
