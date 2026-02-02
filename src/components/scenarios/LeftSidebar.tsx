@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Home, Target, Mic, LogOut, TrendingUp } from "lucide-react";
+import { Home, Target, Mic, LogOut, TrendingUp, Users } from "lucide-react";
 import logoSenoriales from "@/assets/logo-senoriales.png";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -9,10 +9,12 @@ interface NavItem {
   icon: React.ElementType;
   label: string;
   href: string;
+  disabled?: boolean;
 }
 
 const navItems: NavItem[] = [
-  { icon: Home, label: "APRENDER", href: "/scenarios" },
+  { icon: Home, label: "APRENDER", href: "/scenarios", disabled: true },
+  { icon: Users, label: "PROSPECCIÓN", href: "/prospecting" },
   { icon: Mic, label: "HABLA PARA PRACTICAR", href: "/practice" },
   { icon: Target, label: "MISIONES", href: "/quests" },
   { icon: TrendingUp, label: "MI PROGRESO", href: "/progress" },
@@ -42,6 +44,21 @@ const LeftSidebar = () => {
         {navItems.map((item) => {
           const isActive = location.pathname === item.href;
           const Icon = item.icon;
+
+          if (item.disabled) {
+            return (
+              <div
+                key={item.href}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm cursor-not-allowed opacity-50"
+              >
+                <Icon className="w-6 h-6 text-muted-foreground" />
+                <span className="text-muted-foreground">{item.label}</span>
+                <span className="ml-auto text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
+                  Próximamente
+                </span>
+              </div>
+            );
+          }
 
           return (
             <Link
