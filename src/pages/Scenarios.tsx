@@ -135,9 +135,9 @@ export default function Scenarios() {
       {/* Mobile Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border py-2 px-2 lg:hidden shadow-lg">
         <div className="flex items-center justify-around">
-          <MobileNavItem icon="home" label="Aprender" href="/scenarios" active />
+          <MobileNavItem icon="home" label="Aprender" href="/scenarios" disabled />
+          <MobileNavItem icon="users" label="Prospectar" href="/prospecting" />
           <MobileNavItem icon="mic" label="Practicar" href="/practice" />
-          <MobileNavItem icon="target" label="Misiones" href="/quests" />
           <MobileNavItem icon="chart" label="Progreso" href="/progress" />
         </div>
       </nav>
@@ -151,11 +151,13 @@ function MobileNavItem({
   label,
   href,
   active,
+  disabled,
 }: {
   icon: string;
   label: string;
   href: string;
   active?: boolean;
+  disabled?: boolean;
 }) {
   const navigate = useNavigate();
 
@@ -165,6 +167,12 @@ function MobileNavItem({
         return (
           <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
             <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+          </svg>
+        );
+      case "users":
+        return (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
           </svg>
         );
       case "mic":
@@ -191,6 +199,17 @@ function MobileNavItem({
         return null;
     }
   };
+
+  if (disabled) {
+    return (
+      <div
+        className="flex flex-col items-center gap-1.5 px-4 py-2 rounded-xl opacity-40 cursor-not-allowed"
+      >
+        {getIcon()}
+        <span className="text-xs font-semibold text-muted-foreground">{label}</span>
+      </div>
+    );
+  }
 
   return (
     <button
