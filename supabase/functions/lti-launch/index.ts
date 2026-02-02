@@ -141,7 +141,14 @@ function mapLTIRoles(ltiRoles: string[]): string[] {
 
 Deno.serve(async (req) => {
   const url = new URL(req.url);
-  const path = url.pathname.split("/").pop();
+  // Extract the path after /lti-launch/
+  const pathParts = url.pathname.split("/");
+  const functionIndex = pathParts.findIndex(p => p === "lti-launch");
+  const path = functionIndex !== -1 && pathParts.length > functionIndex + 1 
+    ? pathParts[functionIndex + 1] 
+    : "";
+
+  console.log("LTI Request:", { method: req.method, pathname: url.pathname, path });
 
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
