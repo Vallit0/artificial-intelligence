@@ -136,7 +136,7 @@ export default function Scenarios() {
         <div className="flex items-center justify-around">
           <MobileNavItem icon="users" label="Prospectar" href="/prospecting" />
           <MobileNavItem icon="mic" label="Practicar" href="/practice" />
-          <MobileNavItem icon="target" label="Evaluación" href="/quests" />
+          <MobileNavItem icon="target" label="Examen" href="/quests" />
           <MobileNavItem icon="chart" label="Progreso" href="/progress" />
         </div>
       </nav>
