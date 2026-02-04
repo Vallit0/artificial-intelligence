@@ -165,9 +165,9 @@ export default function Scenarios() {
       {/* Mobile Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border py-2 px-2 lg:hidden shadow-lg z-30">
         <div className="flex items-center justify-around">
-          <MobileNavItem icon="home" label="Aprender" href="/scenarios" disabled />
           <MobileNavItem icon="users" label="Prospectar" href="/prospecting" />
           <MobileNavItem icon="mic" label="Practicar" href="/practice" />
+          <MobileNavItem icon="target" label="Evaluación" href="/quests" />
           <MobileNavItem icon="chart" label="Progreso" href="/progress" />
         </div>
       </nav>
