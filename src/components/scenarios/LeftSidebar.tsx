@@ -15,7 +15,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { icon: Users, label: "PROSPECCIÓN", href: "/prospecting" },
   { icon: Mic, label: "PRÁCTICA LIBRE", href: "/practice" },
-  { icon: Target, label: "EVALUACIÓN FINAL", href: "/quests" },
+  { icon: Target, label: "EXAMEN FINAL", href: "/quests" },
   { icon: TrendingUp, label: "MI PROGRESO", href: "/progress" },
 ];
 
