@@ -8,7 +8,7 @@ import Landing from "./pages/Landing";
 import Scenarios from "./pages/Scenarios";
 import Practice from "./pages/Practice";
 import Progress from "./pages/Progress";
-import Quests from "./pages/Quests";
+import ExamenFinal from "./pages/ExamenFinal";
 import Auth from "./pages/Auth";
 import Prospecting from "./pages/Prospecting";
 import Admin from "./pages/Admin";
@@ -91,7 +91,7 @@ const AppRoutes = () => (
       path="/quests"
       element={
         <ProtectedRoute>
-          <Quests />
+          <ExamenFinal />
         </ProtectedRoute>
       }
     />
