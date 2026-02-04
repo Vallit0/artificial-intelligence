@@ -165,14 +165,13 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     setIsMuted(false);
 
     try {
-      // Request microphone permission with optimal settings
+      // Request microphone permission and store the stream for mute control
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
-          sampleRate: 16000,
-        } 
+        }
       });
       mediaStreamRef.current = stream;
 
@@ -237,15 +236,21 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
   }, [conversation]);
 
   const toggleMute = useCallback(() => {
+    // Mute by disabling the audio tracks on the MediaStream we captured
     if (mediaStreamRef.current) {
       const audioTracks = mediaStreamRef.current.getAudioTracks();
+      const newMutedState = !isMuted;
+      
       audioTracks.forEach((track) => {
-        track.enabled = !track.enabled;
+        track.enabled = !newMutedState; // enabled = false when muted
       });
-      setIsMuted((prev) => !prev);
-      console.log("Microphone muted:", !audioTracks[0]?.enabled);
+      
+      setIsMuted(newMutedState);
+      console.log("Microphone muted:", newMutedState);
+    } else {
+      console.warn("No media stream available to mute");
     }
-  }, []);
+  }, [isMuted]);
 
   // Cleanup on unmount
   useEffect(() => {
