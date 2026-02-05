@@ -8,6 +8,7 @@ import LiveTranscript from "@/components/LiveTranscript";
 import VoiceOrb from "@/components/VoiceOrb";
 import { useToast } from "@/hooks/use-toast";
 import LeftSidebar from "@/components/scenarios/LeftSidebar";
+ import MobileNavigation from "@/components/MobileNavigation";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface TranscriptMessage {
@@ -219,74 +220,9 @@ export default function ExamenFinal() {
         </ScrollArea>
       </main>
 
-      {/* Mobile Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border py-3 px-4 lg:hidden shadow-lg">
-        <div className="flex items-center justify-around">
-          <MobileNavItem icon="users" label="Prospectar" href="/prospecting" />
-          <MobileNavItem icon="mic" label="Práctica" href="/practice" />
-          <MobileNavItem icon="target" label="Evaluación" href="/quests" active />
-          <MobileNavItem icon="chart" label="Progreso" href="/progress" />
-        </div>
-      </nav>
+       {/* Mobile Bottom Navigation */}
+       <MobileNavigation />
     </div>
   );
 }
 
-function MobileNavItem({
-  icon,
-  label,
-  href,
-  active,
-}: {
-  icon: string;
-  label: string;
-  href: string;
-  active?: boolean;
-}) {
-  const getIcon = () => {
-    switch (icon) {
-      case "users":
-        return (
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-          </svg>
-        );
-      case "mic":
-        return (
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-          </svg>
-        );
-      case "target":
-        return (
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="10" strokeWidth={2} />
-            <circle cx="12" cy="12" r="6" strokeWidth={2} />
-            <circle cx="12" cy="12" r="2" fill="currentColor" />
-          </svg>
-        );
-      case "chart":
-        return (
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-          </svg>
-        );
-      default:
-        return null;
-    }
-  };
-
-  return (
-    <a
-      href={href}
-      className={`flex flex-col items-center gap-1.5 px-4 py-2 rounded-xl transition-all duration-200 ${
-        active 
-          ? "text-secondary bg-secondary/10" 
-          : "text-muted-foreground hover:text-foreground hover:bg-muted"
-      }`}
-    >
-      {getIcon()}
-      <span className="text-xs font-semibold">{label}</span>
-    </a>
-  );
-}

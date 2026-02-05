@@ -7,6 +7,7 @@ import { usePracticeSessions } from "@/hooks/usePracticeSessions";
 import { formatDistanceToNow, startOfWeek, endOfWeek, isWithinInterval, startOfDay, differenceInCalendarDays } from "date-fns";
 import { es } from "date-fns/locale";
 import LeftSidebar from "@/components/scenarios/LeftSidebar";
+ import MobileNavigation from "@/components/MobileNavigation";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress as ProgressBar } from "@/components/ui/progress";
@@ -265,69 +266,10 @@ const Progress = () => {
         </ScrollArea>
       </main>
 
-      {/* Mobile Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border py-3 px-4 lg:hidden shadow-lg">
-        <div className="flex items-center justify-around">
-          <MobileNavItem icon="home" label="Aprender" href="/scenarios" />
-          <MobileNavItem icon="target" label="Misiones" href="/quests" />
-          <MobileNavItem icon="progress" label="Progreso" href="/progress" active />
-        </div>
-      </nav>
+       {/* Mobile Bottom Navigation */}
+       <MobileNavigation />
     </div>
   );
 };
-
-function MobileNavItem({
-  icon,
-  label,
-  href,
-  active,
-}: {
-  icon: string;
-  label: string;
-  href: string;
-  active?: boolean;
-}) {
-  const navigate = useNavigate();
-
-  const getIcon = () => {
-    switch (icon) {
-      case "home":
-        return (
-          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
-          </svg>
-        );
-      case "target":
-        return (
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="10" strokeWidth={2} />
-            <circle cx="12" cy="12" r="6" strokeWidth={2} />
-            <circle cx="12" cy="12" r="2" fill="currentColor" />
-          </svg>
-        );
-      case "progress":
-        return (
-          <TrendingUp className="w-6 h-6" />
-        );
-      default:
-        return null;
-    }
-  };
-
-  return (
-    <button
-      onClick={() => navigate(href)}
-      className={`flex flex-col items-center gap-1.5 px-4 py-2 rounded-xl transition-all duration-200 ${
-        active 
-          ? "text-secondary bg-secondary/10" 
-          : "text-muted-foreground hover:text-foreground hover:bg-muted"
-      }`}
-    >
-      {getIcon()}
-      <span className="text-xs font-semibold">{label}</span>
-    </button>
-  );
-}
 
 export default Progress;
