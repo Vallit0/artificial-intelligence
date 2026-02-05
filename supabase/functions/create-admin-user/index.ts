@@ -20,9 +20,10 @@ serve(async (req) => {
 
     const { email, password } = await req.json();
 
-    // Check if user exists
+    // Check if user exists (case-insensitive)
+    const normalizedEmail = email.toLowerCase();
     const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-    const existingUser = existingUsers?.users?.find(u => u.email === email);
+    const existingUser = existingUsers?.users?.find(u => u.email?.toLowerCase() === normalizedEmail);
 
     if (existingUser) {
       // Update password
