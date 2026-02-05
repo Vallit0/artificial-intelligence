@@ -60,8 +60,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const signOut = useCallback(async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+    // Always clear local state, even if server signOut fails
+    // This handles cases where the session expired or was deleted server-side
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.warn("SignOut error (session may have expired):", error);
+    }
+    // Force clear local state regardless of server response
+    setSession(null);
+    setUser(null);
   }, []);
 
   return (
