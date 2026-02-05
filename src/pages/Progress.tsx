@@ -11,7 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress as ProgressBar } from "@/components/ui/progress";
 
-const TARGET_TIME = 7200; // 2 hours in seconds
+const TARGET_TIME = 1500; // 25 minutes in seconds
 
 const Progress = () => {
   const navigate = useNavigate();
