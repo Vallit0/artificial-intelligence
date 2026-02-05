@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Home, Target, Mic, LogOut, TrendingUp, Users } from "lucide-react";
+import { Home, Target, Phone, LogOut, TrendingUp, Users } from "lucide-react";
 import logoSenoriales from "@/assets/logo-senoriales.png";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { icon: Users, label: "PROSPECCIÓN", href: "/prospecting" },
-  { icon: Mic, label: "LLAMADA", href: "/practice" },
+  { icon: Phone, label: "LLAMADA", href: "/practice" },
   { icon: Target, label: "EVALUACIÓN", href: "/quests" },
   { icon: TrendingUp, label: "MI PROGRESO", href: "/progress" },
 ];
