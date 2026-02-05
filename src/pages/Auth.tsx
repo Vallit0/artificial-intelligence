@@ -15,10 +15,11 @@ const authSchema = z.object({
 });
 
 const checkIsAdmin = async (email: string): Promise<boolean> => {
+  // Use ilike for case-insensitive comparison
   const { data } = await supabase
     .from("admin_emails")
     .select("id")
-    .eq("email", email)
+    .ilike("email", email)
     .maybeSingle();
   return !!data;
 };
