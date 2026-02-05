@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
-import { X } from "lucide-react";
+import { X, Eye, EyeOff } from "lucide-react";
 import { ForgotPasswordModal } from "@/components/auth/ForgotPasswordModal";
 
 const authSchema = z.object({
@@ -31,6 +31,7 @@ const Auth = () => {
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const { signIn, signUp } = useAuth();
@@ -133,7 +134,7 @@ const Auth = () => {
 
             <div className="relative">
               <Input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 placeholder="Contraseña"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -141,15 +142,24 @@ const Auth = () => {
                 minLength={6}
                 className="h-14 bg-card border-2 border-border rounded-2xl px-4 pr-24 text-foreground placeholder:text-muted-foreground focus:border-primary"
               />
-              {isLogin && (
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setForgotPasswordOpen(true)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground hover:text-primary uppercase tracking-wider"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="p-1 text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  ¿Olvidaste?
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
-              )}
+                {isLogin && (
+                  <button
+                    type="button"
+                    onClick={() => setForgotPasswordOpen(true)}
+                    className="text-xs font-bold text-muted-foreground hover:text-primary uppercase tracking-wider"
+                  >
+                    ¿Olvidaste?
+                  </button>
+                )}
+              </div>
             </div>
 
             <Button
