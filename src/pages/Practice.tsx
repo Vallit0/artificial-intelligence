@@ -9,6 +9,7 @@ import UserMenu from "@/components/UserMenu";
 import LiveTranscript from "@/components/LiveTranscript";
 import MobileTranscriptSheet from "@/components/practice/MobileTranscriptSheet";
 import { FreeTierTimer } from "@/components/practice/FreeTierTimer";
+import MobileNavigation from "@/components/MobileNavigation";
 import { TimeUpModal } from "@/components/practice/TimeUpModal";
 import { useElevenLabsConversation } from "@/hooks/useElevenLabsConversation";
 import { useScribeRealtime } from "@/hooks/useScribeRealtime";
@@ -480,6 +481,9 @@ const Practice = () => {
         </div>
       )}
       </div>
+
+      {/* Mobile Bottom Navigation - Only for authenticated users */}
+      {user && <MobileNavigation />}
     </div>
   );
 };
