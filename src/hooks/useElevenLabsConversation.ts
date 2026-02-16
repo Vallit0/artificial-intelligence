@@ -48,9 +48,9 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
   const [sessionTime, setSessionTime] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isConnectedRef = useRef(false);
-  const mediaStreamRef = useRef<MediaStream | null>(null);
 
   const conversation = useConversation({
+    micMuted: isMuted,
     onConnect: () => {
       console.log("Connected to ElevenLabs agent");
       isConnectedRef.current = true;
@@ -68,11 +68,6 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
-      }
-      // Cleanup media stream
-      if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
-        mediaStreamRef.current = null;
       }
     },
     onMessage: (message) => {
@@ -165,15 +160,14 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     setIsMuted(false);
 
     try {
-      // Request microphone permission and store the stream for mute control
-      const stream = await navigator.mediaDevices.getUserMedia({ 
+      // Request microphone permission
+      await navigator.mediaDevices.getUserMedia({ 
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
         }
       });
-      mediaStreamRef.current = stream;
 
       // Get signed URL from Supabase Edge Function
       const { data, error } = await supabase.functions.invoke("elevenlabs-conversation-token", {
@@ -200,11 +194,6 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
       console.error("Failed to start conversation:", error);
       onErrorRef.current?.(error instanceof Error ? error.message : "Failed to connect");
       setIsConnecting(false);
-      // Cleanup on error
-      if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
-        mediaStreamRef.current = null;
-      }
     }
   }, [conversation, isConnecting]);
 
@@ -217,11 +206,7 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
       timerRef.current = null;
     }
     
-    // Cleanup media stream
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
-      mediaStreamRef.current = null;
-    }
+    
     
     // End the session
     try {
@@ -236,30 +221,14 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
   }, [conversation]);
 
   const toggleMute = useCallback(() => {
-    // Mute by disabling the audio tracks on the MediaStream we captured
-    if (mediaStreamRef.current) {
-      const audioTracks = mediaStreamRef.current.getAudioTracks();
-      const newMutedState = !isMuted;
-      
-      audioTracks.forEach((track) => {
-        track.enabled = !newMutedState; // enabled = false when muted
-      });
-      
-      setIsMuted(newMutedState);
-      console.log("Microphone muted:", newMutedState);
-    } else {
-      console.warn("No media stream available to mute");
-    }
-  }, [isMuted]);
+    setIsMuted((prev) => !prev);
+  }, []);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
-      }
-      if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
       }
     };
   }, []);
