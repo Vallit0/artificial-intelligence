@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git remote:*)"
+      "Bash(git remote:*)",
+      "Bash(git update-ref:*)",
+      "Bash(git reflog:*)",
+      "Bash(git gc:*)"
     ]
   }
 }
