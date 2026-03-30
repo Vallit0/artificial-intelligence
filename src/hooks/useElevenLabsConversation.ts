@@ -1,6 +1,6 @@
 import { useConversation } from "@elevenlabs/react";
 import { useState, useCallback, useRef, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api-client";
 
 interface EvaluationResult {
   score: number;
@@ -18,22 +18,20 @@ interface EvaluationResult {
 interface UseElevenLabsConversationOptions {
   scenarioId?: string | null;
   sessionId?: string | null;
-  agentSecretName?: string | null; // Optional custom agent secret name
+  agentSecretName?: string | null;
   onTranscript?: (text: string, isUser: boolean) => void;
   onEvaluation?: (evaluation: EvaluationResult) => void;
   onError?: (error: string) => void;
 }
 
 export const useElevenLabsConversation = (options: UseElevenLabsConversationOptions = {}) => {
-  // Use refs for callbacks to prevent hook recreation
   const onTranscriptRef = useRef(options.onTranscript);
   const onEvaluationRef = useRef(options.onEvaluation);
   const onErrorRef = useRef(options.onError);
   const scenarioIdRef = useRef(options.scenarioId);
   const sessionIdRef = useRef(options.sessionId);
   const agentSecretNameRef = useRef(options.agentSecretName);
-  
-  // Update refs when options change
+
   useEffect(() => {
     onTranscriptRef.current = options.onTranscript;
     onEvaluationRef.current = options.onEvaluation;
@@ -42,7 +40,7 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     sessionIdRef.current = options.sessionId;
     agentSecretNameRef.current = options.agentSecretName;
   }, [options.onTranscript, options.onEvaluation, options.onError, options.scenarioId, options.sessionId, options.agentSecretName]);
-  
+
   const [isConnecting, setIsConnecting] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [sessionTime, setSessionTime] = useState(0);
@@ -55,7 +53,6 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
       console.log("Connected to ElevenLabs agent");
       isConnectedRef.current = true;
       setIsConnecting(false);
-      // Start session timer
       timerRef.current = setInterval(() => {
         setSessionTime((prev) => prev + 1);
       }, 1000);
@@ -64,7 +61,6 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
       console.log("Disconnected from ElevenLabs agent");
       isConnectedRef.current = false;
       setIsMuted(false);
-      // Stop timer
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
@@ -72,9 +68,8 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     },
     onMessage: (message) => {
       console.log("Message from agent:", message);
-      
-      // Handle transcriptions
-      const msg = message as unknown as { 
+
+      const msg = message as unknown as {
         user_transcription_event?: { user_transcript?: string };
         agent_response_event?: { agent_response?: string };
         agent_response_correction_event?: { corrected_agent_response?: string };
@@ -84,16 +79,15 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
           parameters: Record<string, unknown>;
         };
       };
-      
+
       if (msg.user_transcription_event?.user_transcript && onTranscriptRef.current) {
         onTranscriptRef.current(msg.user_transcription_event.user_transcript, true);
       }
-      
+
       if (msg.agent_response_event?.agent_response && onTranscriptRef.current) {
         onTranscriptRef.current(msg.agent_response_event.agent_response, false);
       }
 
-      // Handle interruption correction
       if (msg.agent_response_correction_event?.corrected_agent_response && onTranscriptRef.current) {
         console.log("Agent was interrupted, corrected response:", msg.agent_response_correction_event.corrected_agent_response);
       }
@@ -110,9 +104,9 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
           propuesta_valor?: number;
           cierre?: number;
         };
-        
+
         console.log("Received evaluation from agent:", params);
-        
+
         const evaluation: EvaluationResult = {
           score: params.score ?? 0,
           passed: params.passed ?? false,
@@ -126,13 +120,11 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
           },
         };
 
-        // Save evaluation via edge function
+        // Save evaluation via API
         if (sessionIdRef.current) {
-          supabase.functions.invoke("agent-evaluation", {
-            body: {
-              sessionId: sessionIdRef.current,
-              ...evaluation,
-            },
+          api.post("/api/elevenlabs/agent-evaluation", {
+            sessionId: sessionIdRef.current,
+            ...evaluation,
           }).catch((error) => {
             console.error("Error saving evaluation:", error);
           });
@@ -154,14 +146,13 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
       console.log("Already connected or connecting, skipping");
       return;
     }
-    
+
     setIsConnecting(true);
     setSessionTime(0);
     setIsMuted(false);
 
     try {
-      // Request microphone permission
-      await navigator.mediaDevices.getUserMedia({ 
+      await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
@@ -169,21 +160,16 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
         }
       });
 
-      // Get signed URL from Supabase Edge Function
-      const { data, error } = await supabase.functions.invoke("elevenlabs-conversation-token", {
-        body: { 
-          scenarioId: scenarioIdRef.current,
-          agentSecretName: agentSecretNameRef.current,
-        },
+      // Get signed URL from API
+      const data = await api.post<{ signedUrl: string; scenario?: any }>("/api/elevenlabs/conversation-token", {
+        scenarioId: scenarioIdRef.current,
+        agentSecretName: agentSecretNameRef.current,
       });
-
-      if (error) throw error;
 
       if (!data?.signedUrl) {
         throw new Error("No signed URL received from server");
       }
 
-      // Start the conversation with WebSocket using signed URL
       console.log("Starting session with signed URL...");
       await conversation.startSession({
         signedUrl: data.signedUrl,
@@ -199,22 +185,18 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
 
   const disconnect = useCallback(async () => {
     console.log("Disconnect called");
-    
-    // Stop timer first
+
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
-    
-    
-    
-    // End the session
+
     try {
       await conversation.endSession();
     } catch (error) {
       console.error("Error ending session:", error);
     }
-    
+
     isConnectedRef.current = false;
     setSessionTime(0);
     setIsMuted(false);
@@ -224,7 +206,6 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     setIsMuted((prev) => !prev);
   }, []);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (timerRef.current) {

@@ -11,7 +11,7 @@ const Header = () => {
   const navLinks = [
     { href: "/", label: "Inicio" },
     { href: "/practice", label: "Práctica" },
-    { href: "/progress", label: "Progreso" },
+    ...(user ? [{ href: "/progress", label: "Progreso" }] : []),
   ];
 
   return (

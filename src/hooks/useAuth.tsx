@@ -1,11 +1,11 @@
 import { useState, useEffect, createContext, useContext, ReactNode, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import type { User, Session } from "@supabase/supabase-js";
+import { api, ApiUser } from "@/lib/api-client";
 
 interface AuthContextType {
-  user: User | null;
-  session: Session | null;
+  user: ApiUser | null;
   loading: boolean;
+  isAdmin: boolean;
+  roles: string[];
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, fullName?: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -14,66 +14,99 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<ApiUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [roles, setRoles] = useState<string[]>([]);
 
+  const isAdmin = roles.includes("admin");
+
+  // Check for tokens in URL (LTI redirect flow)
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    const params = new URLSearchParams(window.location.search);
+    const accessToken = params.get("access_token");
+    const refreshToken = params.get("refresh_token");
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+    if (accessToken && refreshToken) {
+      api.setTokens(accessToken, refreshToken);
+      // Clean URL
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
+
+  // Validate session on mount
+  useEffect(() => {
+    const validateSession = async () => {
+      if (!api.hasTokens()) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const data = await api.get<{ user: ApiUser; roles: string[] }>("/auth/me");
+        setUser(data.user);
+        setRoles(data.roles);
+      } catch {
+        api.clearTokens();
+        setUser(null);
+        setRoles([]);
+      } finally {
         setLoading(false);
       }
-    );
+    };
 
-    return () => subscription.unsubscribe();
+    validateSession();
+  }, []);
+
+  // Listen for auth state changes (e.g., token expiry)
+  useEffect(() => {
+    return api.onAuthChange((newUser) => {
+      if (!newUser) {
+        setUser(null);
+        setRoles([]);
+      }
+    });
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (error) throw error;
+    const data = await api.post<{
+      user: ApiUser;
+      accessToken: string;
+      refreshToken: string;
+    }>("/auth/login", { email, password });
+
+    api.setTokens(data.accessToken, data.refreshToken);
+    setUser(data.user);
+
+    // Fetch roles
+    const meData = await api.get<{ user: ApiUser; roles: string[] }>("/auth/me");
+    setRoles(meData.roles);
   }, []);
 
   const signUp = useCallback(async (email: string, password: string, fullName?: string) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: fullName,
-        },
-      },
-    });
-    if (error) throw error;
+    const data = await api.post<{
+      user: ApiUser;
+      accessToken: string;
+      refreshToken: string;
+    }>("/auth/signup", { email, password, fullName });
+
+    api.setTokens(data.accessToken, data.refreshToken);
+    setUser(data.user);
+    setRoles(["learner"]);
   }, []);
 
   const signOut = useCallback(async () => {
-    // Always clear local state, even if server signOut fails
-    // This handles cases where the session expired or was deleted server-side
     try {
-      await supabase.auth.signOut();
+      await api.post("/auth/logout", { refreshToken: localStorage.getItem("refresh_token") });
     } catch (error) {
       console.warn("SignOut error (session may have expired):", error);
     }
-    // Force clear local state regardless of server response
-    setSession(null);
+    api.clearTokens();
     setUser(null);
+    setRoles([]);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, loading, isAdmin, roles, signIn, signUp, signOut }}>
       {children}
     </AuthContext.Provider>
   );

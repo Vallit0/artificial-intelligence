@@ -8,12 +8,9 @@ import * as elevenlabsController from '../controllers/elevenlabs.controller.js';
 
 export const elevenlabsRouter = Router();
 
-// All ElevenLabs routes require authentication
-elevenlabsRouter.use(authMiddleware);
-
-// Token endpoints
+// Public token endpoints (needed for free-tier demo)
 elevenlabsRouter.post('/conversation-token', elevenlabsController.getConversationToken);
 elevenlabsRouter.post('/scribe-token', elevenlabsController.getScribeToken);
 
-// Agent evaluation webhook
-elevenlabsRouter.post('/agent-evaluation', elevenlabsController.saveAgentEvaluation);
+// Agent evaluation requires authentication
+elevenlabsRouter.post('/agent-evaluation', authMiddleware, elevenlabsController.saveAgentEvaluation);

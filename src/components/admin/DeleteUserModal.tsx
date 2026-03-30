@@ -13,7 +13,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api-client";
 
 interface DeleteUserModalProps {
   student: Student | null;
@@ -39,45 +39,7 @@ export default function DeleteUserModal({
     setError(null);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (!session?.access_token) {
-        throw new Error("Sesión expirada. Por favor, recarga la página.");
-      }
-
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-users?action=delete`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ userId: student.id }),
-        }
-      );
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error("Tu sesión ha expirado. Por favor, recarga la página.");
-        }
-        if (response.status === 403) {
-          throw new Error("No tienes permisos para eliminar usuarios");
-        }
-        if (response.status === 404) {
-          // User already deleted - consider it success
-          toast({
-            title: "Usuario no encontrado",
-            description: "El usuario ya fue eliminado",
-          });
-          onOpenChange(false);
-          onSuccess();
-          return;
-        }
-        throw new Error(result.error || "Error al eliminar usuario");
-      }
+      await api.delete(`/api/admin/users/${student.id}`);
 
       toast({
         title: "Usuario eliminado",

@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 import { X, Eye, EyeOff } from "lucide-react";
 import { ForgotPasswordModal } from "@/components/auth/ForgotPasswordModal";
@@ -13,16 +12,6 @@ const authSchema = z.object({
   email: z.string().email("Email inválido"),
   password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres"),
 });
-
-const checkIsAdmin = async (email: string): Promise<boolean> => {
-  // Use ilike for case-insensitive comparison
-  const { data } = await supabase
-    .from("admin_emails")
-    .select("id")
-    .ilike("email", email)
-    .maybeSingle();
-  return !!data;
-};
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
@@ -35,7 +24,7 @@ const Auth = () => {
   const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, isAdmin } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,17 +45,17 @@ const Auth = () => {
       if (isLogin) {
         await signIn(email, password);
         toast({ title: "¡Bienvenido!", description: "Sesión iniciada correctamente" });
-        
-        // Check if user is admin and redirect accordingly
-        const isAdmin = await checkIsAdmin(email);
-        navigate(isAdmin ? "/admin" : "/scenarios");
+        // After signIn resolves, isAdmin in context is updated but this
+        // component still has the stale closure. Navigate to /practice;
+        // the App routing will handle admin redirects.
+        navigate("/practice");
       } else {
         await signUp(email, password, fullName || undefined);
         toast({
           title: "¡Cuenta creada!",
           description: "Ya puedes comenzar a practicar",
         });
-        navigate("/scenarios");
+        navigate("/practice");
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error desconocido";

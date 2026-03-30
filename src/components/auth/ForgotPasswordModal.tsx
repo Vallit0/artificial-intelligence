@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Mail, CheckCircle, AlertCircle } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api-client";
 
 interface ForgotPasswordModalProps {
   open: boolean;
@@ -38,17 +38,9 @@ export function ForgotPasswordModal({ open, onOpenChange }: ForgotPasswordModalP
     setErrorMessage("");
 
     try {
-      const { data, error } = await supabase.functions.invoke("send-password-reset", {
-        body: { email: email.trim().toLowerCase() },
+      await api.post("/auth/forgot-password", {
+        email: email.trim().toLowerCase(),
       });
-
-      if (error) {
-        throw new Error(error.message || "Error al enviar solicitud");
-      }
-
-      if (data?.error) {
-        throw new Error(data.error);
-      }
 
       setStatus("success");
     } catch (err) {

@@ -22,7 +22,7 @@ import {
   RefreshCw 
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api-client";
 
 interface BulkUploadModalProps {
   open: boolean;
@@ -206,41 +206,17 @@ export default function BulkUploadModal({
     setUploadError(null);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (!session?.access_token) {
-        throw new Error("Sesión expirada. Por favor, recarga la página.");
-      }
-
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-users?action=bulk-create`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ 
-            users: validUsers.map((u) => ({
-              email: u.email.trim(),
-              password: u.password,
-              fullName: u.fullName?.trim(),
-            }))
-          }),
-        }
-      );
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error("Tu sesión ha expirado. Por favor, recarga la página.");
-        }
-        if (response.status === 403) {
-          throw new Error("No tienes permisos para crear usuarios");
-        }
-        throw new Error(result.error || "Error al crear usuarios");
-      }
+      const result = await api.post<{
+        success: boolean;
+        summary: { total: number; created: number; failed: number };
+        results: UploadResult[];
+      }>("/api/admin/users/bulk", {
+        users: validUsers.map((u) => ({
+          email: u.email.trim(),
+          password: u.password,
+          fullName: u.fullName?.trim(),
+        }))
+      });
 
       // Combine results with validation errors
       const allResults: UploadResult[] = parsedUsers.map((user) => {

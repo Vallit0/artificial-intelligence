@@ -28,6 +28,12 @@ export const config = {
   elevenlabs: {
     apiKey: process.env.ELEVENLABS_API_KEY || '',
     agentId: process.env.ELEVENLABS_AGENT_ID || '',
+    agentProspectingPareja: process.env.ELEVENLABS_AGENT_PROSPECTING_PAREJA || '',
+    agentProspectingFrutas: process.env.ELEVENLABS_AGENT_PROSPECTING_FRUTAS || '',
+    agentProspectingNeumaticos: process.env.ELEVENLABS_AGENT_PROSPECTING_NEUMATICOS || '',
+    agentProspectingRestaurante: process.env.ELEVENLABS_AGENT_PROSPECTING_RESTAURANTE || '',
+    agentProspectingParqueo: process.env.ELEVENLABS_AGENT_PROSPECTING_PARQUEO || '',
+    agentExamenFinal: process.env.ELEVENLABS_AGENT_EXAMEN_FINAL || '',
     conversationUrl: 'https://api.elevenlabs.io/v1/convai/conversation/get-signed-url',
     scribeUrl: 'https://api.elevenlabs.io/v1/single-use-token/realtime_scribe',
   },
@@ -35,7 +41,12 @@ export const config = {
   // OpenAI (optional, for session evaluation)
   openai: {
     apiKey: process.env.OPENAI_API_KEY || '',
+    model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
   },
+
+  // Resend (email service)
+  resendApiKey: process.env.RESEND_API_KEY || '',
+  resendFromEmail: process.env.RESEND_FROM_EMAIL || 'Señoriales <onboarding@resend.dev>',
 } as const;
 
 // Validation

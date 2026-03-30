@@ -13,7 +13,8 @@ import { authRouter } from './routes/auth.js';
 import { ltiRouter } from './routes/lti.js';
 import { apiRouter } from './routes/api.js';
 import { elevenlabsRouter } from './routes/elevenlabs.js';
-import { db } from './db/index.js';
+import { adminRouter } from './routes/admin.js';
+import prisma from './db/index.js';
 import { AppError } from './utils/errors.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -38,6 +39,7 @@ app.use(cors({
 }));
 
 app.use(express.json());
+app.use(express.text({ type: ['application/sdp', 'text/plain'] }));
 app.use(express.urlencoded({ extended: true }));
 
 // ============================================
@@ -47,14 +49,15 @@ app.use(express.urlencoded({ extended: true }));
 // API Routes
 app.use('/auth', authRouter);
 app.use('/lti', ltiRouter);
-app.use('/api', apiRouter);
 app.use('/api/elevenlabs', elevenlabsRouter);
+app.use('/api/admin', adminRouter);
+app.use('/api', apiRouter);
 
 // Health check
 app.get('/health', async (req, res) => {
   try {
     // Check database connection
-    await db.query('SELECT 1');
+    await prisma.$queryRaw`SELECT 1`;
     
     res.json({
       status: 'ok',
@@ -82,7 +85,7 @@ app.get('/health', async (req, res) => {
 // ============================================
 
 if (config.isProduction) {
-  const staticPath = path.join(__dirname, '../../client/dist');
+  const staticPath = path.join(__dirname, '../client/dist');
   app.use(express.static(staticPath));
   
   // SPA fallback

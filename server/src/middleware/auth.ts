@@ -6,7 +6,7 @@ import { Response, NextFunction } from 'express';
 import { verifyToken, getUserById } from '../services/auth.service.js';
 import { AuthRequest, AuthUser, AppRole } from '../types/index.js';
 import { UnauthorizedError, ForbiddenError, handleError } from '../utils/errors.js';
-import db from '../db/index.js';
+import prisma from '../db/index.js';
 
 // ============================================
 // JWT Authentication Middleware
@@ -19,21 +19,20 @@ export async function authMiddleware(
 ): Promise<void> {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader?.startsWith('Bearer ')) {
       throw new UnauthorizedError('No token provided');
     }
 
     const token = authHeader.replace('Bearer ', '');
     const decoded = verifyToken(token);
-    
+
     if (!decoded) {
       throw new UnauthorizedError('Invalid token');
     }
 
-    // Fetch user from database
     const user = await getUserById(decoded.sub);
-    
+
     if (!user) {
       throw new UnauthorizedError('User not found');
     }
@@ -57,13 +56,13 @@ export function requireRole(...roles: AppRole[]) {
         throw new UnauthorizedError('Not authenticated');
       }
 
-      const result = await db.query(
-        'SELECT role FROM user_roles WHERE user_id = $1',
-        [req.user.id]
-      );
+      const userRoles = await prisma.userRole.findMany({
+        where: { userId: req.user.id },
+        select: { role: true },
+      });
 
-      const userRoles = result.rows.map(r => r.role as AppRole);
-      const hasRequiredRole = roles.some(role => userRoles.includes(role));
+      const roleValues = userRoles.map(r => r.role as AppRole);
+      const hasRequiredRole = roles.some(role => roleValues.includes(role));
 
       if (!hasRequiredRole) {
         throw new ForbiddenError('Insufficient permissions');
@@ -87,11 +86,11 @@ export async function optionalAuth(
   next: NextFunction
 ): Promise<void> {
   const authHeader = req.headers.authorization;
-  
+
   if (authHeader?.startsWith('Bearer ')) {
     const token = authHeader.replace('Bearer ', '');
     const decoded = verifyToken(token);
-    
+
     if (decoded) {
       const user = await getUserById(decoded.sub);
       if (user) {
@@ -99,6 +98,6 @@ export async function optionalAuth(
       }
     }
   }
-  
+
   next();
 }

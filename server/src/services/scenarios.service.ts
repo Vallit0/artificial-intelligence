@@ -2,7 +2,7 @@
 // Scenarios Service
 // ============================================
 
-import db from '../db/index.js';
+import prisma from '../db/index.js';
 import { Scenario } from '../types/index.js';
 import { NotFoundError } from '../utils/errors.js';
 
@@ -11,28 +11,24 @@ import { NotFoundError } from '../utils/errors.js';
 // ============================================
 
 export async function getAllScenarios(): Promise<Scenario[]> {
-  const result = await db.query(
-    `SELECT id, name, description, objection, client_persona, 
-            first_message, voice_type, difficulty, display_order
-     FROM scenarios 
-     WHERE is_active = true 
-     ORDER BY display_order ASC`
-  );
-  
-  return result.rows.map(mapRowToScenario);
+  const scenarios = await prisma.scenario.findMany({
+    where: { isActive: true },
+    orderBy: { displayOrder: 'asc' },
+  });
+
+  return scenarios.map(mapToScenario);
 }
 
 export async function getScenarioById(id: string): Promise<Scenario> {
-  const result = await db.query(
-    `SELECT * FROM scenarios WHERE id = $1 AND is_active = true`,
-    [id]
-  );
+  const scenario = await prisma.scenario.findFirst({
+    where: { id, isActive: true },
+  });
 
-  if (result.rows.length === 0) {
+  if (!scenario) {
     throw new NotFoundError('Scenario not found');
   }
 
-  return mapRowToScenario(result.rows[0]);
+  return mapToScenario(scenario);
 }
 
 export async function getScenarioForConversation(id: string): Promise<{
@@ -40,20 +36,17 @@ export async function getScenarioForConversation(id: string): Promise<{
   firstMessage?: string;
   voiceType?: string;
 } | null> {
-  const result = await db.query(
-    'SELECT client_persona, first_message, voice_type FROM scenarios WHERE id = $1',
-    [id]
-  );
-  
-  if (result.rows.length === 0) {
-    return null;
-  }
-  
-  const row = result.rows[0];
+  const scenario = await prisma.scenario.findUnique({
+    where: { id },
+    select: { clientPersona: true, firstMessage: true, voiceType: true },
+  });
+
+  if (!scenario) return null;
+
   return {
-    clientPersona: row.client_persona,
-    firstMessage: row.first_message,
-    voiceType: row.voice_type,
+    clientPersona: scenario.clientPersona,
+    firstMessage: scenario.firstMessage || undefined,
+    voiceType: scenario.voiceType || undefined,
   };
 }
 
@@ -61,19 +54,19 @@ export async function getScenarioForConversation(id: string): Promise<{
 // Helper Functions
 // ============================================
 
-function mapRowToScenario(row: Record<string, unknown>): Scenario {
+function mapToScenario(row: any): Scenario {
   return {
-    id: row.id as string,
-    name: row.name as string,
-    description: row.description as string | undefined,
-    objection: row.objection as string,
-    clientPersona: row.client_persona as string,
-    firstMessage: row.first_message as string | undefined,
-    voiceType: row.voice_type as 'male' | 'female',
+    id: row.id,
+    name: row.name,
+    description: row.description || undefined,
+    objection: row.objection,
+    clientPersona: row.clientPersona,
+    firstMessage: row.firstMessage || undefined,
+    voiceType: row.voiceType as 'male' | 'female',
     difficulty: row.difficulty as 'easy' | 'medium' | 'hard',
-    scriptContent: row.script_content as Record<string, unknown> | undefined,
-    displayOrder: row.display_order as number,
-    isActive: row.is_active as boolean,
-    createdAt: row.created_at as Date,
+    scriptContent: row.scriptContent as Record<string, unknown> | undefined,
+    displayOrder: row.displayOrder,
+    isActive: row.isActive,
+    createdAt: row.createdAt,
   };
 }

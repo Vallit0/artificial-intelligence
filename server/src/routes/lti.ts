@@ -1,11 +1,12 @@
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
-import db from '../db/index.js';
-import { generateToken, generateRefreshToken } from '../middleware/auth.js';
+import prisma from '../db/index.js';
+import { generateAccessToken, generateRefreshToken } from '../services/auth.service.js';
+import config from '../config/index.js';
 
 export const ltiRouter = Router();
 
-const APP_URL = process.env.APP_URL || 'http://localhost:3000';
+const APP_URL = config.appUrl;
 
 // ============================================
 // Utility functions
@@ -28,7 +29,7 @@ async function getPublicKey(jwksUrl: string, kid: string): Promise<crypto.KeyObj
   try {
     const response = await fetch(jwksUrl);
     const jwks = await response.json();
-    
+
     const key = jwks.keys?.find((k: { kid: string }) => k.kid === kid);
     if (!key) return null;
 
@@ -68,15 +69,17 @@ function parseJWT(token: string): { header: any; claims: any } | null {
   }
 }
 
-function mapLTIRoles(ltiRoles: string[]): string[] {
-  const roleMap: Record<string, string> = {
+type LtiRoleValue = 'instructor' | 'learner' | 'admin' | 'content_developer';
+
+function mapLTIRoles(ltiRoles: string[]): LtiRoleValue[] {
+  const roleMap: Record<string, LtiRoleValue> = {
     'http://purl.imsglobal.org/vocab/lis/v2/membership#Instructor': 'instructor',
     'http://purl.imsglobal.org/vocab/lis/v2/membership#Learner': 'learner',
     'http://purl.imsglobal.org/vocab/lis/v2/institution/person#Administrator': 'admin',
     'http://purl.imsglobal.org/vocab/lis/v2/membership#ContentDeveloper': 'content_developer',
   };
 
-  const mappedRoles: string[] = [];
+  const mappedRoles: LtiRoleValue[] = [];
   for (const role of ltiRoles) {
     if (roleMap[role]) {
       mappedRoles.push(roleMap[role]);
@@ -101,28 +104,22 @@ ltiRouter.post('/initiate', async (req: Request, res: Response) => {
       return;
     }
 
-    // Find the platform configuration
-    const platformResult = await db.query(
-      'SELECT * FROM lti_platforms WHERE issuer_url = $1 AND is_active = true',
-      [issuer]
-    );
+    const platform = await prisma.ltiPlatform.findFirst({
+      where: { issuerUrl: issuer, isActive: true },
+    });
 
-    if (platformResult.rows.length === 0) {
+    if (!platform) {
       res.status(403).json({ error: 'Platform not registered' });
       return;
     }
 
-    const platform = platformResult.rows[0];
-
-    // Generate state and nonce
     const state = crypto.randomUUID();
     const nonce = crypto.randomUUID();
 
-    // Build the authentication request URL
     const authParams = new URLSearchParams({
       scope: 'openid',
       response_type: 'id_token',
-      client_id: platform.client_id,
+      client_id: platform.clientId,
       redirect_uri: `${APP_URL}/lti/launch`,
       login_hint: loginHint,
       state: state,
@@ -135,8 +132,7 @@ ltiRouter.post('/initiate', async (req: Request, res: Response) => {
       authParams.set('lti_message_hint', ltiMessageHint);
     }
 
-    const authUrl = `${platform.auth_endpoint}?${authParams.toString()}`;
-
+    const authUrl = `${platform.authEndpoint}?${authParams.toString()}`;
     res.redirect(302, authUrl);
   } catch (error) {
     console.error('LTI initiate error:', error);
@@ -156,7 +152,6 @@ ltiRouter.post('/launch', async (req: Request, res: Response) => {
       return;
     }
 
-    // Parse the JWT to get claims
     const parsed = parseJWT(idToken);
     if (!parsed) {
       res.status(400).json({ error: 'Invalid JWT format' });
@@ -165,21 +160,17 @@ ltiRouter.post('/launch', async (req: Request, res: Response) => {
 
     const { header, claims } = parsed;
 
-    // Find the platform by issuer
-    const platformResult = await db.query(
-      'SELECT * FROM lti_platforms WHERE issuer_url = $1 AND is_active = true',
-      [claims.iss]
-    );
+    const platform = await prisma.ltiPlatform.findFirst({
+      where: { issuerUrl: claims.iss, isActive: true },
+    });
 
-    if (platformResult.rows.length === 0) {
+    if (!platform) {
       res.status(403).json({ error: 'Platform not found' });
       return;
     }
 
-    const platform = platformResult.rows[0];
-
-    // Verify the JWT signature
-    const publicKey = await getPublicKey(platform.jwks_url, header.kid);
+    // Verify JWT signature
+    const publicKey = await getPublicKey(platform.jwksUrl, header.kid);
     if (!publicKey) {
       res.status(500).json({ error: 'Could not fetch public key' });
       return;
@@ -198,9 +189,8 @@ ltiRouter.post('/launch', async (req: Request, res: Response) => {
       return;
     }
 
-    // Check audience
     const aud = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
-    if (!aud.includes(platform.client_id)) {
+    if (!aud.includes(platform.clientId)) {
       res.status(401).json({ error: 'Invalid audience' });
       return;
     }
@@ -213,95 +203,78 @@ ltiRouter.post('/launch', async (req: Request, res: Response) => {
     const resourceLink = claims['https://purl.imsglobal.org/spec/lti/claim/resource_link'];
     const ltiRoles = claims['https://purl.imsglobal.org/spec/lti/claim/roles'] || [];
 
-    // Check if we have an existing LTI session for this user
-    const existingSessionResult = await db.query(
-      'SELECT user_id FROM lti_sessions WHERE platform_id = $1 AND lti_user_id = $2',
-      [platform.id, ltiUserId]
-    );
+    // Check for existing LTI session
+    const existingSession = await prisma.ltiSession.findUnique({
+      where: { platformId_ltiUserId: { platformId: platform.id, ltiUserId } },
+    });
 
     let userId: string;
 
-    if (existingSessionResult.rows.length > 0) {
-      // User already linked, update the session
-      userId = existingSessionResult.rows[0].user_id;
+    if (existingSession) {
+      userId = existingSession.userId;
 
-      await db.query(
-        `UPDATE lti_sessions SET
-          lti_email = $1,
-          lti_name = $2,
-          context_id = $3,
-          context_title = $4,
-          resource_link_id = $5,
-          roles = $6,
-          last_launch_at = NOW()
-        WHERE platform_id = $7 AND lti_user_id = $8`,
-        [
-          email, name, context?.id, context?.title,
-          resourceLink?.id, mapLTIRoles(ltiRoles),
-          platform.id, ltiUserId
-        ]
-      );
+      await prisma.ltiSession.update({
+        where: { id: existingSession.id },
+        data: {
+          ltiEmail: email,
+          ltiName: name,
+          contextId: context?.id,
+          contextTitle: context?.title,
+          resourceLinkId: resourceLink?.id,
+          roles: mapLTIRoles(ltiRoles),
+          lastLaunchAt: new Date(),
+        },
+      });
     } else {
-      // New user - create user and link
       if (!email) {
         res.status(400).json({ error: 'Email is required for new users' });
         return;
       }
 
-      // Check if a user with this email already exists
-      const existingUserResult = await db.query(
-        'SELECT id FROM users WHERE email = $1',
-        [email]
-      );
+      // Find or create user
+      let user = await prisma.user.findUnique({ where: { email } });
 
-      if (existingUserResult.rows.length > 0) {
-        userId = existingUserResult.rows[0].id;
-      } else {
-        // Create new user
-        const newUserResult = await db.query(
-          `INSERT INTO users (email, full_name, email_verified)
-           VALUES ($1, $2, true)
-           RETURNING id`,
-          [email, name]
-        );
-        userId = newUserResult.rows[0].id;
-
-        // Assign default role
-        await db.query(
-          'INSERT INTO user_roles (user_id, role) VALUES ($1, $2)',
-          [userId, 'learner']
-        );
+      if (!user) {
+        user = await prisma.user.create({
+          data: {
+            email,
+            fullName: name,
+            emailVerified: true,
+            roles: { create: { role: 'learner' } },
+          },
+        });
       }
 
+      userId = user.id;
+
       // Create LTI session link
-      await db.query(
-        `INSERT INTO lti_sessions 
-          (user_id, platform_id, lti_user_id, lti_email, lti_name, 
-           context_id, context_title, resource_link_id, roles)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-        [
-          userId, platform.id, ltiUserId, email, name,
-          context?.id, context?.title, resourceLink?.id, mapLTIRoles(ltiRoles)
-        ]
-      );
+      await prisma.ltiSession.create({
+        data: {
+          userId,
+          platformId: platform.id,
+          ltiUserId,
+          ltiEmail: email,
+          ltiName: name,
+          contextId: context?.id,
+          contextTitle: context?.title,
+          resourceLinkId: resourceLink?.id,
+          roles: mapLTIRoles(ltiRoles),
+        },
+      });
     }
 
-    // Generate tokens for the user
-    const userResult = await db.query(
-      'SELECT id, email, full_name FROM users WHERE id = $1',
-      [userId]
-    );
-    const user = userResult.rows[0];
+    // Generate tokens
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
 
-    const accessToken = generateToken({ id: user.id, email: user.email });
-    const refreshToken = generateRefreshToken({ id: user.id, email: user.email });
+    const authUser = { id: user.id, email: user.email, fullName: user.fullName || undefined };
+    const accessToken = generateAccessToken(authUser);
+    const refreshToken = generateRefreshToken(authUser);
 
     // Store refresh token
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-    await db.query(
-      'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)',
-      [userId, refreshToken, expiresAt]
-    );
+    const expiresAt = new Date(Date.now() + config.refreshTokenDays * 24 * 60 * 60 * 1000);
+    await prisma.refreshToken.create({
+      data: { userId, token: refreshToken, expiresAt },
+    });
 
     // Redirect to app with tokens
     const redirectUrl = new URL(APP_URL);

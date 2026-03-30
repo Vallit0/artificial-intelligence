@@ -1,14 +1,12 @@
-import pg from 'pg';
-const { Pool } = pg;
+import { PrismaClient } from '@prisma/client';
 
-export const db = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+export const prisma = new PrismaClient({
+  log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
 });
 
 // Test connection on startup
-db.query('SELECT NOW()')
+prisma.$connect()
   .then(() => console.log('✅ Database connected'))
-  .catch((err) => console.error('❌ Database connection failed:', err.message));
+  .catch((err: Error) => console.error('❌ Database connection failed:', err.message));
 
-export default db;
+export default prisma;

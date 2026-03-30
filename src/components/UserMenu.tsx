@@ -17,6 +17,7 @@ const UserMenu = () => {
 
   const handleSignOut = async () => {
     await signOut();
+    navigate("/auth");
   };
 
   const getInitial = () => {

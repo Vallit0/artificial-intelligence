@@ -46,7 +46,7 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   if (user) {
-    return <Navigate to="/scenarios" replace />;
+    return <Navigate to="/practice" replace />;
   }
 
   return <>{children}</>;
@@ -109,8 +109,12 @@ const AppRoutes = () => (
     {/* Password reset route */}
     <Route path="/reset-password" element={<ResetPassword />} />
     
-    {/* Admin route - protected by admin check inside the component */}
-    <Route path="/admin" element={<Admin />} />
+    {/* Admin route - protected */}
+    <Route path="/admin" element={
+      <ProtectedRoute>
+        <Admin />
+      </ProtectedRoute>
+    } />
     
     <Route path="*" element={<Navigate to="/" replace />} />
   </Routes>

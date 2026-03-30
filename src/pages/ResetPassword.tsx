@@ -1,13 +1,16 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api-client";
 import { Loader2, CheckCircle, AlertCircle, Eye, EyeOff, Lock } from "lucide-react";
 
 const ResetPassword = () => {
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get("token");
+
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -15,58 +18,31 @@ const ResetPassword = () => {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
-  const [sessionChecked, setSessionChecked] = useState(false);
-  const [hasValidSession, setHasValidSession] = useState(false);
-  
+
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  useEffect(() => {
-    // Check if we have a valid recovery session
-    const checkSession = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error("Session error:", error);
-          setError("Enlace inválido o expirado. Solicita uno nuevo.");
-          setSessionChecked(true);
-          return;
-        }
-
-        if (session) {
-          setHasValidSession(true);
-        } else {
-          // Listen for auth state changes (recovery link will trigger this)
-          const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            async (event, session) => {
-              if (event === "PASSWORD_RECOVERY" && session) {
-                setHasValidSession(true);
-              }
-            }
-          );
-
-          // Give it a moment to process the hash
-          setTimeout(() => {
-            if (!hasValidSession) {
-              setError("Enlace inválido o expirado. Solicita uno nuevo.");
-            }
-            setSessionChecked(true);
-          }, 2000);
-
-          return () => subscription.unsubscribe();
-        }
-        
-        setSessionChecked(true);
-      } catch (err) {
-        console.error("Check session error:", err);
-        setError("Error al verificar el enlace");
-        setSessionChecked(true);
-      }
-    };
-
-    checkSession();
-  }, []);
+  // No token = invalid link
+  if (!token) {
+    return (
+      <div className="min-h-screen bg-muted flex items-center justify-center px-6">
+        <div className="w-full max-w-sm text-center space-y-6">
+          <div className="mx-auto w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center">
+            <AlertCircle className="w-8 h-8 text-destructive" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-foreground">Enlace Inválido</h1>
+            <p className="text-muted-foreground mt-2">
+              Enlace inválido o expirado. Solicita uno nuevo.
+            </p>
+          </div>
+          <Button onClick={() => navigate("/auth")} className="w-full">
+            Volver a Iniciar Sesión
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   const validatePassword = (): string | null => {
     if (password.length < 6) {
@@ -80,7 +56,7 @@ const ResetPassword = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const validationError = validatePassword();
     if (validationError) {
       setError(validationError);
@@ -91,13 +67,7 @@ const ResetPassword = () => {
     setError("");
 
     try {
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: password,
-      });
-
-      if (updateError) {
-        throw updateError;
-      }
+      await api.post("/auth/reset-password", { token, password });
 
       setSuccess(true);
       toast({
@@ -105,19 +75,13 @@ const ResetPassword = () => {
         description: "Tu contraseña ha sido cambiada exitosamente",
       });
 
-      // Redirect after a moment
       setTimeout(() => {
-        navigate("/scenarios");
+        navigate("/auth");
       }, 2000);
     } catch (err) {
       console.error("Password update error:", err);
-      
       if (err instanceof Error) {
-        if (err.message.includes("same_password")) {
-          setError("La nueva contraseña debe ser diferente a la anterior");
-        } else {
-          setError(err.message);
-        }
+        setError(err.message);
       } else {
         setError("Error al actualizar contraseña. Intenta de nuevo.");
       }
@@ -126,39 +90,6 @@ const ResetPassword = () => {
     }
   };
 
-  // Loading state while checking session
-  if (!sessionChecked) {
-    return (
-      <div className="min-h-screen bg-muted flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
-          <p className="text-muted-foreground">Verificando enlace...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Invalid/expired link state
-  if (!hasValidSession && error) {
-    return (
-      <div className="min-h-screen bg-muted flex items-center justify-center px-6">
-        <div className="w-full max-w-sm text-center space-y-6">
-          <div className="mx-auto w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center">
-            <AlertCircle className="w-8 h-8 text-destructive" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-foreground">Enlace Inválido</h1>
-            <p className="text-muted-foreground mt-2">{error}</p>
-          </div>
-          <Button onClick={() => navigate("/auth")} className="w-full">
-            Volver a Iniciar Sesión
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  // Success state
   if (success) {
     return (
       <div className="min-h-screen bg-muted flex items-center justify-center px-6">
@@ -169,7 +100,7 @@ const ResetPassword = () => {
           <div>
             <h1 className="text-xl font-bold text-foreground">¡Contraseña Actualizada!</h1>
             <p className="text-muted-foreground mt-2">
-              Redirigiendo a la aplicación...
+              Redirigiendo a inicio de sesión...
             </p>
           </div>
           <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" />

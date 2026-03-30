@@ -14,10 +14,10 @@ import { handleError, BadRequestError } from '../utils/errors.js';
 // ============================================
 export async function getConversationToken(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { scenarioId } = req.body;
-    
-    // Get signed URL
-    const signedUrl = await elevenlabsService.getConversationSignedUrl();
+    const { scenarioId, agentSecretName } = req.body;
+
+    // Get signed URL (with optional custom agent)
+    const signedUrl = await elevenlabsService.getConversationSignedUrl(agentSecretName);
     
     // Fetch scenario details if provided
     let scenario = null;

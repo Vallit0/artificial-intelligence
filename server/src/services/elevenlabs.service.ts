@@ -3,18 +3,45 @@
 // ============================================
 
 import config from '../config/index.js';
-import { InternalError } from '../utils/errors.js';
+import { InternalError, BadRequestError } from '../utils/errors.js';
+
+// ============================================
+// Agent ID Resolution
+// ============================================
+
+/**
+ * Resolves an agent ID from either:
+ * - An environment variable name (e.g., "ELEVENLABS_AGENT_PROSPECTING_PAREJA")
+ * - Falls back to the default ELEVENLABS_AGENT_ID
+ */
+function resolveAgentId(agentSecretName?: string | null): string {
+  if (agentSecretName) {
+    // Look up the agent ID from environment variables
+    const agentId = process.env[agentSecretName];
+    if (agentId) {
+      return agentId;
+    }
+    console.warn(`Agent secret "${agentSecretName}" not found in env, falling back to default`);
+  }
+
+  if (!config.elevenlabs.agentId) {
+    throw new InternalError('No ElevenLabs agent configured');
+  }
+
+  return config.elevenlabs.agentId;
+}
 
 // ============================================
 // Conversation Token
 // ============================================
 
-export async function getConversationSignedUrl(): Promise<string> {
-  if (!config.elevenlabs.apiKey || !config.elevenlabs.agentId) {
-    throw new InternalError('ElevenLabs not configured');
+export async function getConversationSignedUrl(agentSecretName?: string | null): Promise<string> {
+  if (!config.elevenlabs.apiKey) {
+    throw new InternalError('ElevenLabs API key not configured');
   }
 
-  const tokenUrl = `${config.elevenlabs.conversationUrl}?agent_id=${config.elevenlabs.agentId}`;
+  const agentId = resolveAgentId(agentSecretName);
+  const tokenUrl = `${config.elevenlabs.conversationUrl}?agent_id=${agentId}`;
 
   const response = await fetch(tokenUrl, {
     method: 'GET',

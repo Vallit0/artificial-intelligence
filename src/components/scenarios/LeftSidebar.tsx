@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Home, Target, Phone, LogOut, TrendingUp, Users } from "lucide-react";
+import { Home, Target, Phone, LogOut, TrendingUp, Users, Settings } from "lucide-react";
 import logoSenoriales from "@/assets/logo-senoriales.png";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -12,17 +12,18 @@ interface NavItem {
   disabled?: boolean;
 }
 
-const navItems: NavItem[] = [
-  { icon: Users, label: "PROSPECCIÓN", href: "/prospecting" },
-  { icon: Phone, label: "LLAMADA", href: "/practice" },
-  { icon: Target, label: "EVALUACIÓN", href: "/quests" },
-  { icon: TrendingUp, label: "MI PROGRESO", href: "/progress" },
-];
-
 const LeftSidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { signOut, isAdmin } = useAuth();
+
+  const navItems: NavItem[] = [
+    { icon: Users, label: "PROSPECCIÓN", href: "/prospecting" },
+    { icon: Phone, label: "LLAMADA", href: "/practice" },
+    { icon: Target, label: "EVALUACIÓN", href: "/quests" },
+    { icon: TrendingUp, label: "MI PROGRESO", href: "/progress" },
+    ...(isAdmin ? [{ icon: Settings, label: "ADMIN", href: "/admin" }] : []),
+  ];
 
   const handleLogout = async () => {
     await signOut();

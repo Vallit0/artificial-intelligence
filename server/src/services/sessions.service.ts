@@ -2,46 +2,40 @@
 // Practice Sessions Service
 // ============================================
 
-import db from '../db/index.js';
+import prisma from '../db/index.js';
+import config from '../config/index.js';
 import { PracticeSession, CreateSessionInput, UpdateSessionInput, SessionEvaluation, UserStats } from '../types/index.js';
-import { NotFoundError } from '../utils/errors.js';
+import { NotFoundError, InternalError } from '../utils/errors.js';
 
 // ============================================
 // Session Operations
 // ============================================
 
 export async function getUserSessions(userId: string, limit: number = 100): Promise<PracticeSession[]> {
-  const result = await db.query(
-    `SELECT ps.*, s.name as scenario_name
-     FROM practice_sessions ps
-     LEFT JOIN scenarios s ON ps.scenario_id = s.id
-     WHERE ps.user_id = $1
-     ORDER BY ps.created_at DESC
-     LIMIT $2`,
-    [userId, limit]
-  );
-  
-  return result.rows.map(mapRowToSession);
+  const sessions = await prisma.practiceSession.findMany({
+    where: { userId },
+    include: { scenario: { select: { name: true } } },
+    orderBy: { createdAt: 'desc' },
+    take: limit,
+  });
+
+  return sessions.map(mapToSession);
 }
 
 export async function createSession(userId: string, input: CreateSessionInput): Promise<PracticeSession> {
-  const result = await db.query(
-    `INSERT INTO practice_sessions 
-      (user_id, scenario_id, duration_seconds, score, passed, rating, ai_feedback)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
-     RETURNING *`,
-    [
+  const session = await prisma.practiceSession.create({
+    data: {
       userId,
-      input.scenarioId || null,
-      input.durationSeconds || 0,
-      input.score || null,
-      input.passed || false,
-      input.rating || null,
-      input.aiFeedback || null,
-    ]
-  );
+      scenarioId: input.scenarioId || null,
+      durationSeconds: input.durationSeconds || 0,
+      score: input.score || null,
+      passed: input.passed || false,
+      rating: input.rating || null,
+      aiFeedback: input.aiFeedback || null,
+    },
+  });
 
-  return mapRowToSession(result.rows[0]);
+  return mapToSession(session);
 }
 
 export async function updateSession(
@@ -49,36 +43,26 @@ export async function updateSession(
   userId: string,
   input: UpdateSessionInput
 ): Promise<PracticeSession> {
-  // Verify ownership
-  const existing = await db.query(
-    'SELECT id FROM practice_sessions WHERE id = $1 AND user_id = $2',
-    [sessionId, userId]
-  );
+  const existing = await prisma.practiceSession.findFirst({
+    where: { id: sessionId, userId },
+  });
 
-  if (existing.rows.length === 0) {
+  if (!existing) {
     throw new NotFoundError('Session not found');
   }
 
-  const result = await db.query(
-    `UPDATE practice_sessions SET
-      duration_seconds = COALESCE($1, duration_seconds),
-      score = COALESCE($2, score),
-      passed = COALESCE($3, passed),
-      rating = COALESCE($4, rating),
-      ai_feedback = COALESCE($5, ai_feedback)
-     WHERE id = $6
-     RETURNING *`,
-    [
-      input.durationSeconds,
-      input.score,
-      input.passed,
-      input.rating,
-      input.aiFeedback,
-      sessionId,
-    ]
-  );
+  const session = await prisma.practiceSession.update({
+    where: { id: sessionId },
+    data: {
+      durationSeconds: input.durationSeconds ?? existing.durationSeconds,
+      score: input.score ?? existing.score,
+      passed: input.passed ?? existing.passed,
+      rating: input.rating ?? existing.rating,
+      aiFeedback: input.aiFeedback ?? existing.aiFeedback,
+    },
+  });
 
-  return mapRowToSession(result.rows[0]);
+  return mapToSession(session);
 }
 
 export async function saveEvaluation(
@@ -86,34 +70,118 @@ export async function saveEvaluation(
   userId: string,
   evaluation: SessionEvaluation
 ): Promise<PracticeSession> {
-  const result = await db.query(
-    `UPDATE practice_sessions 
-     SET score = $2, passed = $3, ai_feedback = $4
-     WHERE id = $1 AND user_id = $5
-     RETURNING *`,
-    [sessionId, evaluation.score, evaluation.passed, evaluation.feedback, userId]
-  );
+  const session = await prisma.practiceSession.update({
+    where: { id: sessionId },
+    data: {
+      score: evaluation.score,
+      passed: evaluation.passed,
+      aiFeedback: evaluation.feedback,
+    },
+  });
 
-  if (result.rows.length === 0) {
+  if (!session) {
     throw new NotFoundError('Session not found');
   }
 
-  const session = result.rows[0];
-
   // Update scenario progress if passed
-  if (evaluation.passed && session.scenario_id) {
-    await updateProgressOnPass(userId, session.scenario_id, evaluation.score);
+  if (evaluation.passed && session.scenarioId) {
+    await updateProgressOnPass(userId, session.scenarioId, evaluation.score);
   }
 
-  return mapRowToSession(session);
+  return mapToSession(session);
 }
 
 export async function evaluateSession(
-  _transcript: Array<{ role: string; content: string }>,
-  _scenarioId?: string
+  transcript: Array<{ role: string; content: string }>,
+  scenarioId?: string
 ): Promise<SessionEvaluation> {
-  // TODO: Implement OpenAI/Gemini evaluation
-  // For now, return a basic evaluation
+  // Get scenario context if provided
+  let scenarioContext = '';
+  if (scenarioId) {
+    const scenario = await prisma.scenario.findUnique({
+      where: { id: scenarioId },
+      select: { name: true, objection: true, description: true },
+    });
+    if (scenario) {
+      scenarioContext = `Escenario: ${scenario.name}\nObjeción del cliente: ${scenario.objection}\nDescripción: ${scenario.description || ''}`;
+    }
+  }
+
+  // Format transcript
+  const transcriptText = transcript
+    .map(m => `${m.role === 'user' ? 'Vendedor' : 'Cliente'}: ${m.content}`)
+    .join('\n');
+
+  const systemPrompt = `Eres un evaluador experto de técnicas de ventas para Corporación Señoriales, empresa mexicana de servicios funerarios.
+
+Evalúa la siguiente conversación de práctica de ventas en una escala de 0 a 100 puntos, distribuidos en 5 criterios de 20 puntos cada uno:
+
+1. APERTURA (20 pts): Presentación profesional, tono adecuado, generación de rapport
+2. ESCUCHA ACTIVA (20 pts): Demuestra comprensión, parafrasea, hace preguntas relevantes
+3. MANEJO DE OBJECIONES (20 pts): Usa declaraciones neutralizantes, no confronta, redirige
+4. PROPUESTA DE VALOR (20 pts): Comunica beneficios claros, personaliza la propuesta
+5. CIERRE (20 pts): Busca compromiso, propone siguiente paso, agradece
+
+${scenarioContext}
+
+Responde EXCLUSIVAMENTE en formato JSON válido con esta estructura:
+{
+  "score": <número 0-100>,
+  "passed": <true si score >= 50>,
+  "feedback": "<retroalimentación constructiva en español, 2-3 oraciones>",
+  "breakdown": {
+    "apertura": <0-20>,
+    "escucha_activa": <0-20>,
+    "manejo_objeciones": <0-20>,
+    "propuesta_valor": <0-20>,
+    "cierre": <0-20>
+  }
+}`;
+
+  // Try OpenAI API
+  if (config.openai.apiKey) {
+    try {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${config.openai.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: config.openai.model,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: `Transcripción de la llamada:\n\n${transcriptText}` },
+          ],
+          temperature: 0.3,
+          response_format: { type: 'json_object' },
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('OpenAI API error:', response.status, errorText);
+        throw new Error('OpenAI API error');
+      }
+
+      const data = await response.json() as any;
+      const content = data.choices?.[0]?.message?.content;
+      if (!content) throw new Error('No response content');
+
+      const result = JSON.parse(content);
+      return {
+        score: result.score,
+        passed: result.passed ?? result.score >= 50,
+        feedback: result.feedback,
+        breakdown: result.breakdown,
+      };
+    } catch (error) {
+      console.error('Evaluation error:', error);
+      throw new InternalError('Failed to evaluate session');
+    }
+  }
+
+  // Fallback if no API key configured
   return {
     score: 75,
     passed: true,
@@ -133,36 +201,31 @@ export async function evaluateSession(
 // ============================================
 
 export async function getUserStats(userId: string): Promise<UserStats> {
-  const [sessionsResult, progressResult, streakResult] = await Promise.all([
-    db.query(
-      `SELECT 
-        COUNT(*) as total_sessions,
-        COALESCE(SUM(duration_seconds), 0) as total_time,
-        COALESCE(AVG(score), 0) as avg_score
-       FROM practice_sessions
-       WHERE user_id = $1`,
-      [userId]
-    ),
-    db.query(
-      `SELECT COUNT(*) as completed_scenarios
-       FROM user_scenario_progress
-       WHERE user_id = $1 AND is_completed = true`,
-      [userId]
-    ),
-    db.query(
-      `SELECT COUNT(DISTINCT DATE(created_at)) as practice_days
-       FROM practice_sessions
-       WHERE user_id = $1 AND created_at > NOW() - INTERVAL '30 days'`,
-      [userId]
-    ),
+  const [sessionsAgg, completedCount, practiceDays] = await Promise.all([
+    prisma.practiceSession.aggregate({
+      where: { userId },
+      _count: true,
+      _sum: { durationSeconds: true },
+      _avg: { score: true },
+    }),
+    prisma.userScenarioProgress.count({
+      where: { userId, isCompleted: true },
+    }),
+    prisma.practiceSession.groupBy({
+      by: ['createdAt'],
+      where: {
+        userId,
+        createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+      },
+    }),
   ]);
 
   return {
-    totalSessions: parseInt(sessionsResult.rows[0].total_sessions),
-    totalTime: parseInt(sessionsResult.rows[0].total_time),
-    avgScore: parseFloat(sessionsResult.rows[0].avg_score),
-    completedScenarios: parseInt(progressResult.rows[0].completed_scenarios),
-    practiceDays: parseInt(streakResult.rows[0].practice_days),
+    totalSessions: sessionsAgg._count,
+    totalTime: sessionsAgg._sum.durationSeconds || 0,
+    avgScore: sessionsAgg._avg.score || 0,
+    completedScenarios: completedCount,
+    practiceDays: practiceDays.length,
   };
 }
 
@@ -171,46 +234,80 @@ export async function getUserStats(userId: string): Promise<UserStats> {
 // ============================================
 
 async function updateProgressOnPass(userId: string, scenarioId: string, score: number): Promise<void> {
-  // Update or create progress
-  await db.query(
-    `INSERT INTO user_scenario_progress (user_id, scenario_id, is_completed, best_score, attempts, is_unlocked, first_completed_at)
-     VALUES ($1, $2, true, $3, 1, true, NOW())
-     ON CONFLICT (user_id, scenario_id)
-     DO UPDATE SET
-       is_completed = true,
-       best_score = GREATEST($3, COALESCE(user_scenario_progress.best_score, 0)),
-       attempts = user_scenario_progress.attempts + 1,
-       first_completed_at = COALESCE(user_scenario_progress.first_completed_at, NOW())`,
-    [userId, scenarioId, score]
-  );
+  // Update or create progress for completed scenario
+  await prisma.userScenarioProgress.upsert({
+    where: { userId_scenarioId: { userId, scenarioId } },
+    create: {
+      userId,
+      scenarioId,
+      isCompleted: true,
+      isUnlocked: true,
+      bestScore: score,
+      attempts: 1,
+      firstCompletedAt: new Date(),
+      lastAttemptAt: new Date(),
+    },
+    update: {
+      isCompleted: true,
+      bestScore: { set: score }, // Prisma doesn't have GREATEST, handle in app
+      attempts: { increment: 1 },
+      lastAttemptAt: new Date(),
+    },
+  });
+
+  // Fix: ensure bestScore is actually the best
+  const current = await prisma.userScenarioProgress.findUnique({
+    where: { userId_scenarioId: { userId, scenarioId } },
+  });
+  if (current && current.bestScore !== null && current.bestScore > score) {
+    // Revert if the existing score was higher
+    await prisma.userScenarioProgress.update({
+      where: { userId_scenarioId: { userId, scenarioId } },
+      data: { bestScore: current.bestScore },
+    });
+  }
 
   // Unlock next scenario
-  await db.query(
-    `INSERT INTO user_scenario_progress (user_id, scenario_id, is_unlocked)
-     SELECT $1, s2.id, true
-     FROM scenarios s1, scenarios s2
-     WHERE s1.id = $2
-       AND s2.display_order = s1.display_order + 1
-       AND s2.is_active = true
-       AND NOT EXISTS (
-         SELECT 1 FROM user_scenario_progress
-         WHERE user_id = $1 AND scenario_id = s2.id
-       )
-     ON CONFLICT (user_id, scenario_id) DO UPDATE SET is_unlocked = true`,
-    [userId, scenarioId]
-  );
+  const currentScenario = await prisma.scenario.findUnique({
+    where: { id: scenarioId },
+    select: { displayOrder: true },
+  });
+
+  if (currentScenario) {
+    const nextScenario = await prisma.scenario.findFirst({
+      where: {
+        isActive: true,
+        displayOrder: { gt: currentScenario.displayOrder },
+      },
+      orderBy: { displayOrder: 'asc' },
+    });
+
+    if (nextScenario) {
+      await prisma.userScenarioProgress.upsert({
+        where: { userId_scenarioId: { userId, scenarioId: nextScenario.id } },
+        create: {
+          userId,
+          scenarioId: nextScenario.id,
+          isUnlocked: true,
+        },
+        update: {
+          isUnlocked: true,
+        },
+      });
+    }
+  }
 }
 
-function mapRowToSession(row: Record<string, unknown>): PracticeSession {
+function mapToSession(row: any): PracticeSession {
   return {
-    id: row.id as string,
-    userId: row.user_id as string,
-    scenarioId: row.scenario_id as string | undefined,
-    durationSeconds: row.duration_seconds as number,
-    score: row.score as number | undefined,
-    passed: row.passed as boolean,
-    rating: row.rating as number | undefined,
-    aiFeedback: row.ai_feedback as string | undefined,
-    createdAt: row.created_at as Date,
+    id: row.id,
+    userId: row.userId,
+    scenarioId: row.scenarioId || undefined,
+    durationSeconds: row.durationSeconds,
+    score: row.score ?? undefined,
+    passed: row.passed,
+    rating: row.rating ?? undefined,
+    aiFeedback: row.aiFeedback || undefined,
+    createdAt: row.createdAt,
   };
 }

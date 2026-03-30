@@ -13,7 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, AlertCircle, CheckCircle, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api-client";
 
 interface CreateUserModalProps {
   open: boolean;
@@ -80,44 +80,12 @@ export default function CreateUserModal({
     setIsSubmitting(true);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session?.access_token) {
-        throw new Error("Sesión expirada. Por favor, recarga la página e inicia sesión nuevamente.");
-      }
-
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-users?action=create`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ 
-            email: email.trim().toLowerCase(), 
-            password, 
-            fullName: fullName.trim(),
-            isAdmin 
-          }),
-        }
-      );
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        // Handle specific error codes
-        if (result.code === "USER_EXISTS" || response.status === 409) {
-          setError("Este email ya está registrado en el sistema");
-        } else if (response.status === 401) {
-          setError("Tu sesión ha expirado. Por favor, recarga la página.");
-        } else if (response.status === 403) {
-          setError("No tienes permisos para crear usuarios");
-        } else {
-          setError(result.error || "Error al crear usuario");
-        }
-        return;
-      }
+      await api.post("/api/admin/users", {
+        email: email.trim().toLowerCase(),
+        password,
+        fullName: fullName.trim(),
+        isAdmin,
+      });
 
       setSuccess(true);
       toast({

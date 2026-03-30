@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api-client";
 import { useAuth } from "@/hooks/useAuth";
 
 interface PracticeSession {
@@ -39,8 +39,8 @@ interface UsePracticeSessionsReturn {
   isEvaluating: boolean;
   lastEvaluation: EvaluationResult | null;
   savePracticeSession: (
-    durationSeconds: number, 
-    rating?: number, 
+    durationSeconds: number,
+    rating?: number,
     scenarioId?: string
   ) => Promise<string | null>;
   evaluateSession: (
@@ -50,6 +50,20 @@ interface UsePracticeSessionsReturn {
     durationSeconds: number
   ) => Promise<EvaluationResult | null>;
   refetch: () => Promise<void>;
+}
+
+function mapApiSession(s: any): PracticeSession {
+  return {
+    id: s.id,
+    user_id: s.userId,
+    duration_seconds: s.durationSeconds,
+    rating: s.rating ?? null,
+    score: s.score ?? null,
+    passed: s.passed,
+    ai_feedback: s.aiFeedback ?? null,
+    scenario_id: s.scenarioId ?? null,
+    created_at: s.createdAt,
+  };
 }
 
 export const usePracticeSessions = (): UsePracticeSessionsReturn => {
@@ -68,14 +82,8 @@ export const usePracticeSessions = (): UsePracticeSessionsReturn => {
 
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
-        .from("practice_sessions")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setSessions(data || []);
+      const data = await api.get<any[]>("/api/sessions");
+      setSessions((data || []).map(mapApiSession));
     } catch (error) {
       console.error("Error fetching practice sessions:", error);
     } finally {
@@ -92,18 +100,11 @@ export const usePracticeSessions = (): UsePracticeSessionsReturn => {
       if (!user) return null;
 
       try {
-        const { data, error } = await supabase
-          .from("practice_sessions")
-          .insert({
-            user_id: user.id,
-            duration_seconds: durationSeconds,
-            rating: rating || null,
-            scenario_id: scenarioId || null,
-          })
-          .select()
-          .single();
-
-        if (error) throw error;
+        const data = await api.post<any>("/api/sessions", {
+          durationSeconds,
+          rating: rating || null,
+          scenarioId: scenarioId || null,
+        });
         return data?.id || null;
       } catch (error) {
         console.error("Error saving practice session:", error);
@@ -126,17 +127,12 @@ export const usePracticeSessions = (): UsePracticeSessionsReturn => {
       setLastEvaluation(null);
 
       try {
-        // Call evaluate-session edge function
-        const { data, error } = await supabase.functions.invoke("evaluate-session", {
-          body: {
-            sessionId,
-            transcript,
-            scenarioId,
-            durationSeconds,
-          },
+        const data = await api.post<EvaluationResult>("/api/sessions/evaluate", {
+          sessionId,
+          transcript,
+          scenarioId,
+          durationSeconds,
         });
-
-        if (error) throw error;
 
         const evaluation: EvaluationResult = {
           score: data.score,
@@ -147,7 +143,7 @@ export const usePracticeSessions = (): UsePracticeSessionsReturn => {
 
         setLastEvaluation(evaluation);
         await fetchSessions();
-        
+
         return evaluation;
       } catch (error) {
         console.error("Error evaluating session:", error);

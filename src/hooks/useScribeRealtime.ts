@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api-client";
 
 interface TranscriptSegment {
   id: string;
@@ -19,12 +19,12 @@ const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
   const bytes = new Uint8Array(buffer);
   let binary = "";
   const chunkSize = 8192;
-  
+
   for (let i = 0; i < bytes.length; i += chunkSize) {
     const chunk = bytes.subarray(i, i + chunkSize);
     binary += String.fromCharCode.apply(null, Array.from(chunk));
   }
-  
+
   return btoa(binary);
 };
 
@@ -46,7 +46,7 @@ export const useScribeRealtime = (options: UseScribeRealtimeOptions = {}) => {
     isCleaningUpRef.current = true;
 
     console.log("Cleaning up Scribe resources...");
-    
+
     if (processorRef.current) {
       try {
         processorRef.current.disconnect();
@@ -55,7 +55,7 @@ export const useScribeRealtime = (options: UseScribeRealtimeOptions = {}) => {
       }
       processorRef.current = null;
     }
-    
+
     if (audioContextRef.current) {
       try {
         audioContextRef.current.close();
@@ -64,7 +64,7 @@ export const useScribeRealtime = (options: UseScribeRealtimeOptions = {}) => {
       }
       audioContextRef.current = null;
     }
-    
+
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach((track) => {
         track.stop();
@@ -77,21 +77,19 @@ export const useScribeRealtime = (options: UseScribeRealtimeOptions = {}) => {
 
   const connect = useCallback(async () => {
     if (isConnecting || isConnected) return;
-    
+
     setIsConnecting(true);
     isCleaningUpRef.current = false;
 
     try {
-      // Get scribe token from Supabase Edge Function
-      const { data, error } = await supabase.functions.invoke("elevenlabs-scribe-token");
-
-      if (error) throw error;
+      // Get scribe token from API
+      const data = await api.post<{ token: string }>("/api/elevenlabs/scribe-token");
 
       if (!data?.token) {
         throw new Error("No se pudo obtener el token de transcripción");
       }
 
-      // Get microphone access with optimal settings
+      // Get microphone access
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           sampleRate: 16000,
@@ -114,7 +112,6 @@ export const useScribeRealtime = (options: UseScribeRealtimeOptions = {}) => {
         setIsConnected(true);
         setIsConnecting(false);
 
-        // Send initial configuration
         ws.send(JSON.stringify({
           type: "configure",
           audio_format: "pcm_16000",
@@ -123,21 +120,20 @@ export const useScribeRealtime = (options: UseScribeRealtimeOptions = {}) => {
           language_code: "es",
         }));
 
-        // Start audio processing
         startAudioProcessing(stream, ws);
       };
 
       ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          
+
           switch (message.type) {
             case "partial_transcript":
               const partialText = message.text || "";
               setPartialTranscript(partialText);
               options.onPartialTranscript?.(partialText);
               break;
-              
+
             case "committed_transcript":
             case "committed_transcript_with_timestamps":
               const committedText = message.text || "";
@@ -152,7 +148,7 @@ export const useScribeRealtime = (options: UseScribeRealtimeOptions = {}) => {
                 options.onCommittedTranscript?.(committedText);
               }
               break;
-              
+
             case "session_started":
               console.log("Scribe session started");
               break;
@@ -206,15 +202,13 @@ export const useScribeRealtime = (options: UseScribeRealtimeOptions = {}) => {
         if (!ws || ws.readyState !== WebSocket.OPEN) return;
 
         const inputData = event.inputBuffer.getChannelData(0);
-        
-        // Convert float32 to int16
+
         const int16Data = new Int16Array(inputData.length);
         for (let i = 0; i < inputData.length; i++) {
           const s = Math.max(-1, Math.min(1, inputData[i]));
           int16Data[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
         }
 
-        // Send as base64 using safe method
         try {
           const base64Audio = arrayBufferToBase64(int16Data.buffer);
           ws.send(JSON.stringify({
@@ -236,7 +230,7 @@ export const useScribeRealtime = (options: UseScribeRealtimeOptions = {}) => {
 
   const disconnect = useCallback(() => {
     console.log("Disconnecting Scribe...");
-    
+
     if (wsRef.current) {
       try {
         if (wsRef.current.readyState === WebSocket.OPEN) {
@@ -247,7 +241,7 @@ export const useScribeRealtime = (options: UseScribeRealtimeOptions = {}) => {
       }
       wsRef.current = null;
     }
-    
+
     cleanup();
     setIsConnected(false);
     setIsConnecting(false);
@@ -259,7 +253,6 @@ export const useScribeRealtime = (options: UseScribeRealtimeOptions = {}) => {
     setPartialTranscript("");
   }, []);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       disconnect();

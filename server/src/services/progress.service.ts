@@ -2,7 +2,7 @@
 // User Progress Service
 // ============================================
 
-import db from '../db/index.js';
+import prisma from '../db/index.js';
 import { UserProgress } from '../types/index.js';
 
 // ============================================
@@ -10,16 +10,13 @@ import { UserProgress } from '../types/index.js';
 // ============================================
 
 export async function getUserProgress(userId: string): Promise<UserProgress[]> {
-  const result = await db.query(
-    `SELECT usp.*, s.name as scenario_name
-     FROM user_scenario_progress usp
-     JOIN scenarios s ON usp.scenario_id = s.id
-     WHERE usp.user_id = $1
-     ORDER BY s.display_order ASC`,
-    [userId]
-  );
-  
-  return result.rows.map(mapRowToProgress);
+  const progress = await prisma.userScenarioProgress.findMany({
+    where: { userId },
+    include: { scenario: { select: { name: true, displayOrder: true } } },
+    orderBy: { scenario: { displayOrder: 'asc' } },
+  });
+
+  return progress.map(mapToProgress);
 }
 
 export async function upsertProgress(
@@ -32,79 +29,74 @@ export async function upsertProgress(
     attempts?: number;
   }
 ): Promise<UserProgress> {
-  const result = await db.query(
-    `INSERT INTO user_scenario_progress 
-      (user_id, scenario_id, is_unlocked, is_completed, best_score, attempts)
-     VALUES ($1, $2, $3, $4, $5, $6)
-     ON CONFLICT (user_id, scenario_id) DO UPDATE SET
-      is_unlocked = COALESCE(EXCLUDED.is_unlocked, user_scenario_progress.is_unlocked),
-      is_completed = COALESCE(EXCLUDED.is_completed, user_scenario_progress.is_completed),
-      best_score = GREATEST(EXCLUDED.best_score, user_scenario_progress.best_score),
-      attempts = user_scenario_progress.attempts + 1,
-      last_attempt_at = NOW(),
-      first_completed_at = CASE 
-        WHEN EXCLUDED.is_completed AND user_scenario_progress.first_completed_at IS NULL 
-        THEN NOW() 
-        ELSE user_scenario_progress.first_completed_at 
-      END,
-      updated_at = NOW()
-     RETURNING *`,
-    [
+  const result = await prisma.userScenarioProgress.upsert({
+    where: { userId_scenarioId: { userId, scenarioId } },
+    create: {
       userId,
       scenarioId,
-      input.isUnlocked || false,
-      input.isCompleted || false,
-      input.bestScore || null,
-      input.attempts || 0,
-    ]
-  );
+      isUnlocked: input.isUnlocked || false,
+      isCompleted: input.isCompleted || false,
+      bestScore: input.bestScore || null,
+      attempts: input.attempts || 0,
+      lastAttemptAt: new Date(),
+      firstCompletedAt: input.isCompleted ? new Date() : null,
+    },
+    update: {
+      isUnlocked: input.isUnlocked ?? undefined,
+      isCompleted: input.isCompleted ?? undefined,
+      bestScore: input.bestScore ?? undefined,
+      attempts: { increment: 1 },
+      lastAttemptAt: new Date(),
+    },
+  });
 
-  return mapRowToProgress(result.rows[0]);
+  return mapToProgress(result);
 }
 
 export async function getScenarioProgress(userId: string, scenarioId: string): Promise<UserProgress | null> {
-  const result = await db.query(
-    `SELECT * FROM user_scenario_progress 
-     WHERE user_id = $1 AND scenario_id = $2`,
-    [userId, scenarioId]
-  );
+  const progress = await prisma.userScenarioProgress.findUnique({
+    where: { userId_scenarioId: { userId, scenarioId } },
+  });
 
-  if (result.rows.length === 0) {
-    return null;
-  }
-
-  return mapRowToProgress(result.rows[0]);
+  if (!progress) return null;
+  return mapToProgress(progress);
 }
 
 export async function unlockFirstScenario(userId: string): Promise<void> {
-  await db.query(
-    `INSERT INTO user_scenario_progress (user_id, scenario_id, is_unlocked)
-     SELECT $1, id, true
-     FROM scenarios
-     WHERE is_active = true
-     ORDER BY display_order ASC
-     LIMIT 1
-     ON CONFLICT (user_id, scenario_id) DO NOTHING`,
-    [userId]
-  );
+  const firstScenario = await prisma.scenario.findFirst({
+    where: { isActive: true },
+    orderBy: { displayOrder: 'asc' },
+  });
+
+  if (!firstScenario) return;
+
+  await prisma.userScenarioProgress.upsert({
+    where: { userId_scenarioId: { userId, scenarioId: firstScenario.id } },
+    create: {
+      userId,
+      scenarioId: firstScenario.id,
+      isUnlocked: true,
+    },
+    update: {},
+  });
 }
 
 // ============================================
 // Helper Functions
 // ============================================
 
-function mapRowToProgress(row: Record<string, unknown>): UserProgress {
+function mapToProgress(row: any): UserProgress {
   return {
-    id: row.id as string,
-    userId: row.user_id as string,
-    scenarioId: row.scenario_id as string,
-    isUnlocked: row.is_unlocked as boolean,
-    isCompleted: row.is_completed as boolean,
-    bestScore: row.best_score as number | undefined,
-    attempts: row.attempts as number,
-    firstCompletedAt: row.first_completed_at as Date | undefined,
-    lastAttemptAt: row.last_attempt_at as Date | undefined,
-    createdAt: row.created_at as Date,
-    updatedAt: row.updated_at as Date,
+    id: row.id,
+    userId: row.userId,
+    scenarioId: row.scenarioId,
+    isUnlocked: row.isUnlocked,
+    isCompleted: row.isCompleted,
+    bestScore: row.bestScore ?? undefined,
+    attempts: row.attempts,
+    firstCompletedAt: row.firstCompletedAt || undefined,
+    lastAttemptAt: row.lastAttemptAt || undefined,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
   };
 }

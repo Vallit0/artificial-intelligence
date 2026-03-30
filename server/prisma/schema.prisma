@@ -1,0 +1,224 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// Enums
+// ============================================
+
+enum AppRole {
+  admin
+  instructor
+  learner
+}
+
+enum LtiRole {
+  instructor
+  learner
+  admin
+  content_developer
+}
+
+// ============================================
+// Users & Auth
+// ============================================
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  passwordHash  String?  @map("password_hash")
+  fullName      String?  @map("full_name")
+  avatarUrl     String?  @map("avatar_url")
+  emailVerified Boolean  @default(false) @map("email_verified")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
+
+  roles             UserRole[]
+  refreshTokens     RefreshToken[]
+  practiceSessions  PracticeSession[]
+  scenarioProgress  UserScenarioProgress[]
+  ltiSessions       LtiSession[]
+  studentGrade      StudentGrade?      @relation("StudentGradeUser")
+  gradesGiven       StudentGrade[]     @relation("GradedByUser")
+  passwordResetTokens PasswordResetToken[]
+
+  @@index([email])
+  @@map("users")
+}
+
+model UserRole {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  role      AppRole
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, role])
+  @@index([userId])
+  @@map("user_roles")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@map("password_reset_tokens")
+}
+
+// ============================================
+// LTI (Moodle Integration)
+// ============================================
+
+model LtiPlatform {
+  id           String   @id @default(uuid())
+  name         String
+  issuerUrl    String   @unique @map("issuer_url")
+  clientId     String   @map("client_id")
+  authEndpoint String   @map("auth_endpoint")
+  tokenEndpoint String  @map("token_endpoint")
+  jwksUrl      String   @map("jwks_url")
+  deploymentId String   @map("deployment_id")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+
+  sessions LtiSession[]
+
+  @@index([issuerUrl])
+  @@map("lti_platforms")
+}
+
+model LtiSession {
+  id             String    @id @default(uuid())
+  userId         String    @map("user_id")
+  platformId     String    @map("platform_id")
+  ltiUserId      String    @map("lti_user_id")
+  ltiEmail       String?   @map("lti_email")
+  ltiName        String?   @map("lti_name")
+  contextId      String?   @map("context_id")
+  contextTitle   String?   @map("context_title")
+  resourceLinkId String?   @map("resource_link_id")
+  roles          LtiRole[] @default([])
+  lastLaunchAt   DateTime  @default(now()) @map("last_launch_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform LtiPlatform @relation(fields: [platformId], references: [id], onDelete: Cascade)
+
+  @@unique([platformId, ltiUserId])
+  @@index([userId])
+  @@index([platformId, ltiUserId])
+  @@map("lti_sessions")
+}
+
+// ============================================
+// Scenarios & Practice
+// ============================================
+
+model Scenario {
+  id            String   @id @default(uuid())
+  name          String
+  description   String?
+  objection     String
+  clientPersona String   @map("client_persona")
+  firstMessage  String?  @map("first_message")
+  voiceType     String   @default("female") @map("voice_type")
+  difficulty    String   @default("medium")
+  scriptContent Json?    @map("script_content")
+  displayOrder  Int      @default(0) @map("display_order")
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  practiceSessions PracticeSession[]
+  userProgress     UserScenarioProgress[]
+
+  @@index([isActive, displayOrder])
+  @@map("scenarios")
+}
+
+model PracticeSession {
+  id              String   @id @default(uuid())
+  userId          String   @map("user_id")
+  scenarioId      String?  @map("scenario_id")
+  durationSeconds Int      @default(0) @map("duration_seconds")
+  score           Int?
+  passed          Boolean  @default(false)
+  rating          Int?
+  aiFeedback      String?  @map("ai_feedback")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scenario Scenario? @relation(fields: [scenarioId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([scenarioId])
+  @@map("practice_sessions")
+}
+
+model UserScenarioProgress {
+  id               String    @id @default(uuid())
+  userId           String    @map("user_id")
+  scenarioId       String    @map("scenario_id")
+  isUnlocked       Boolean   @default(false) @map("is_unlocked")
+  isCompleted      Boolean   @default(false) @map("is_completed")
+  bestScore        Int?      @map("best_score")
+  attempts         Int       @default(0)
+  firstCompletedAt DateTime? @map("first_completed_at")
+  lastAttemptAt    DateTime? @map("last_attempt_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scenario Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, scenarioId])
+  @@index([userId])
+  @@map("user_scenario_progress")
+}
+
+// ============================================
+// Grading & Certificates
+// ============================================
+
+model StudentGrade {
+  id                   String    @id @default(uuid())
+  userId               String    @unique @map("user_id")
+  gradedBy             String?   @map("graded_by")
+  finalGrade           Decimal   @map("final_grade") @db.Decimal(5, 2)
+  notes                String?
+  certificateGeneratedAt DateTime? @map("certificate_generated_at")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  user   User  @relation("StudentGradeUser", fields: [userId], references: [id], onDelete: Cascade)
+  grader User? @relation("GradedByUser", fields: [gradedBy], references: [id], onDelete: SetNull)
+
+  @@map("student_grades")
+}

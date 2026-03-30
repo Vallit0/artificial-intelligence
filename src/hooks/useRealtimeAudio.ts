@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 
+const API_BASE = import.meta.env.VITE_API_URL || '';
+
 interface UseRealtimeAudioOptions {
   onSpeakingChange?: (isSpeaking: boolean) => void;
   onTranscript?: (text: string, isUser: boolean) => void;
@@ -25,15 +27,13 @@ export const useRealtimeAudio = (options: UseRealtimeAudioOptions = {}) => {
     setIsConnecting(true);
 
     try {
-      // Create peer connection
       const pc = new RTCPeerConnection();
       pcRef.current = pc;
 
-      // Set up audio element for remote audio
       const audioEl = document.createElement("audio");
       audioEl.autoplay = true;
       audioElRef.current = audioEl;
-      
+
       pc.ontrack = (e) => {
         console.log("Received remote track");
         audioEl.srcObject = e.streams[0];
@@ -41,7 +41,6 @@ export const useRealtimeAudio = (options: UseRealtimeAudioOptions = {}) => {
         options.onSpeakingChange?.(true);
       };
 
-      // Get local audio and add to peer connection
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           sampleRate: 24000,
@@ -54,7 +53,6 @@ export const useRealtimeAudio = (options: UseRealtimeAudioOptions = {}) => {
       streamRef.current = stream;
       pc.addTrack(stream.getTracks()[0]);
 
-      // Set up data channel for events
       const dc = pc.createDataChannel("oai-events");
       dcRef.current = dc;
 
@@ -63,12 +61,10 @@ export const useRealtimeAudio = (options: UseRealtimeAudioOptions = {}) => {
         setIsConnected(true);
         setIsConnecting(false);
 
-        // Start timer
         timerRef.current = setInterval(() => {
           setSessionTime((prev) => prev + 1);
         }, 1000);
 
-        // Make AI speak first
         dc.send(JSON.stringify({ type: "response.create" }));
       };
 
@@ -108,15 +104,14 @@ export const useRealtimeAudio = (options: UseRealtimeAudioOptions = {}) => {
         console.error("Data channel error:", error);
       };
 
-      // Create offer and set local description
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
 
-      console.log("Sending SDP to edge function...");
+      console.log("Sending SDP to API...");
 
-      // Send SDP to our edge function
+      // Send SDP to our API
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/realtime-session`,
+        `${API_BASE}/api/realtime-session`,
         {
           method: "POST",
           body: offer.sdp,
@@ -128,7 +123,7 @@ export const useRealtimeAudio = (options: UseRealtimeAudioOptions = {}) => {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("Edge function error:", errorText);
+        console.error("API error:", errorText);
         throw new Error("No se pudo establecer la sesión");
       }
 
