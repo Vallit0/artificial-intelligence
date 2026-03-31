@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
 import { useElevenLabsConversation } from "@/hooks/useElevenLabsConversation";
-import { useScribeRealtime } from "@/hooks/useScribeRealtime";
 import { FreeTierTimer } from "@/components/practice/FreeTierTimer";
 import { TimeUpModal } from "@/components/practice/TimeUpModal";
 import VoiceOrb from "@/components/VoiceOrb";
@@ -67,21 +66,6 @@ const Landing = () => {
     onError: handleError,
   });
 
-  const {
-    isConnected: isScribeConnected,
-    partialTranscript,
-    connect: connectScribe,
-    disconnect: disconnectScribe,
-    clearTranscripts,
-  } = useScribeRealtime({
-    onCommittedTranscript: (text) => {
-      setTranscriptMessages((prev) => [
-        ...prev,
-        { id: `user-${Date.now()}-${Math.random()}`, text, isUser: true, timestamp: new Date() },
-      ]);
-    },
-  });
-
   // Transition to active when connected
   if (isConnected && sessionState === "connecting") {
     setSessionState("active");
@@ -99,15 +83,12 @@ const Landing = () => {
       setSessionState("connecting");
       setConnectionStatus("Solicitando permisos de micrófono...");
       setTranscriptMessages([]);
-      clearTranscripts();
       connect();
-      connectScribe();
     }, 500);
   };
 
   const handleEndCall = () => {
     disconnect();
-    disconnectScribe();
     setSessionState("idle");
     setFadeOut(false);
     setConnectionStatus("");
@@ -116,9 +97,8 @@ const Landing = () => {
 
   const handleTimeUp = useCallback(() => {
     disconnect();
-    disconnectScribe();
     setSessionState("timeup");
-  }, [disconnect, disconnectScribe]);
+  }, [disconnect]);
 
   // Time up modal
   if (sessionState === "timeup") {
@@ -300,13 +280,6 @@ const Landing = () => {
 
                 <VoiceOrb isSpeaking={isSpeaking} isListening={!isMuted} size={isMobile ? "sm" : "lg"} />
 
-                {/* Partial transcript on mobile */}
-                {isMobile && partialTranscript && (
-                  <div className="max-w-[280px] bg-muted/50 rounded-xl px-3 py-2 animate-pulse">
-                    <p className="text-xs text-muted-foreground italic truncate">{partialTranscript}</p>
-                  </div>
-                )}
-
                 <VoiceControls
                   isMuted={isMuted}
                   onMuteToggle={toggleMute}
@@ -335,7 +308,7 @@ const Landing = () => {
                     >
                       Transcripción
                     </span>
-                    {isScribeConnected && (
+                    {isConnected && (
                       <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                     )}
                   </div>
@@ -349,16 +322,7 @@ const Landing = () => {
                   </Button>
                 </div>
                 <div className="flex-1 overflow-hidden">
-                  <LiveTranscript
-                    messages={
-                      partialTranscript
-                        ? [
-                            ...transcriptMessages,
-                            { id: "partial", text: partialTranscript + "...", isUser: true, timestamp: new Date() },
-                          ]
-                        : transcriptMessages
-                    }
-                  />
+                  <LiveTranscript messages={transcriptMessages} />
                 </div>
               </div>
             )}
@@ -380,7 +344,6 @@ const Landing = () => {
             {isMobile && sessionState === "active" && (
               <MobileTranscriptSheet
                 messages={transcriptMessages}
-                partialTranscript={partialTranscript}
               />
             )}
           </div>

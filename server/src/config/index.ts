@@ -35,7 +35,6 @@ export const config = {
     agentProspectingParqueo: process.env.ELEVENLABS_AGENT_PROSPECTING_PARQUEO || '',
     agentExamenFinal: process.env.ELEVENLABS_AGENT_EXAMEN_FINAL || '',
     conversationUrl: 'https://api.elevenlabs.io/v1/convai/conversation/get-signed-url',
-    scribeUrl: 'https://api.elevenlabs.io/v1/single-use-token/realtime_scribe',
   },
   
   // OpenAI (optional, for session evaluation)

@@ -12,10 +12,10 @@ import { FreeTierTimer } from "@/components/practice/FreeTierTimer";
 import MobileNavigation from "@/components/MobileNavigation";
 import { TimeUpModal } from "@/components/practice/TimeUpModal";
 import { useElevenLabsConversation } from "@/hooks/useElevenLabsConversation";
-import { useScribeRealtime } from "@/hooks/useScribeRealtime";
 import { usePracticeSessions } from "@/hooks/usePracticeSessions";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useCallSounds } from "@/hooks/useCallSounds";
 import { scenariosApi, sessionsApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2, Wifi, WifiOff, MessageSquare } from "lucide-react";
@@ -83,28 +83,16 @@ const Practice = () => {
   const sessionDurationRef = useRef<number>(0);
   
   const { savePracticeSession } = usePracticeSessions();
+  const { playStartCall, playConnected, playEndCall } = useCallSounds();
 
-  // Scribe Realtime for live user transcription
-  const {
-    isConnected: isScribeConnected,
-    partialTranscript,
-    connect: connectScribe,
-    disconnect: disconnectScribe,
-    clearTranscripts,
-  } = useScribeRealtime({
-    onCommittedTranscript: (text) => {
-      // Add user's committed transcript to messages
-      setTranscriptMessages((prev) => [
-        ...prev,
-        {
-          id: `user-${Date.now()}-${Math.random()}`,
-          text,
-          isUser: true,
-          timestamp: new Date(),
-        },
-      ]);
-    },
-  });
+  // Personalized greeting based on time of day
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    const name = user?.fullName?.split(" ")[0] || "";
+    if (hour < 12) return name ? `Buenos dias, ${name}` : "Buenos dias";
+    if (hour < 18) return name ? `Buenas tardes, ${name}` : "Buenas tardes";
+    return name ? `Buenas noches, ${name}` : "Buenas noches";
+  };
 
   // Fetch scenario details
   useEffect(() => {
@@ -173,8 +161,9 @@ const Practice = () => {
     if (isConnected && sessionState === "connecting") {
       setSessionState("active");
       setConnectionStatus("Conectado");
+      playConnected();
     }
-  }, [isConnected, sessionState]);
+  }, [isConnected, sessionState, playConnected]);
 
   // Update status during connection
   useEffect(() => {
@@ -186,16 +175,14 @@ const Practice = () => {
   // Handle free tier time up
   const handleTimeUp = useCallback(() => {
     disconnect();
-    disconnectScribe();
     setSessionState("timeup");
-  }, [disconnect, disconnectScribe]);
+  }, [disconnect]);
 
   const handleStart = async () => {
     setSessionState("connecting");
     setConnectionStatus("Solicitando permisos de micrófono...");
     setTranscriptMessages([]); // Clear previous messages
     setAgentEvaluation(null);
-    clearTranscripts();
     
     // Save the session first to get a session ID for evaluation
     if (user && scenarioId) {
@@ -205,14 +192,13 @@ const Practice = () => {
       setCurrentSessionId(null);
     }
     
+    playStartCall();
     connect();
-    // Also start Scribe for real-time user transcription
-    connectScribe();
   };
 
   const handleEndCall = async () => {
+    playEndCall();
     disconnect();
-    disconnectScribe();
     
     if (isFreeTier) {
       // For free tier, just go back to landing
@@ -266,7 +252,6 @@ const Practice = () => {
   const handleBack = () => {
     if (isConnected) {
       disconnect();
-      disconnectScribe();
     }
     // Navigate based on auth status: logged in users go to scenarios, others to landing
     navigate(user ? "/scenarios" : "/");
@@ -375,11 +360,22 @@ const Practice = () => {
       )}
 
       {(sessionState === "idle" || sessionState === "connecting") && (
-        <LogoMorph
-          onClick={handleStart}
-          isConnecting={isConnecting || sessionState === "connecting"}
-          isMorphing={sessionState === "connecting"}
-        />
+        <div className="flex flex-col items-center gap-4">
+          {/* Personalized greeting */}
+          {user && sessionState === "idle" && (
+            <h2
+              className="text-xl sm:text-2xl font-bold text-foreground animate-fade-in"
+              style={{ fontFamily: "'Nunito', 'DIN Rounded', -apple-system, sans-serif" }}
+            >
+              {getGreeting()}
+            </h2>
+          )}
+          <LogoMorph
+            onClick={handleStart}
+            isConnecting={isConnecting || sessionState === "connecting"}
+            isMorphing={sessionState === "connecting"}
+          />
+        </div>
       )}
 
       {sessionState === "active" && (
@@ -406,15 +402,6 @@ const Practice = () => {
             
             <VoiceOrb isSpeaking={isSpeaking} isListening={!isMuted} size={isMobile ? "sm" : "lg"} />
 
-            {/* Partial transcript indicator on mobile */}
-            {isMobile && partialTranscript && (
-              <div className="max-w-[280px] bg-muted/50 rounded-xl px-3 py-2 animate-pulse">
-                <p className="text-xs text-muted-foreground italic truncate">
-                  {partialTranscript}
-                </p>
-              </div>
-            )}
-
             <VoiceControls
               isMuted={isMuted}
               onMuteToggle={toggleMute}
@@ -424,7 +411,7 @@ const Practice = () => {
 
           {/* Desktop: Side transcript panel */}
           {!isMobile && showTranscript && (
-            <div className="hidden sm:flex w-80 h-[400px] bg-card border-2 border-border rounded-2xl flex-col shadow-[0_4px_0_0_hsl(var(--border))] absolute right-6 top-1/2 -translate-y-1/2">
+            <div className="hidden sm:flex w-80 h-[500px] bg-card border-2 border-border rounded-2xl flex-col shadow-[0_4px_0_0_hsl(var(--border))] absolute right-6 top-1/2 -translate-y-1/2">
               <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border">
                 <div className="flex items-center gap-2">
                   <MessageSquare className="h-4 w-4 text-muted-foreground" />
@@ -434,7 +421,7 @@ const Practice = () => {
                   >
                     Transcripción
                   </span>
-                  {isScribeConnected && (
+                  {isConnected && (
                     <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                   )}
                 </div>
@@ -448,12 +435,7 @@ const Practice = () => {
                 </Button>
               </div>
               <div className="flex-1 overflow-hidden">
-                <LiveTranscript 
-                  messages={partialTranscript ? [
-                    ...transcriptMessages,
-                    { id: "partial", text: partialTranscript + "...", isUser: true, timestamp: new Date() }
-                  ] : transcriptMessages} 
-                />
+                <LiveTranscript messages={transcriptMessages} />
               </div>
             </div>
           )}
@@ -473,9 +455,8 @@ const Practice = () => {
 
           {/* Mobile: Sheet-based transcript */}
           {isMobile && (
-            <MobileTranscriptSheet 
-              messages={transcriptMessages} 
-              partialTranscript={partialTranscript}
+            <MobileTranscriptSheet
+              messages={transcriptMessages}
             />
           )}
         </div>

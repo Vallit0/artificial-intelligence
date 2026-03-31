@@ -46,6 +46,8 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
   const [sessionTime, setSessionTime] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isConnectedRef = useRef(false);
+  const rawStreamRef = useRef<MediaStream | null>(null);
+  const prefetchedUrlRef = useRef<string | null>(null);
 
   const conversation = useConversation({
     micMuted: isMuted,
@@ -141,6 +143,27 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     },
   });
 
+  // Pre-fetch signed URL on mount so it's ready when user clicks start
+  const prefetchSignedUrl = useCallback(async () => {
+    try {
+      const data = await api.post<{ signedUrl: string; scenario?: any }>("/api/elevenlabs/conversation-token", {
+        scenarioId: scenarioIdRef.current,
+        agentSecretName: agentSecretNameRef.current,
+      });
+      if (data?.signedUrl) {
+        prefetchedUrlRef.current = data.signedUrl;
+        console.log("Signed URL pre-fetched");
+      }
+    } catch (error) {
+      console.warn("Pre-fetch signed URL failed, will retry on connect:", error);
+    }
+  }, []);
+
+  // Pre-fetch on mount
+  useEffect(() => {
+    prefetchSignedUrl();
+  }, [prefetchSignedUrl]);
+
   const connect = useCallback(async () => {
     if (isConnectedRef.current || isConnecting) {
       console.log("Already connected or connecting, skipping");
@@ -152,19 +175,29 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     setIsMuted(false);
 
     try {
-      await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        }
-      });
+      // Use pre-fetched URL if available, otherwise fetch in parallel with mic
+      const hasPreFetched = !!prefetchedUrlRef.current;
 
-      // Get signed URL from API
-      const data = await api.post<{ signedUrl: string; scenario?: any }>("/api/elevenlabs/conversation-token", {
-        scenarioId: scenarioIdRef.current,
-        agentSecretName: agentSecretNameRef.current,
-      });
+      const [rawStream, data] = await Promise.all([
+        navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: { ideal: true },
+            noiseSuppression: { ideal: true },
+            autoGainControl: { ideal: true },
+            sampleRate: { ideal: 16000 },
+            channelCount: { ideal: 1 },
+          },
+        }),
+        hasPreFetched
+          ? Promise.resolve({ signedUrl: prefetchedUrlRef.current! })
+          : api.post<{ signedUrl: string; scenario?: any }>("/api/elevenlabs/conversation-token", {
+              scenarioId: scenarioIdRef.current,
+              agentSecretName: agentSecretNameRef.current,
+            }),
+      ]);
+
+      rawStreamRef.current = rawStream;
+      prefetchedUrlRef.current = null; // Consumed
 
       if (!data?.signedUrl) {
         throw new Error("No signed URL received from server");
@@ -173,7 +206,18 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
       console.log("Starting session with signed URL...");
       await conversation.startSession({
         signedUrl: data.signedUrl,
+        overrides: {
+          device: { stream: rawStream }, // Raw stream — no filter/compressor overhead
+          tts: {
+            speed: 1.1,
+            stability: 0.4,
+            similarityBoost: 0.7,
+          },
+        },
       });
+
+      // Pre-fetch next URL for quick reconnect
+      prefetchSignedUrl();
 
       console.log("Session started successfully");
     } catch (error) {
@@ -181,7 +225,7 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
       onErrorRef.current?.(error instanceof Error ? error.message : "Failed to connect");
       setIsConnecting(false);
     }
-  }, [conversation, isConnecting]);
+  }, [conversation, isConnecting, prefetchSignedUrl]);
 
   const disconnect = useCallback(async () => {
     console.log("Disconnect called");
@@ -197,6 +241,12 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
       console.error("Error ending session:", error);
     }
 
+    // Stop raw microphone stream
+    if (rawStreamRef.current) {
+      rawStreamRef.current.getTracks().forEach((track) => track.stop());
+      rawStreamRef.current = null;
+    }
+
     isConnectedRef.current = false;
     setSessionTime(0);
     setIsMuted(false);
@@ -210,6 +260,9 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
+      }
+      if (rawStreamRef.current) {
+        rawStreamRef.current.getTracks().forEach((track) => track.stop());
       }
     };
   }, []);

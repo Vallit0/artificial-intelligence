@@ -10,7 +10,6 @@ export const elevenlabsRouter = Router();
 
 // Public token endpoints (needed for free-tier demo)
 elevenlabsRouter.post('/conversation-token', elevenlabsController.getConversationToken);
-elevenlabsRouter.post('/scribe-token', elevenlabsController.getScribeToken);
 
 // Agent evaluation requires authentication
 elevenlabsRouter.post('/agent-evaluation', authMiddleware, elevenlabsController.saveAgentEvaluation);

@@ -250,14 +250,6 @@ export const elevenlabsApi = {
     return response.json();
   },
 
-  async getScribeToken() {
-    const response = await fetchWithAuth('/api/elevenlabs/scribe-token', {
-      method: 'POST',
-    });
-    if (!response.ok) throw new Error('Failed to get scribe token');
-    return response.json();
-  },
-
   async saveAgentEvaluation(sessionId: string, evaluation: {
     score: number;
     passed: boolean;

@@ -4,7 +4,18 @@
       "Bash(git remote:*)",
       "Bash(git update-ref:*)",
       "Bash(git reflog:*)",
-      "Bash(git gc:*)"
+      "Bash(git gc:*)",
+      "Bash(npm run:*)",
+      "Bash(docker compose:*)",
+      "Bash(where psql:*)",
+      "Bash(taskkill //F //FI 'WINDOWTITLE eq *' //FI 'IMAGENAME eq node.exe')",
+      "Bash(netstat -ano)",
+      "Bash(taskkill:*)",
+      "Bash(grep -i \"VITE_API_URL\" C:/Users/estua/Documents/ai/senoriales-48152aa7/.env.*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8080/api/elevenlabs/conversation-token)",
+      "Bash(xargs basename:*)",
+      "Bash(npx tsc:*)",
+      "WebSearch"
     ]
   }
 }

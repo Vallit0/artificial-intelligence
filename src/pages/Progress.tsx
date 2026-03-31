@@ -246,14 +246,27 @@ const Progress = () => {
                                 })}
                               </p>
                               <p className="text-sm text-muted-foreground">
-                                {session.rating
+                                {session.score !== null
+                                  ? `Score: ${session.score}/100${session.passed ? " - Aprobado" : ""}`
+                                  : session.rating
                                   ? `${"⭐".repeat(session.rating)}`
                                   : "Sin calificación"}
                               </p>
                             </div>
-                            <span className="text-sm font-semibold text-primary bg-primary/10 px-3 py-1 rounded-full">
-                              {formatDuration(session.duration_seconds)}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              {session.score !== null && (
+                                <span className={`text-sm font-bold px-2 py-1 rounded-full ${
+                                  session.score >= 50
+                                    ? "text-green-700 bg-green-100 dark:text-green-400 dark:bg-green-900/30"
+                                    : "text-red-700 bg-red-100 dark:text-red-400 dark:bg-red-900/30"
+                                }`}>
+                                  {session.score}%
+                                </span>
+                              )}
+                              <span className="text-sm font-semibold text-primary bg-primary/10 px-3 py-1 rounded-full">
+                                {formatDuration(session.duration_seconds)}
+                              </span>
+                            </div>
                           </div>
                         ))}
                       </div>

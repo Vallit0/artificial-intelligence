@@ -36,7 +36,7 @@ export async function createUser(input: CreateUserInput) {
   if (!isValidEmail(email)) {
     throw new BadRequestError('Formato de email inválido');
   }
-  if (!input.password || input.password.length < 6) {
+  if (!input.password || input.password.length < 4) {
     throw new BadRequestError('La contraseña debe tener al menos 6 caracteres');
   }
 
@@ -92,7 +92,7 @@ export async function bulkCreateUsers(users: CreateUserInput[]) {
         results.push({ email: email || 'desconocido', success: false, error: 'Email inválido' });
         continue;
       }
-      if (!userData.password || userData.password.length < 6) {
+      if (!userData.password || userData.password.length < 4) {
         results.push({ email, success: false, error: 'Contraseña muy corta' });
         continue;
       }

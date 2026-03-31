@@ -3,27 +3,24 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAuth } from "@/hooks/useAuth";
 import { useStudents } from "@/hooks/useStudents";
-import { Award, Clock, Loader2, LogOut, Play, Plus, Shield, Target, TrendingUp, Upload, Users } from "lucide-react";
+import { Award, Clock, Loader2, Play, Plus, Shield, Target, Timer, TrendingUp, Upload, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import StudentList from "@/components/admin/StudentList";
 import CreateUserModal from "@/components/admin/CreateUserModal";
 import BulkUploadModal from "@/components/admin/BulkUploadModal";
+import LeftSidebar from "@/components/scenarios/LeftSidebar";
+import MobileNavigation from "@/components/MobileNavigation";
 
 export default function Admin() {
   const navigate = useNavigate();
-  const { user, loading: authLoading, signOut } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { isAdmin, isLoading: adminLoading } = useAdmin();
   const { students, isLoading: studentsLoading, assignGrade, refetch } = useStudents();
   
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate("/auth");
-  };
 
   // Show loading while checking auth and admin status
   if (authLoading || adminLoading) {
@@ -67,26 +64,23 @@ export default function Admin() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-card border-b border-border shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-              <Shield className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-foreground">Panel de Administrador</h1>
-              <p className="text-sm text-muted-foreground">Gestión de estudiantes y certificados</p>
-            </div>
-          </div>
-          <Button variant="outline" size="sm" onClick={handleSignOut}>
-            <LogOut className="w-4 h-4 mr-2" />
-            Cerrar Sesión
-          </Button>
-        </div>
-      </header>
+      <LeftSidebar />
 
-      <main className="max-w-7xl mx-auto px-4 py-6">
+      <main className="lg:ml-56 min-h-screen">
+        <ScrollArea className="h-screen">
+          <div className="max-w-7xl mx-auto px-4 py-6">
+            {/* Header */}
+            <div className="mb-6 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Shield className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-foreground">Panel de Administrador</h1>
+                  <p className="text-sm text-muted-foreground">Gestión de estudiantes y certificados</p>
+                </div>
+              </div>
+            </div>
         {/* Stats Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
           <Card>
@@ -172,6 +166,69 @@ export default function Admin() {
           </Card>
         </div>
 
+        {/* Practice Minutes by Advisor */}
+        <Card className="mb-6">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-2">
+              <Timer className="w-5 h-5 text-primary" />
+              Minutos de Práctica por Asesor
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {studentsLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {[...students]
+                  .sort((a, b) => b.totalDuration - a.totalDuration)
+                  .map((student, index) => {
+                    const minutes = Math.floor(student.totalDuration / 60);
+                    const hours = Math.floor(minutes / 60);
+                    const remainingMins = minutes % 60;
+                    const timeStr = hours > 0 ? `${hours}h ${remainingMins}m` : `${minutes}m`;
+                    return (
+                      <div
+                        key={student.id}
+                        className="flex items-center gap-3 p-3 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors"
+                      >
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                          index === 0
+                            ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                            : index === 1
+                            ? "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                            : index === 2
+                            ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400"
+                            : "bg-muted text-muted-foreground"
+                        }`}>
+                          {index + 1}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">
+                            {student.full_name || student.email}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {student.totalSessions} sesiones
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1 text-sm font-bold text-primary">
+                          <Clock className="w-3.5 h-3.5" />
+                          {timeStr}
+                        </div>
+                      </div>
+                    );
+                  })}
+                {students.length === 0 && (
+                  <p className="text-sm text-muted-foreground col-span-full text-center py-4">
+                    No hay asesores registrados
+                  </p>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Students List */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
@@ -203,7 +260,11 @@ export default function Admin() {
             </ScrollArea>
           </CardContent>
         </Card>
+          </div>
+        </ScrollArea>
       </main>
+
+      <MobileNavigation />
 
       {/* Modals */}
       <CreateUserModal
@@ -211,7 +272,7 @@ export default function Admin() {
         onOpenChange={setShowCreateModal}
         onSuccess={refetch}
       />
-      
+
       <BulkUploadModal
         open={showBulkModal}
         onOpenChange={setShowBulkModal}

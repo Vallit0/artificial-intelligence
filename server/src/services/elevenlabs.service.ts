@@ -6,6 +6,34 @@ import config from '../config/index.js';
 import { InternalError, BadRequestError } from '../utils/errors.js';
 
 // ============================================
+// Signed URL Cache (per agentId, TTL-based)
+// ============================================
+
+interface CachedUrl {
+  signedUrl: string;
+  expiresAt: number;
+}
+
+const urlCache = new Map<string, CachedUrl>();
+const CACHE_TTL_MS = 4 * 60 * 1000; // 4 minutes (signed URLs typically expire in ~5min)
+
+function getCachedUrl(agentId: string): string | null {
+  const cached = urlCache.get(agentId);
+  if (cached && Date.now() < cached.expiresAt) {
+    return cached.signedUrl;
+  }
+  urlCache.delete(agentId);
+  return null;
+}
+
+function setCachedUrl(agentId: string, signedUrl: string): void {
+  urlCache.set(agentId, {
+    signedUrl,
+    expiresAt: Date.now() + CACHE_TTL_MS,
+  });
+}
+
+// ============================================
 // Agent ID Resolution
 // ============================================
 
@@ -41,6 +69,13 @@ export async function getConversationSignedUrl(agentSecretName?: string | null):
   }
 
   const agentId = resolveAgentId(agentSecretName);
+
+  // Check cache first
+  const cached = getCachedUrl(agentId);
+  if (cached) {
+    return cached;
+  }
+
   const tokenUrl = `${config.elevenlabs.conversationUrl}?agent_id=${agentId}`;
 
   const response = await fetch(tokenUrl, {
@@ -57,33 +92,12 @@ export async function getConversationSignedUrl(agentSecretName?: string | null):
   }
 
   const data = await response.json();
-  return data.signed_url;
-}
+  const signedUrl = data.signed_url;
 
-// ============================================
-// Scribe Token (Real-time Transcription)
-// ============================================
+  // Cache the signed URL
+  setCachedUrl(agentId, signedUrl);
 
-export async function getScribeToken(): Promise<string> {
-  if (!config.elevenlabs.apiKey) {
-    throw new InternalError('ElevenLabs not configured');
-  }
-
-  const response = await fetch(config.elevenlabs.scribeUrl, {
-    method: 'POST',
-    headers: {
-      'xi-api-key': config.elevenlabs.apiKey,
-    },
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('ElevenLabs Scribe API error:', response.status, errorText);
-    throw new InternalError('Failed to get scribe token');
-  }
-
-  const data = await response.json();
-  return data.token;
+  return signedUrl;
 }
 
 // ============================================

@@ -81,8 +81,8 @@ authRouter.post('/reset-password', async (req: Request, res: Response) => {
     if (!token || !password) {
       throw new BadRequestError('Token y contraseña son requeridos');
     }
-    if (password.length < 6) {
-      throw new BadRequestError('La contraseña debe tener al menos 6 caracteres');
+    if (password.length < 4) {
+      throw new BadRequestError('La contraseña debe tener al menos 4 caracteres');
     }
 
     const resetToken = await prisma.passwordResetToken.findUnique({
@@ -124,8 +124,8 @@ authRouter.post('/reset-password', async (req: Request, res: Response) => {
 authRouter.post('/update-password', authMiddleware, async (req: any, res: Response) => {
   try {
     const { password } = req.body;
-    if (!password || password.length < 6) {
-      throw new BadRequestError('La contraseña debe tener al menos 6 caracteres');
+    if (!password || password.length < 4) {
+      throw new BadRequestError('La contraseña debe tener al menos 4 caracteres');
     }
 
     const passwordHash = await bcrypt.hash(password, 12);

@@ -39,19 +39,6 @@ export async function getConversationToken(req: AuthRequest, res: Response, next
 }
 
 // ============================================
-// POST /api/elevenlabs/scribe-token
-// ============================================
-export async function getScribeToken(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
-  try {
-    const token = await elevenlabsService.getScribeToken();
-    res.json({ token });
-  } catch (error) {
-    const appError = handleError(error);
-    res.status(appError.statusCode).json({ error: appError.message });
-  }
-}
-
-// ============================================
 // POST /api/elevenlabs/agent-evaluation
 // ============================================
 export async function saveAgentEvaluation(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {

@@ -10,7 +10,7 @@ import { ForgotPasswordModal } from "@/components/auth/ForgotPasswordModal";
 
 const authSchema = z.object({
   email: z.string().email("Email inválido"),
-  password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres"),
+  password: z.string().min(4, "La contraseña debe tener al menos 4 caracteres"),
 });
 
 const Auth = () => {
@@ -129,7 +129,7 @@ const Auth = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={6}
+                minLength={4}
                 className="h-14 bg-card border-2 border-border rounded-2xl px-4 pr-24 text-foreground placeholder:text-muted-foreground focus:border-primary"
               />
               <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">

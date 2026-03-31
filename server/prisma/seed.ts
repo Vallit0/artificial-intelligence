@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -84,6 +85,48 @@ async function main() {
     console.log(`Created ${scenarios.length} scenarios`);
   } else {
     console.log(`Scenarios already exist (${existing}), skipping`);
+  }
+
+  // Seed admin user
+  const adminEmail = 'admin@gmail.com';
+  const existingAdmin = await prisma.user.findUnique({ where: { email: adminEmail } });
+  if (!existingAdmin) {
+    const adminHash = await bcrypt.hash('admin', 12);
+    const admin = await prisma.user.create({
+      data: {
+        email: adminEmail,
+        passwordHash: adminHash,
+        fullName: 'Administrador',
+        emailVerified: true,
+        roles: {
+          create: { role: 'admin' },
+        },
+      },
+    });
+    console.log(`Created admin user: ${admin.email}`);
+  } else {
+    console.log('Admin user already exists, skipping');
+  }
+
+  // Seed demo user
+  const demoEmail = 'demo@gmail.com';
+  const existingDemo = await prisma.user.findUnique({ where: { email: demoEmail } });
+  if (!existingDemo) {
+    const demoHash = await bcrypt.hash('demo', 12);
+    const demo = await prisma.user.create({
+      data: {
+        email: demoEmail,
+        passwordHash: demoHash,
+        fullName: 'Usuario Demo',
+        emailVerified: true,
+        roles: {
+          create: { role: 'learner' },
+        },
+      },
+    });
+    console.log(`Created demo user: ${demo.email}`);
+  } else {
+    console.log('Demo user already exists, skipping');
   }
 
   console.log('Seed complete!');
