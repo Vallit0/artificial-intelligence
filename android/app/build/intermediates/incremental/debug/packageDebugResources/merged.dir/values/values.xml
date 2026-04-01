@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="accent">@color/turquoise</color>
+    <color name="background">#FFF5F6F8</color>
+    <color name="border">#FFD1D5DE</color>
+    <color name="border_light">#FFE8EBF0</color>
+    <color name="card">#FFFFFFFF</color>
+    <color name="error">#FFDC4545</color>
+    <color name="error_bg">#1ADC4545</color>
+    <color name="gold">#FFFFA726</color>
+    <color name="ic_launcher_background">#FF6366F1</color>
+    <color name="indigo">#FF2B3A67</color>
+    <color name="indigo_dark">#FF1A2545</color>
+    <color name="indigo_light">#FF3D4F80</color>
+    <color name="lime">#FF7CB342</color>
+    <color name="lime_bg">#1A7CB342</color>
+    <color name="muted">#FFE8EBF0</color>
+    <color name="muted_foreground">#FF5A6785</color>
+    <color name="success">#FF009C96</color>
+    <color name="success_bg">#1A009C96</color>
+    <color name="surface">#FFFFFFFF</color>
+    <color name="text_hint">#FF9CA3AF</color>
+    <color name="text_primary">#FF2B3A67</color>
+    <color name="text_secondary">#FF5A6785</color>
+    <color name="turquoise">#FF009C96</color>
+    <color name="turquoise_bg">#1A009C96</color>
+    <color name="turquoise_light">#FF33B0AB</color>
+    <string name="app_name">Señoriales</string>
+    <style name="Theme.Senoriales" parent="Theme.Material3.Light.NoActionBar">
+        <item name="colorPrimary">@color/turquoise</item>
+        <item name="colorOnPrimary">#FFFFFFFF</item>
+        <item name="colorSecondary">@color/indigo</item>
+        <item name="colorOnSecondary">#FFFFFFFF</item>
+        <item name="colorTertiary">@color/lime</item>
+        <item name="colorSurface">@color/surface</item>
+        <item name="colorSurfaceVariant">@color/muted</item>
+        <item name="colorError">@color/error</item>
+        <item name="android:colorBackground">@color/background</item>
+        <item name="android:statusBarColor">@color/background</item>
+        <item name="android:navigationBarColor">@color/background</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
+</resources>

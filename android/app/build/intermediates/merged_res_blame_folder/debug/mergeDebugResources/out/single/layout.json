@@ -1,0 +1,10 @@
+[
+    {
+        "merged": "com.senoriales.app-mergeDebugResources-36:/layout/item_breakdown.xml",
+        "source": "com.senoriales.app-main-39:/layout/item_breakdown.xml"
+    },
+    {
+        "merged": "com.senoriales.app-mergeDebugResources-36:/layout/activity_conversation.xml",
+        "source": "com.senoriales.app-main-39:/layout/activity_conversation.xml"
+    }
+]

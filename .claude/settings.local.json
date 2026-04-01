@@ -15,7 +15,12 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8080/api/elevenlabs/conversation-token)",
       "Bash(xargs basename:*)",
       "Bash(npx tsc:*)",
-      "WebSearch"
+      "WebSearch",
+      "WebFetch(domain:android-headunits.com)",
+      "WebFetch(domain:xdaforums.com)",
+      "Bash(xargs ls:*)",
+      "Bash(adb devices:*)",
+      "Bash(\"C:/Users/estua/AppData/Local/Android/Sdk/platform-tools/adb.exe\" devices:*)"
     ]
   }
 }

@@ -1,0 +1,102 @@
+[
+    {
+        "merged": "com.senoriales.app-debug-37:/xml_network_security_config.xml.flat",
+        "source": "com.senoriales.app-main-39:/xml/network_security_config.xml"
+    },
+    {
+        "merged": "com.senoriales.app-debug-37:/drawable_ic_launcher_foreground.xml.flat",
+        "source": "com.senoriales.app-main-39:/drawable/ic_launcher_foreground.xml"
+    },
+    {
+        "merged": "com.senoriales.app-debug-37:/drawable_card_background.xml.flat",
+        "source": "com.senoriales.app-main-39:/drawable/card_background.xml"
+    },
+    {
+        "merged": "com.senoriales.app-debug-37:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "com.senoriales.app-main-39:/mipmap-anydpi-v26/ic_launcher.xml"
+    },
+    {
+        "merged": "com.senoriales.app-debug-37:/drawable_logo_triangle.xml.flat",
+        "source": "com.senoriales.app-main-39:/drawable/logo_triangle.xml"
+    },
+    {
+        "merged": "com.senoriales.app-debug-37:/drawable_connection_pill_bg.xml.flat",
+        "source": "com.senoriales.app-main-39:/drawable/connection_pill_bg.xml"
+    },
+    {
+        "merged": "com.senoriales.app-debug-37:/drawable_orb_glow_outer.xml.flat",
+        "source": "com.senoriales.app-main-39:/drawable/orb_glow_outer.xml"
+    },
+    {
+        "merged": "com.senoriales.app-debug-37:/layout_activity_conversation.xml.flat",
+        "source": "com.senoriales.app-main-39:/layout/activity_conversation.xml"
+    },
+    {
+        "merged": "com.senoriales.app-debug-37:/drawable_circle_turquoise_bg.xml.flat",
+        "source": "com.senoriales.app-main-39:/drawable/circle_turquoise_bg.xml"
+    },
+    {
+        "merged": "com.senoriales.app-debug-37:/drawable_progress_bar_fill_turquoise.xml.flat",
+        "source": "com.senoriales.app-main-39:/drawable/progress_bar_fill_turquoise.xml"
+    },
+    {
+        "merged": "com.senoriales.app-debug-37:/layout_item_breakdown.xml.flat",
+        "source": "com.senoriales.app-main-39:/layout/item_breakdown.xml"
+    },
+    {
+        "merged": "com.senoriales.app-debug-37:/mipmap_ic_launcher.xml.flat",
+        "source": "com.senoriales.app-main-39:/mipmap/ic_launcher.xml"
+    },
+    {
+        "merged": "com.senoriales.app-debug-37:/drawable_btn_mute_bg.xml.flat",
+        "source": "com.senoriales.app-main-39:/drawable/btn_mute_bg.xml"
+    },
+    {
+        "merged": "com.senoriales.app-debug-37:/drawable_orb_background.xml.flat",
+        "source": "com.senoriales.app-main-39:/drawable/orb_background.xml"
+    },
+    {
+        "merged": "com.senoriales.app-debug-37:/drawable_orb_glow_middle.xml.flat",
+        "source": "com.senoriales.app-main-39:/drawable/orb_glow_middle.xml"
+    },
+    {
+        "merged": "com.senoriales.app-debug-37:/drawable_circle_muted_bg.xml.flat",
+        "source": "com.senoriales.app-main-39:/drawable/circle_muted_bg.xml"
+    },
+    {
+        "merged": "com.senoriales.app-debug-37:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
+        "source": "com.senoriales.app-main-39:/mipmap-anydpi-v26/ic_launcher_round.xml"
+    },
+    {
+        "merged": "com.senoriales.app-debug-37:/drawable_btn_mute_active_bg.xml.flat",
+        "source": "com.senoriales.app-main-39:/drawable/btn_mute_active_bg.xml"
+    },
+    {
+        "merged": "com.senoriales.app-debug-37:/drawable_feedback_card_bg.xml.flat",
+        "source": "com.senoriales.app-main-39:/drawable/feedback_card_bg.xml"
+    },
+    {
+        "merged": "com.senoriales.app-debug-37:/drawable_progress_bar_bg.xml.flat",
+        "source": "com.senoriales.app-main-39:/drawable/progress_bar_bg.xml"
+    },
+    {
+        "merged": "com.senoriales.app-debug-37:/drawable_btn_end_call_bg.xml.flat",
+        "source": "com.senoriales.app-main-39:/drawable/btn_end_call_bg.xml"
+    },
+    {
+        "merged": "com.senoriales.app-debug-37:/drawable_pill_controls_bg.xml.flat",
+        "source": "com.senoriales.app-main-39:/drawable/pill_controls_bg.xml"
+    },
+    {
+        "merged": "com.senoriales.app-debug-37:/drawable_card_muted_background.xml.flat",
+        "source": "com.senoriales.app-main-39:/drawable/card_muted_background.xml"
+    },
+    {
+        "merged": "com.senoriales.app-debug-37:/drawable_logo_circle.xml.flat",
+        "source": "com.senoriales.app-main-39:/drawable/logo_circle.xml"
+    },
+    {
+        "merged": "com.senoriales.app-debug-37:/drawable_progress_bar_fill_muted.xml.flat",
+        "source": "com.senoriales.app-main-39:/drawable/progress_bar_fill_muted.xml"
+    }
+]

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew assembleDebug)",
+      "Bash(gradle assembleDebug)",
+      "Bash(ls \"C:\\\\Users\\\\estua\\\\Documents\\\\ai\\\\senoriales-48152aa7\\\\android\\\\gradlew\"*)"
+    ]
+  }
+}
