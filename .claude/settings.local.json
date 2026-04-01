@@ -20,7 +20,13 @@
       "WebFetch(domain:xdaforums.com)",
       "Bash(xargs ls:*)",
       "Bash(adb devices:*)",
-      "Bash(\"C:/Users/estua/AppData/Local/Android/Sdk/platform-tools/adb.exe\" devices:*)"
+      "Bash(\"C:/Users/estua/AppData/Local/Android/Sdk/platform-tools/adb.exe\" devices:*)",
+      "Bash(git filter-branch:*)",
+      "Bash(git stash:*)",
+      "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch --force --index-filter 'git rm --cached --ignore-unmatch .env' --prune-empty -- --all)",
+      "Bash(git add:*)",
+      "Bash(git rm:*)",
+      "Bash(git commit -m ':*)"
     ]
   }
 }
