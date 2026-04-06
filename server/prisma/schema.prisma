@@ -24,6 +24,14 @@ enum LtiRole {
   content_developer
 }
 
+enum MemoryCategory {
+  debilidad
+  fortaleza
+  expresion
+  comportamiento
+  progreso
+}
+
 // ============================================
 // Users & Auth
 // ============================================
@@ -46,6 +54,8 @@ model User {
   studentGrade      StudentGrade?      @relation("StudentGradeUser")
   gradesGiven       StudentGrade[]     @relation("GradedByUser")
   passwordResetTokens PasswordResetToken[]
+  advisorMemories   AdvisorMemory[]
+  sessionSummaries  SessionSummary[]
 
   @@index([email])
   @@map("users")
@@ -158,6 +168,7 @@ model Scenario {
 
   practiceSessions PracticeSession[]
   userProgress     UserScenarioProgress[]
+  sessionSummaries SessionSummary[]
 
   @@index([isActive, displayOrder])
   @@map("scenarios")
@@ -176,6 +187,7 @@ model PracticeSession {
 
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   scenario Scenario? @relation(fields: [scenarioId], references: [id], onDelete: SetNull)
+  sessionSummary SessionSummary?
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([scenarioId])
@@ -221,4 +233,46 @@ model StudentGrade {
   grader User? @relation("GradedByUser", fields: [gradedBy], references: [id], onDelete: SetNull)
 
   @@map("student_grades")
+}
+
+// ============================================
+// Advisor Memory System
+// ============================================
+
+model AdvisorMemory {
+  id         String         @id @default(uuid())
+  userId     String         @map("user_id")
+  content    String
+  category   MemoryCategory
+  importance Int            @default(5)
+  source     String?        // "agent" | "summary" | "manual"
+  createdAt  DateTime       @default(now()) @map("created_at")
+  updatedAt  DateTime       @default(now()) @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, importance(sort: Desc)])
+  @@index([userId, category])
+  @@map("advisor_memories")
+}
+
+model SessionSummary {
+  id                String   @id @default(uuid())
+  userId            String   @map("user_id")
+  sessionId         String   @unique @map("session_id")
+  scenarioId        String?  @map("scenario_id")
+  summary           String
+  score             Int?
+  strengths         String[] // detected strengths
+  weaknesses        String[] // detected weaknesses
+  recommendation    String?  // what to practice next
+  durationSeconds   Int      @default(0) @map("duration_seconds")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session  PracticeSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  scenario Scenario?        @relation(fields: [scenarioId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("session_summaries")
 }

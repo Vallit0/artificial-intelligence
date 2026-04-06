@@ -26,7 +26,24 @@
       "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch --force --index-filter 'git rm --cached --ignore-unmatch .env' --prune-empty -- --all)",
       "Bash(git add:*)",
       "Bash(git rm:*)",
-      "Bash(git commit -m ':*)"
+      "Bash(git commit -m ':*)",
+      "Bash(npx prisma:*)",
+      "Bash(grep \"\\\\.tsx$\")",
+      "Bash(npx vite:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker-compose ps:*)",
+      "Bash(docker-compose logs:*)",
+      "Bash(npm ls:*)",
+      "Bash(npm install:*)",
+      "Bash(node -e ':*)",
+      "Bash(python3 -c ':*)",
+      "Bash(curl -sI http://localhost:3000/models/dog_from_lamps.glb)",
+      "Bash(curl -s http://localhost:3000/)",
+      "Bash(curl:*)",
+      "Bash(xargs grep:*)",
+      "Bash(sed:*)",
+      "Bash(sed -i 's/<main className=\"lg:ml-60 min-h-screen flex flex-col\">/<main className=\"lg:ml-60 min-h-screen flex flex-col animate-fade-in\">/g' src/pages/Prospecting.tsx src/pages/LegadoDeVida.tsx)",
+      "Bash(sed -i 's/<main className=\"lg:ml-60 min-h-screen\">/<main className=\"lg:ml-60 min-h-screen animate-fade-in\">/g' src/pages/Progress.tsx src/pages/Quests.tsx src/pages/Admin.tsx src/pages/ExamenFinal.tsx)"
     ]
   }
 }

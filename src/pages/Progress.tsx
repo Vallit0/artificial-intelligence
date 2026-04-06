@@ -2,12 +2,12 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import PracticeTimer from "@/components/PracticeTimer";
 import CelebrationModal from "@/components/CelebrationModal";
-import { Award, Clock, TrendingUp, Flame, Calendar, Star } from "lucide-react";
+import { Award, Clock, TrendingUp, Flame, Calendar, Star, Trophy, Target, Zap, Phone, Crown, Sparkles, CheckCircle2, Lock } from "lucide-react";
 import { usePracticeSessions } from "@/hooks/usePracticeSessions";
 import { formatDistanceToNow, startOfWeek, endOfWeek, isWithinInterval, startOfDay, differenceInCalendarDays } from "date-fns";
 import { es } from "date-fns/locale";
 import LeftSidebar from "@/components/scenarios/LeftSidebar";
- import MobileNavigation from "@/components/MobileNavigation";
+import MobileNavigation from "@/components/MobileNavigation";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress as ProgressBar } from "@/components/ui/progress";
@@ -94,6 +94,94 @@ const Progress = () => {
   const recentSessions = sessions.slice(0, 8);
   const progressPercent = Math.min(100, Math.round((totalPracticeTime / TARGET_TIME) * 100));
 
+  // ============================================
+  // Mini Milestones
+  // ============================================
+  interface Milestone {
+    id: string;
+    title: string;
+    description: string;
+    icon: React.ElementType;
+    color: string;
+    unlocked: boolean;
+  }
+
+  const bestScore = useMemo(() => {
+    const scores = sessions.filter(s => s.score !== null).map(s => s.score as number);
+    return scores.length > 0 ? Math.max(...scores) : 0;
+  }, [sessions]);
+
+  const passedSessions = useMemo(() => sessions.filter(s => s.passed).length, [sessions]);
+
+  const milestones: Milestone[] = useMemo(() => [
+    {
+      id: "first-call",
+      title: "Primera Llamada",
+      description: "Completa tu primera sesion de practica",
+      icon: Phone,
+      color: "text-secondary",
+      unlocked: sessions.length >= 1,
+    },
+    {
+      id: "five-sessions",
+      title: "En Racha",
+      description: "Completa 5 sesiones de practica",
+      icon: Zap,
+      color: "text-yellow-500",
+      unlocked: sessions.length >= 5,
+    },
+    {
+      id: "first-pass",
+      title: "Aprobado",
+      description: "Obtiene tu primera evaluacion aprobada",
+      icon: Target,
+      color: "text-emerald-500",
+      unlocked: passedSessions >= 1,
+    },
+    {
+      id: "high-score",
+      title: "Estrella",
+      description: "Obtiene 80+ puntos en una sesion",
+      icon: Star,
+      color: "text-amber-500",
+      unlocked: bestScore >= 80,
+    },
+    {
+      id: "streak-3",
+      title: "Constancia",
+      description: "Mantiene una racha de 3 dias seguidos",
+      icon: Flame,
+      color: "text-orange-500",
+      unlocked: streak >= 3,
+    },
+    {
+      id: "ten-sessions",
+      title: "Dedicado",
+      description: "Completa 10 sesiones de practica",
+      icon: Trophy,
+      color: "text-primary",
+      unlocked: sessions.length >= 10,
+    },
+    {
+      id: "five-passed",
+      title: "Consistente",
+      description: "Aprueba 5 evaluaciones",
+      icon: Sparkles,
+      color: "text-violet-500",
+      unlocked: passedSessions >= 5,
+    },
+    {
+      id: "perfect-score",
+      title: "Perfeccion",
+      description: "Obtiene 95+ puntos en una sesion",
+      icon: Crown,
+      color: "text-rose-500",
+      unlocked: bestScore >= 95,
+    },
+  ], [sessions.length, passedSessions, bestScore, streak]);
+
+  const unlockedCount = milestones.filter(m => m.unlocked).length;
+
   return (
     <div className="min-h-screen bg-background">
       <CelebrationModal
@@ -105,7 +193,7 @@ const Progress = () => {
       <LeftSidebar />
 
       {/* Main Content */}
-      <main className="lg:ml-56 min-h-screen">
+      <main className="lg:ml-60 min-h-screen animate-fade-in">
         <ScrollArea className="h-screen">
           <div className="max-w-4xl mx-auto px-4 py-8">
             {/* Header */}
@@ -190,6 +278,53 @@ const Progress = () => {
                         : `Necesitas ${formatDuration(TARGET_TIME - totalPracticeTime)} más para obtener tu certificación.`
                       }
                     </p>
+                  </CardContent>
+                </Card>
+
+                {/* Mini Milestones */}
+                <Card className="mb-8">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <Trophy className="w-6 h-6 text-yellow-500" />
+                        Logros
+                      </CardTitle>
+                      <span className="text-sm font-bold text-muted-foreground">
+                        {unlockedCount}/{milestones.length}
+                      </span>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {milestones.map((milestone) => {
+                        const Icon = milestone.icon;
+                        return (
+                          <div
+                            key={milestone.id}
+                            className={`relative flex flex-col items-center text-center p-4 rounded-2xl border-2 transition-all duration-200 ${
+                              milestone.unlocked
+                                ? "bg-gradient-to-br from-card to-muted/30 border-border shadow-sm"
+                                : "bg-muted/20 border-transparent opacity-50"
+                            }`}
+                          >
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${
+                              milestone.unlocked ? "bg-muted" : "bg-muted/50"
+                            }`}>
+                              {milestone.unlocked ? (
+                                <Icon className={`w-5 h-5 ${milestone.color}`} />
+                              ) : (
+                                <Lock className="w-4 h-4 text-muted-foreground/50" />
+                              )}
+                            </div>
+                            <p className="text-xs font-bold text-foreground leading-tight">{milestone.title}</p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">{milestone.description}</p>
+                            {milestone.unlocked && (
+                              <CheckCircle2 className="absolute top-2 right-2 w-4 h-4 text-emerald-500" />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </CardContent>
                 </Card>
 

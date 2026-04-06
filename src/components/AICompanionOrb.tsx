@@ -1,0 +1,330 @@
+import { useState, useEffect } from "react";
+import { cn } from "@/lib/utils";
+
+interface AICompanionOrbProps {
+  size?: "sm" | "md" | "lg";
+  speaking?: boolean;
+  listening?: boolean;
+  /** Energy mode: no face, abstract reactive orb */
+  energy?: boolean;
+  /** Trigger wink → dissolve transition */
+  winkOut?: boolean;
+  onWinkOutDone?: () => void;
+  className?: string;
+}
+
+const AICompanionOrb = ({
+  size = "md",
+  speaking = false,
+  listening = false,
+  energy = false,
+  winkOut = false,
+  onWinkOutDone,
+  className,
+}: AICompanionOrbProps) => {
+  const [winkPhase, setWinkPhase] = useState<"idle" | "wink" | "dissolve" | "gone">("idle");
+
+  useEffect(() => {
+    if (winkOut && winkPhase === "idle") {
+      setWinkPhase("wink");
+      const t1 = setTimeout(() => setWinkPhase("dissolve"), 600);
+      const t2 = setTimeout(() => {
+        setWinkPhase("gone");
+        onWinkOutDone?.();
+      }, 1200);
+      return () => { clearTimeout(t1); clearTimeout(t2); };
+    }
+  }, [winkOut, winkPhase, onWinkOutDone]);
+
+  const sizeMap = {
+    sm: { orb: 80, eye: 5, eyeGap: 14, glowScale: 1.5 },
+    md: { orb: 120, eye: 7, eyeGap: 20, glowScale: 1.5 },
+    lg: { orb: 200, eye: 11, eyeGap: 32, glowScale: 1.5 },
+  };
+
+  const s = sizeMap[size];
+  const orbPx = `${s.orb}px`;
+  const eyeW = s.eye;
+  const eyeH = s.eye * 2.8;
+
+  if (winkPhase === "gone") return null;
+
+  // ============================================
+  // Energy mode: abstract reactive orb, no face
+  // ============================================
+  if (energy) {
+    return (
+      <div
+        className={cn("relative flex items-center justify-center", className)}
+        style={{ width: s.orb * s.glowScale, height: s.orb * s.glowScale }}
+      >
+        {/* Outer energy waves */}
+        <div
+          className="absolute rounded-full"
+          style={{
+            width: s.orb * 1.6,
+            height: s.orb * 1.6,
+            background: "radial-gradient(circle, rgba(0,245,212,0.12) 0%, transparent 70%)",
+            animation: speaking
+              ? "energyWave 0.4s ease-in-out infinite alternate"
+              : "energyWave 2.5s ease-in-out infinite alternate",
+          }}
+        />
+        <div
+          className="absolute rounded-full"
+          style={{
+            width: s.orb * 1.35,
+            height: s.orb * 1.35,
+            background: "radial-gradient(circle, rgba(139,92,246,0.15) 0%, transparent 70%)",
+            animation: speaking
+              ? "energyWave2 0.5s ease-in-out infinite alternate"
+              : "energyWave2 3s ease-in-out infinite alternate",
+          }}
+        />
+
+        {/* Core energy orb */}
+        <div
+          className="relative rounded-full overflow-hidden"
+          style={{
+            width: orbPx,
+            height: orbPx,
+            background: speaking
+              ? "radial-gradient(circle at 40% 40%, #22d3ee, #a855f7, #06d6a0, #3b82f6)"
+              : "radial-gradient(circle at 40% 40%, #06b6d4, #7c3aed, #059669)",
+            backgroundSize: "300% 300%",
+            animation: speaking
+              ? "energyGradient 0.8s ease-in-out infinite, energyPulseCore 0.3s ease-in-out infinite alternate"
+              : listening
+                ? "energyGradient 3s ease-in-out infinite, energyBreath 2s ease-in-out infinite"
+                : "energyGradient 5s ease-in-out infinite",
+            boxShadow: speaking
+              ? `0 0 ${s.orb * 0.5}px rgba(34,211,238,0.5), 0 0 ${s.orb}px rgba(139,92,246,0.2)`
+              : `0 0 ${s.orb * 0.3}px rgba(6,182,212,0.3)`,
+            transition: "box-shadow 0.3s ease",
+          }}
+        >
+          {/* Inner aurora spin */}
+          <div
+            className="absolute inset-0 rounded-full"
+            style={{
+              background: "conic-gradient(from 0deg, transparent 0%, rgba(0,245,212,0.4) 25%, transparent 50%, rgba(168,85,247,0.4) 75%, transparent 100%)",
+              animation: speaking
+                ? "orbAuroraRotate 1s linear infinite"
+                : "orbAuroraRotate 6s linear infinite",
+              opacity: 0.6,
+            }}
+          />
+          {/* Glass highlight */}
+          <div
+            className="absolute rounded-full"
+            style={{
+              width: s.orb * 0.5,
+              height: s.orb * 0.35,
+              top: s.orb * 0.1,
+              left: s.orb * 0.15,
+              background: "radial-gradient(ellipse, rgba(255,255,255,0.3) 0%, transparent 70%)",
+              filter: "blur(3px)",
+            }}
+          />
+        </div>
+
+        <style>{`
+          @keyframes energyGradient {
+            0%, 100% { background-position: 0% 50%; }
+            33% { background-position: 100% 0%; }
+            66% { background-position: 50% 100%; }
+          }
+          @keyframes energyWave {
+            from { transform: scale(1); opacity: 0.4; }
+            to { transform: scale(1.2); opacity: 0.7; }
+          }
+          @keyframes energyWave2 {
+            from { transform: scale(1.05); opacity: 0.3; }
+            to { transform: scale(1.25); opacity: 0.6; }
+          }
+          @keyframes energyPulseCore {
+            from { transform: scale(1); }
+            to { transform: scale(1.08); }
+          }
+          @keyframes energyBreath {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.04); }
+          }
+          @keyframes orbAuroraRotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  // ============================================
+  // Companion mode: face with expressions
+  // ============================================
+  const isWinking = winkPhase === "wink";
+  const isDissolving = winkPhase === "dissolve";
+
+  return (
+    <div
+      className={cn("relative flex items-center justify-center", className)}
+      style={{
+        width: s.orb * s.glowScale,
+        height: s.orb * s.glowScale,
+        transition: "transform 0.5s ease, opacity 0.5s ease",
+        transform: isDissolving ? "scale(0.3)" : "scale(1)",
+        opacity: isDissolving ? 0 : 1,
+      }}
+    >
+      {/* Aurora glow */}
+      <div
+        className="absolute rounded-full opacity-40 blur-2xl"
+        style={{
+          width: s.orb * 1.4,
+          height: s.orb * 1.4,
+          background: "radial-gradient(circle, rgba(0,245,212,0.4) 0%, rgba(139,92,246,0.3) 50%, rgba(6,182,212,0.1) 100%)",
+          animation: "orbAuroraRotate 6s linear infinite",
+        }}
+      />
+
+      {/* Outer pulse */}
+      <div
+        className="absolute rounded-full"
+        style={{
+          width: s.orb * 1.25,
+          height: s.orb * 1.25,
+          background: "radial-gradient(circle, rgba(0,245,212,0.15) 0%, transparent 70%)",
+          animation: speaking
+            ? "orbPulse 0.8s ease-in-out infinite"
+            : listening
+              ? "orbPulse 2s ease-in-out infinite"
+              : "orbPulse 3s ease-in-out infinite",
+        }}
+      />
+
+      {/* Main orb */}
+      <div
+        className="relative rounded-full overflow-hidden"
+        style={{
+          width: orbPx,
+          height: orbPx,
+          background: "linear-gradient(135deg, #06b6d4 0%, #8b5cf6 40%, #06d6a0 70%, #0ea5e9 100%)",
+          backgroundSize: "200% 200%",
+          animation: speaking
+            ? "orbGradient 1.5s ease-in-out infinite, orbBounce 0.6s ease-in-out infinite"
+            : "orbGradient 4s ease-in-out infinite",
+          boxShadow: `
+            0 0 ${s.orb * 0.3}px rgba(6,182,212,0.3),
+            inset 0 -${s.orb * 0.15}px ${s.orb * 0.3}px rgba(139,92,246,0.3),
+            inset 0 ${s.orb * 0.1}px ${s.orb * 0.2}px rgba(255,255,255,0.2)
+          `,
+        }}
+      >
+        <div
+          className="absolute rounded-full"
+          style={{
+            width: s.orb * 0.7,
+            height: s.orb * 0.5,
+            top: s.orb * 0.08,
+            left: s.orb * 0.12,
+            background: "radial-gradient(ellipse, rgba(255,255,255,0.35) 0%, transparent 70%)",
+            filter: "blur(4px)",
+          }}
+        />
+        <div
+          className="absolute inset-0 rounded-full opacity-50"
+          style={{
+            background: "conic-gradient(from 0deg, transparent, rgba(0,245,212,0.3), transparent, rgba(139,92,246,0.3), transparent)",
+            animation: "orbAuroraRotate 8s linear infinite",
+          }}
+        />
+      </div>
+
+      {/* Eyes - expressive */}
+      <div
+        className="absolute flex items-center pointer-events-none"
+        style={{
+          gap: s.eyeGap,
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -55%)",
+          animation: isWinking ? "none" : "orbLookAround 10s ease-in-out infinite",
+        }}
+      >
+        {/* Left eye */}
+        <div
+          style={{
+            width: eyeW,
+            height: eyeH,
+            borderRadius: `${eyeW}px`,
+            backgroundColor: "white",
+            boxShadow: `0 0 ${s.eye * 1.5}px rgba(255,255,255,0.9)`,
+            animation: isWinking ? "orbWinkLeft 0.6s ease-in-out forwards" : "orbExpressive 6s ease-in-out infinite",
+          }}
+        />
+        {/* Right eye */}
+        <div
+          style={{
+            width: eyeW,
+            height: eyeH,
+            borderRadius: `${eyeW}px`,
+            backgroundColor: "white",
+            boxShadow: `0 0 ${s.eye * 1.5}px rgba(255,255,255,0.9)`,
+            animation: isWinking ? "orbWinkRight 0.6s ease-in-out forwards" : "orbExpressive 6s ease-in-out infinite",
+            animationDelay: isWinking ? "0s" : "0.3s",
+          }}
+        />
+      </div>
+
+      <style>{`
+        @keyframes orbGradient {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+        @keyframes orbPulse {
+          0%, 100% { transform: scale(1); opacity: 0.5; }
+          50% { transform: scale(1.15); opacity: 0.8; }
+        }
+        @keyframes orbBounce {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.06); }
+        }
+        @keyframes orbExpressive {
+          0%, 15% { transform: scaleY(1) scaleX(1); }
+          17% { transform: scaleY(0.06) scaleX(1.2); }
+          19%, 30% { transform: scaleY(1) scaleX(1); }
+          45%, 50% { transform: scaleY(1.15) scaleX(0.9); }
+          55%, 70% { transform: scaleY(1) scaleX(1); }
+          80%, 83% { transform: scaleY(0.7) scaleX(1.15); }
+          86%, 100% { transform: scaleY(1) scaleX(1); }
+        }
+        @keyframes orbLookAround {
+          0%, 15% { transform: translate(-50%, -55%) translate(0, 0); }
+          20%, 30% { transform: translate(-50%, -55%) translate(${s.eye * 1.5}px, -${s.eye * 0.5}px); }
+          35%, 45% { transform: translate(-50%, -55%) translate(0, 0); }
+          50%, 58% { transform: translate(-50%, -55%) translate(-${s.eye * 1.5}px, ${s.eye * 0.3}px); }
+          63%, 72% { transform: translate(-50%, -55%) translate(0, -${s.eye * 0.6}px); }
+          77%, 85% { transform: translate(-50%, -55%) translate(${s.eye * 0.8}px, ${s.eye * 0.4}px); }
+          90%, 100% { transform: translate(-50%, -55%) translate(0, 0); }
+        }
+        @keyframes orbWinkLeft {
+          0% { transform: scaleY(1); }
+          30% { transform: scaleY(1); }
+          50% { transform: scaleY(0.06) scaleX(1.3); }
+          100% { transform: scaleY(0.06) scaleX(1.3); }
+        }
+        @keyframes orbWinkRight {
+          0% { transform: scaleY(1); }
+          30%, 60% { transform: scaleY(1); }
+          100% { transform: scaleY(1); }
+        }
+        @keyframes orbAuroraRotate {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+    </div>
+  );
+};
+
+export default AICompanionOrb;

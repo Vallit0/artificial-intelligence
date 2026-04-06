@@ -13,7 +13,7 @@ export const config = {
   
   // URLs
   appUrl: process.env.APP_URL || 'http://localhost:3000',
-  corsOrigin: process.env.CORS_ORIGIN || '*',
+  corsOrigin: process.env.CORS_ORIGIN || '*',  // Supports comma-separated origins: "http://localhost:5173,http://localhost:8080"
   
   // Database
   databaseUrl: process.env.DATABASE_URL || 'postgresql://localhost:5432/senoriales',

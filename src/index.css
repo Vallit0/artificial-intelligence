@@ -1,108 +1,104 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
 @layer base {
   :root {
-    --background: 220 20% 97%;
-    --foreground: 229 48% 20%;
+    /* Dribbble-core palette: soft purples, mints, corals, sky blues */
+    --background: 260 30% 97%;
+    --foreground: 260 25% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 229 48% 20%;
+    --card-foreground: 260 25% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 229 48% 20%;
+    --popover-foreground: 260 25% 15%;
 
-    /* Azul Índigo Profundo - Primary */
-    --primary: 229 48% 32%;
+    /* Soft Purple - Primary */
+    --primary: 260 60% 58%;
     --primary-foreground: 0 0% 100%;
 
-    /* Turquesa - Secondary */
-    --secondary: 176 100% 31%;
+    /* Mint / Teal - Secondary */
+    --secondary: 172 50% 50%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 220 15% 92%;
-    --muted-foreground: 229 20% 45%;
+    --muted: 260 15% 93%;
+    --muted-foreground: 260 10% 50%;
 
-    /* Verde Lima - Accent */
-    --accent: 85 55% 51%;
-    --accent-foreground: 229 48% 15%;
+    /* Coral Soft - Accent */
+    --accent: 12 80% 68%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 70% 55%;
+    --destructive: 0 65% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 20% 85%;
-    --input: 220 20% 85%;
-    --ring: 229 48% 32%;
+    --border: 260 15% 90%;
+    --input: 260 15% 88%;
+    --ring: 260 60% 58%;
 
-    --radius: 1rem;
+    --radius: 1.25rem;
 
-    /* Custom brand tokens */
-    --indigo: 229 48% 32%;
-    --turquoise: 176 100% 31%;
-    --lime: 85 55% 51%;
-    /* Amarillo Mostaza - Warm Accent */
-    --gold: 39 94% 59%;
+    /* Brand tokens */
+    --indigo: 260 60% 58%;
+    --turquoise: 172 50% 50%;
+    --lime: 160 45% 55%;
+    --gold: 32 80% 62%;
 
-    --sidebar-background: 229 48% 12%;
-    --sidebar-foreground: 220 20% 95%;
-    --sidebar-primary: 176 100% 31%;
+    /* Sidebar - dark glass */
+    --sidebar-background: 260 35% 14%;
+    --sidebar-foreground: 260 15% 95%;
+    --sidebar-primary: 172 50% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 85 55% 51%;
-    --sidebar-accent-foreground: 229 48% 15%;
-    --sidebar-border: 229 40% 25%;
-    --sidebar-ring: 176 100% 31%;
+    --sidebar-accent: 260 60% 65%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 260 25% 22%;
+    --sidebar-ring: 172 50% 55%;
   }
 
   .dark {
-    --background: 229 48% 8%;
-    --foreground: 220 20% 95%;
+    --background: 260 30% 7%;
+    --foreground: 260 10% 95%;
 
-    --card: 229 45% 12%;
-    --card-foreground: 220 20% 95%;
+    --card: 260 25% 12%;
+    --card-foreground: 260 10% 95%;
 
-    --popover: 229 45% 12%;
-    --popover-foreground: 220 20% 95%;
+    --popover: 260 25% 12%;
+    --popover-foreground: 260 10% 95%;
 
-    /* Azul Índigo Profundo - Primary (lighter for dark mode) */
-    --primary: 229 48% 50%;
+    --primary: 260 55% 65%;
     --primary-foreground: 0 0% 100%;
 
-    /* Turquesa - Secondary */
-    --secondary: 176 80% 40%;
+    --secondary: 172 45% 45%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 229 30% 18%;
-    --muted-foreground: 220 15% 65%;
+    --muted: 260 20% 18%;
+    --muted-foreground: 260 10% 60%;
 
-    /* Verde Lima - Accent */
-    --accent: 85 50% 45%;
+    --accent: 12 70% 60%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 60% 45%;
+    --destructive: 0 55% 45%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 229 30% 25%;
-    --input: 229 30% 25%;
-    --ring: 229 48% 50%;
+    --border: 260 20% 22%;
+    --input: 260 20% 22%;
+    --ring: 260 55% 65%;
 
-    --indigo: 229 48% 40%;
-    --turquoise: 176 80% 40%;
-    --lime: 85 50% 45%;
-    --gold: 39 90% 55%;
+    --indigo: 260 55% 55%;
+    --turquoise: 172 45% 45%;
+    --lime: 160 40% 45%;
+    --gold: 32 75% 55%;
 
-    --sidebar-background: 229 48% 6%;
-    --sidebar-foreground: 220 20% 95%;
-    --sidebar-primary: 176 80% 40%;
+    --sidebar-background: 260 30% 6%;
+    --sidebar-foreground: 260 10% 95%;
+    --sidebar-primary: 172 45% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 85 50% 40%;
+    --sidebar-accent: 260 55% 55%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 229 30% 20%;
-    --sidebar-ring: 176 80% 40%;
+    --sidebar-border: 260 20% 16%;
+    --sidebar-ring: 172 45% 50%;
   }
 }
 
@@ -113,5 +109,55 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  /* Gradient background for main content areas */
+  .bg-background {
+    background: linear-gradient(
+      160deg,
+      hsl(260 30% 97%) 0%,
+      hsl(280 25% 95%) 30%,
+      hsl(200 30% 96%) 60%,
+      hsl(170 25% 95%) 100%
+    );
+  }
+
+  .dark .bg-background {
+    background: linear-gradient(
+      160deg,
+      hsl(260 30% 7%) 0%,
+      hsl(280 25% 9%) 30%,
+      hsl(240 20% 8%) 60%,
+      hsl(260 25% 7%) 100%
+    );
+  }
+
+  /* Glassmorphism for cards */
+  .bg-card {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .dark .bg-card {
+    background: rgba(30, 25, 50, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+}
+
+@layer utilities {
+  /* Soft floating shadow for cards */
+  .shadow-soft {
+    box-shadow:
+      0 4px 24px -4px rgba(120, 80, 200, 0.08),
+      0 2px 8px -2px rgba(120, 80, 200, 0.04);
+  }
+
+  .dark .shadow-soft {
+    box-shadow:
+      0 4px 24px -4px rgba(0, 0, 0, 0.3),
+      0 2px 8px -2px rgba(0, 0, 0, 0.2);
   }
 }

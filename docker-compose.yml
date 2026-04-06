@@ -8,25 +8,12 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    env_file:
+      - ./server/.env
     environment:
       - NODE_ENV=production
-      - PORT=3000
       - DATABASE_URL=postgresql://senoriales:senoriales@db:5432/senoriales
-      - JWT_SECRET=${JWT_SECRET:-change-this-in-production-please}
-      - APP_URL=${APP_URL:-http://localhost}
-      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost}
-      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
-      - ELEVENLABS_AGENT_ID=${ELEVENLABS_AGENT_ID}
-      - ELEVENLABS_AGENT_PROSPECTING_PAREJA=${ELEVENLABS_AGENT_PROSPECTING_PAREJA}
-      - ELEVENLABS_AGENT_PROSPECTING_FRUTAS=${ELEVENLABS_AGENT_PROSPECTING_FRUTAS}
-      - ELEVENLABS_AGENT_PROSPECTING_NEUMATICOS=${ELEVENLABS_AGENT_PROSPECTING_NEUMATICOS}
-      - ELEVENLABS_AGENT_PROSPECTING_RESTAURANTE=${ELEVENLABS_AGENT_PROSPECTING_RESTAURANTE}
-      - ELEVENLABS_AGENT_PROSPECTING_PARQUEO=${ELEVENLABS_AGENT_PROSPECTING_PARQUEO}
-      - ELEVENLABS_AGENT_EXAMEN_FINAL=${ELEVENLABS_AGENT_EXAMEN_FINAL}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
-      - RESEND_API_KEY=${RESEND_API_KEY}
-      - RESEND_FROM_EMAIL=${RESEND_FROM_EMAIL:-Señoriales <onboarding@resend.dev>}
+      - CORS_ORIGIN=http://localhost,http://localhost:3000
     ports:
       - "3000:3000"
     depends_on:

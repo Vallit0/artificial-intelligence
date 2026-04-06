@@ -13,6 +13,7 @@ import Auth from "./pages/Auth";
 import Prospecting from "./pages/Prospecting";
 import Admin from "./pages/Admin";
 import ResetPassword from "./pages/ResetPassword";
+import LegadoDeVida from "./pages/LegadoDeVida";
 
 const queryClient = new QueryClient();
 
@@ -96,6 +97,16 @@ const AppRoutes = () => (
       }
     />
     
+    {/* El Legado de Vida - protected */}
+    <Route
+      path="/legado"
+      element={
+        <ProtectedRoute>
+          <LegadoDeVida />
+        </ProtectedRoute>
+      }
+    />
+
     {/* Auth routes */}
     <Route
       path="/auth"

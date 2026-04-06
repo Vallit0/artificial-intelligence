@@ -4,6 +4,7 @@
 
 import { Response, NextFunction } from 'express';
 import * as sessionsService from '../services/sessions.service.js';
+import * as memoryService from '../services/memory.service.js';
 import { AuthRequest } from '../types/index.js';
 import { handleError } from '../utils/errors.js';
 
@@ -59,8 +60,17 @@ export async function evaluate(req: AuthRequest, res: Response, next: NextFuncti
     // Save to session if ID provided
     if (sessionId) {
       await sessionsService.saveEvaluation(sessionId, req.user!.id, evaluation);
+
+      // Fire-and-forget: generate session summary + extract memories
+      memoryService.generateSessionSummary(
+        sessionId,
+        req.user!.id,
+        transcript,
+        scenarioId,
+        evaluation
+      ).catch(err => console.error('Session summary generation failed:', err));
     }
-    
+
     res.json(evaluation);
   } catch (error) {
     const appError = handleError(error);

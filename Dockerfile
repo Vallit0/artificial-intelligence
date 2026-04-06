@@ -55,6 +55,9 @@ COPY --from=backend-builder /app/server/dist ./dist
 # Copy built frontend to serve as static files
 COPY --from=frontend-builder /app/client/dist ./client/dist
 
+# Copy public audio files
+COPY public/audio ./audio
+
 # Copy seed file for initial data
 COPY server/prisma/seed.ts ./prisma/seed.ts
 

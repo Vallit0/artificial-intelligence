@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { Users, Phone, Target, TrendingUp, Settings } from "lucide-react";
+import { Users, Phone, Target, TrendingUp, Settings, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -28,6 +28,11 @@ const MobileNavigation = () => {
     ...(user
       ? [
           {
+            icon: <BookOpen className="w-5 h-5" />,
+            label: "Legado",
+            href: "/legado",
+          },
+          {
             icon: <Target className="w-5 h-5" />,
             label: "Evaluación",
             href: "/quests",
@@ -51,7 +56,7 @@ const MobileNavigation = () => {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border py-2 px-2 lg:hidden shadow-lg z-30">
+    <nav className="fixed bottom-0 left-0 right-0 py-2 px-2 lg:hidden z-30" style={{ background: "rgba(255,255,255,0.75)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderTop: "1px solid rgba(0,0,0,0.06)" }}>
       <div className="flex items-center justify-around">
         {navItems.map((item) => {
           const isActive = location.pathname === item.href;
@@ -60,10 +65,10 @@ const MobileNavigation = () => {
               key={item.href}
               onClick={() => navigate(item.href)}
               className={cn(
-                "flex flex-col items-center gap-1.5 px-3 py-2 rounded-xl transition-all duration-200",
+                "flex flex-col items-center gap-1 px-3 py-2 rounded-2xl transition-all duration-200",
                 isActive
-                  ? "text-secondary bg-secondary/10"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  ? "text-primary bg-primary/10"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               {item.icon}

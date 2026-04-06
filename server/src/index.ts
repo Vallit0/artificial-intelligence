@@ -14,6 +14,7 @@ import { ltiRouter } from './routes/lti.js';
 import { apiRouter } from './routes/api.js';
 import { elevenlabsRouter } from './routes/elevenlabs.js';
 import { adminRouter } from './routes/admin.js';
+import { memoryRouter } from './routes/memory.js';
 import prisma from './db/index.js';
 import { AppError } from './utils/errors.js';
 
@@ -34,7 +35,16 @@ app.use(helmet({
 }));
 
 app.use(cors({
-  origin: config.corsOrigin,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+
+    const allowed = config.corsOrigin.split(',').map(o => o.trim());
+    if (allowed.includes('*') || allowed.includes(origin)) {
+      return callback(null, true);
+    }
+    callback(new Error(`Origin ${origin} not allowed by CORS`));
+  },
   credentials: true,
 }));
 
@@ -51,6 +61,7 @@ app.use('/auth', authRouter);
 app.use('/lti', ltiRouter);
 app.use('/api/elevenlabs', elevenlabsRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/memory', memoryRouter);
 app.use('/api', apiRouter);
 
 // Health check
@@ -86,6 +97,16 @@ app.get('/health', async (req, res) => {
 
 if (config.isProduction) {
   const staticPath = path.join(__dirname, '../client/dist');
+
+  // Cache PDFs and audio files aggressively (30 days)
+  app.use('/assets', express.static(path.join(staticPath, 'assets'), {
+    maxAge: '30d',
+    immutable: true,
+  }));
+  app.use('/audio', express.static(path.join(staticPath, '../audio'), {
+    maxAge: '30d',
+  }));
+
   app.use(express.static(staticPath));
   
   // SPA fallback

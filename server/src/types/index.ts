@@ -153,6 +153,50 @@ export interface LTISession {
 }
 
 // ============================================
+// Advisor Memory Types
+// ============================================
+
+export type MemoryCategory = 'debilidad' | 'fortaleza' | 'expresion' | 'comportamiento' | 'progreso';
+
+export interface AdvisorMemory {
+  id: string;
+  userId: string;
+  content: string;
+  category: MemoryCategory;
+  importance: number;
+  source?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface SaveMemoryInput {
+  user_id: string;
+  content: string;
+  category: MemoryCategory;
+  importance?: number;
+}
+
+export interface RetrieveMemoryInput {
+  user_id: string;
+  category?: MemoryCategory;
+  limit?: number;
+}
+
+export interface SessionSummaryData {
+  id: string;
+  userId: string;
+  sessionId: string;
+  scenarioId?: string;
+  summary: string;
+  score?: number;
+  strengths: string[];
+  weaknesses: string[];
+  recommendation?: string;
+  durationSeconds: number;
+  createdAt: Date;
+}
+
+// ============================================
 // API Response Types
 // ============================================
 

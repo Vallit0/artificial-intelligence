@@ -19,6 +19,8 @@ interface UseElevenLabsConversationOptions {
   scenarioId?: string | null;
   sessionId?: string | null;
   agentSecretName?: string | null;
+  userId?: string | null;
+  userName?: string | null;
   onTranscript?: (text: string, isUser: boolean) => void;
   onEvaluation?: (evaluation: EvaluationResult) => void;
   onError?: (error: string) => void;
@@ -31,6 +33,8 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
   const scenarioIdRef = useRef(options.scenarioId);
   const sessionIdRef = useRef(options.sessionId);
   const agentSecretNameRef = useRef(options.agentSecretName);
+  const userIdRef = useRef(options.userId);
+  const userNameRef = useRef(options.userName);
 
   useEffect(() => {
     onTranscriptRef.current = options.onTranscript;
@@ -39,7 +43,9 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     scenarioIdRef.current = options.scenarioId;
     sessionIdRef.current = options.sessionId;
     agentSecretNameRef.current = options.agentSecretName;
-  }, [options.onTranscript, options.onEvaluation, options.onError, options.scenarioId, options.sessionId, options.agentSecretName]);
+    userIdRef.current = options.userId;
+    userNameRef.current = options.userName;
+  }, [options.onTranscript, options.onEvaluation, options.onError, options.scenarioId, options.sessionId, options.agentSecretName, options.userId, options.userName]);
 
   const [isConnecting, setIsConnecting] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -48,6 +54,7 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
   const isConnectedRef = useRef(false);
   const rawStreamRef = useRef<MediaStream | null>(null);
   const prefetchedUrlRef = useRef<string | null>(null);
+  const memoryContextRef = useRef<string | null>(null);
 
   const conversation = useConversation({
     micMuted: isMuted,
@@ -143,7 +150,7 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     },
   });
 
-  // Pre-fetch signed URL on mount so it's ready when user clicks start
+  // Pre-fetch signed URL and memory context on mount
   const prefetchSignedUrl = useCallback(async () => {
     try {
       const data = await api.post<{ signedUrl: string; scenario?: any }>("/api/elevenlabs/conversation-token", {
@@ -159,10 +166,26 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     }
   }, []);
 
+  const prefetchMemoryContext = useCallback(async () => {
+    if (!userIdRef.current) return;
+    try {
+      const data = await api.post<{ context: string }>("/api/memory/context", {
+        user_id: userIdRef.current,
+      });
+      if (data?.context) {
+        memoryContextRef.current = data.context;
+        console.log("Memory context pre-fetched");
+      }
+    } catch (error) {
+      console.warn("Pre-fetch memory context failed:", error);
+    }
+  }, []);
+
   // Pre-fetch on mount
   useEffect(() => {
     prefetchSignedUrl();
-  }, [prefetchSignedUrl]);
+    prefetchMemoryContext();
+  }, [prefetchSignedUrl, prefetchMemoryContext]);
 
   const connect = useCallback(async () => {
     if (isConnectedRef.current || isConnecting) {
@@ -203,6 +226,18 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
         throw new Error("No signed URL received from server");
       }
 
+      // Build dynamic variables with memory context
+      const dynamicVariables: Record<string, string> = {};
+      if (userIdRef.current) {
+        dynamicVariables.user_id = userIdRef.current;
+      }
+      if (userNameRef.current) {
+        dynamicVariables.advisor_name = userNameRef.current;
+      }
+      if (memoryContextRef.current) {
+        dynamicVariables.advisor_context = memoryContextRef.current;
+      }
+
       console.log("Starting session with signed URL...");
       await conversation.startSession({
         signedUrl: data.signedUrl,
@@ -214,6 +249,7 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
             similarityBoost: 0.7,
           },
         },
+        dynamicVariables,
       });
 
       // Pre-fetch next URL for quick reconnect
