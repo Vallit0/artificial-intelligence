@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { Users, Phone, Target, TrendingUp, Settings, BookOpen } from "lucide-react";
+import { Users, Phone, Target, TrendingUp, Settings, BookOpen, CalendarDays, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -33,8 +33,8 @@ const MobileNavigation = () => {
             href: "/legado",
           },
           {
-            icon: <Target className="w-5 h-5" />,
-            label: "Evaluación",
+            icon: <Lock className="w-5 h-5" />,
+            label: "Examen",
             href: "/quests",
           },
           {
@@ -46,6 +46,11 @@ const MobileNavigation = () => {
       : []),
     ...(isAdmin
       ? [
+          {
+            icon: <CalendarDays className="w-5 h-5" />,
+            label: "Coach",
+            href: "/coach-center",
+          },
           {
             icon: <Settings className="w-5 h-5" />,
             label: "Admin",

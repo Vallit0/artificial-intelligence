@@ -69,6 +69,7 @@ interface AgentSuggestion {
   agentSecretName?: string;
   color: string;
   orbGradient: string;
+  redirectTo?: string;
 }
 
 const agentSuggestions: AgentSuggestion[] = [
@@ -77,7 +78,7 @@ const agentSuggestions: AgentSuggestion[] = [
     label: "Coach",
     description: "Feedback y tips en tiempo real sobre tu técnica de ventas",
     icon: Sparkles,
-    agentSecretName: undefined,
+    agentSecretName: "ELEVENLABS_AGENT_COACH",
     color: "from-primary/15 to-primary/5 border-primary/30 hover:border-primary/60",
     orbGradient: "linear-gradient(135deg, #7c3aed 0%, #a855f7 40%, #c084fc 70%, #7c3aed 100%)",
   },
@@ -86,16 +87,16 @@ const agentSuggestions: AgentSuggestion[] = [
     label: "Role-Play Cliente",
     description: "Simula ser el cliente y practica cómo responder a un asesor",
     icon: Swords,
-    agentSecretName: "ELEVENLABS_AGENT_ROLEPLAY",
+    agentSecretName: "ELEVENLABS_AGENT_ROLEPLAY_CLIENTE",
     color: "from-secondary/15 to-secondary/5 border-secondary/30 hover:border-secondary/60",
     orbGradient: "linear-gradient(135deg, #06b6d4 0%, #22d3ee 40%, #67e8f9 70%, #06b6d4 100%)",
   },
   {
     id: "roleplay-asesor",
     label: "Role-Play Asesor",
-    description: "Practica tu rol como asesor con un cliente simulado",
+    description: "Practica tu rol como cliente con un asesor simulado",
     icon: UserCheck,
-    agentSecretName: "ELEVENLABS_AGENT_OBJECIONES",
+    agentSecretName: "ELEVENLABS_AGENT_ROLEPLAY_ASESOR",
     color: "from-orange-500/15 to-orange-500/5 border-orange-500/30 hover:border-orange-500/60",
     orbGradient: "linear-gradient(135deg, #ea580c 0%, #f97316 40%, #fb923c 70%, #ea580c 100%)",
   },
@@ -104,27 +105,27 @@ const agentSuggestions: AgentSuggestion[] = [
     label: "Prospección Física",
     description: "Entrena técnicas de prospección presencial y en campo",
     icon: MapPin,
-    agentSecretName: "ELEVENLABS_AGENT_PITCH",
     color: "from-emerald-500/15 to-emerald-500/5 border-emerald-500/30 hover:border-emerald-500/60",
     orbGradient: "linear-gradient(135deg, #059669 0%, #10b981 40%, #34d399 70%, #059669 100%)",
+    redirectTo: "/prospecting",
   },
   {
     id: "legado-vida",
     label: "Legado de Vida",
     description: "Practica cómo presentar y entregar el Legado de Vida",
     icon: BookOpen,
-    agentSecretName: "ELEVENLABS_AGENT_CIERRE",
     color: "from-yellow-500/15 to-yellow-500/5 border-yellow-500/30 hover:border-yellow-500/60",
     orbGradient: "linear-gradient(135deg, #ca8a04 0%, #eab308 40%, #facc15 70%, #ca8a04 100%)",
+    redirectTo: "/legado",
   },
   {
     id: "examen",
     label: "Examen Final",
     description: "Evaluación completa de todas tus habilidades",
     icon: GraduationCap,
-    agentSecretName: "ELEVENLABS_AGENT_EXAMEN_FINAL",
     color: "from-rose-500/15 to-rose-500/5 border-rose-500/30 hover:border-rose-500/60",
     orbGradient: "linear-gradient(135deg, #e11d48 0%, #f43f5e 40%, #fb7185 70%, #e11d48 100%)",
+    redirectTo: "/quests",
   },
 ];
 
@@ -460,7 +461,7 @@ const Practice = () => {
                 return (
                   <button
                     key={agent.id}
-                    onClick={() => handleStart(agent)}
+                    onClick={() => agent.redirectTo ? navigate(agent.redirectTo) : handleStart(agent)}
                     className={`group flex items-start gap-3 p-4 rounded-2xl border-2 bg-gradient-to-br text-left transition-all duration-200 hover:scale-[1.03] hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.97] shadow-md ${agent.color}`}
                   >
                     <div className="shrink-0 mt-0.5">

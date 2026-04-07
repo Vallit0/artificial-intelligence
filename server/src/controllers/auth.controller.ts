@@ -12,8 +12,8 @@ import { handleError } from '../utils/errors.js';
 // ============================================
 export async function signup(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { email, password, fullName } = req.body;
-    const result = await authService.signup(email, password, fullName);
+    const { email, password, fullName, phoneNumber } = req.body;
+    const result = await authService.signup(email, password, fullName, phoneNumber);
     
     res.status(201).json({
       user: result.user,

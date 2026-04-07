@@ -14,6 +14,7 @@ services:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://senoriales:senoriales@db:5432/senoriales
       - CORS_ORIGIN=http://localhost,http://localhost:3000
+      - JWT_SECRET=${JWT_SECRET:-senoriales-dev-secret-change-in-prod}
     ports:
       - "3000:3000"
     depends_on:
@@ -34,8 +35,8 @@ services:
       - POSTGRES_DB=senoriales
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+    # ports:
+    #   - "5432:5432"  # Only expose in development
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U senoriales -d senoriales"]
       interval: 10s

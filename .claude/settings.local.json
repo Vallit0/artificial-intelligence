@@ -44,7 +44,17 @@
       "Bash(sed:*)",
       "Bash(sed -i 's/<main className=\"lg:ml-60 min-h-screen flex flex-col\">/<main className=\"lg:ml-60 min-h-screen flex flex-col animate-fade-in\">/g' src/pages/Prospecting.tsx src/pages/LegadoDeVida.tsx)",
       "Bash(sed -i 's/<main className=\"lg:ml-60 min-h-screen\">/<main className=\"lg:ml-60 min-h-screen animate-fade-in\">/g' src/pages/Progress.tsx src/pages/Quests.tsx src/pages/Admin.tsx src/pages/ExamenFinal.tsx)",
-      "Bash(findstr :3000)"
+      "Bash(findstr :3000)",
+      "Bash(grep -E \"\\\\.\\(ts|tsx|js|jsx\\)$\")",
+      "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")",
+      "WebFetch(domain:elevenlabs.io)",
+      "WebFetch(domain:whapi.readme.io)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:help.elevenlabs.io)",
+      "WebFetch(domain:community.n8n.io)",
+      "WebFetch(domain:imannajafi.com)",
+      "Bash(ls -la /c/Users/estua/Documents/ai/senoriales-48152aa7/.env*)",
+      "Bash(npx shadcn@latest add tabs --yes)"
     ]
   }
 }

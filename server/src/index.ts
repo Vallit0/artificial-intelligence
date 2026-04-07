@@ -15,6 +15,8 @@ import { apiRouter } from './routes/api.js';
 import { elevenlabsRouter } from './routes/elevenlabs.js';
 import { adminRouter } from './routes/admin.js';
 import { memoryRouter } from './routes/memory.js';
+import { citasRouter } from './routes/citas.js';
+import { whatsappRouter } from './routes/whatsapp.js';
 import prisma from './db/index.js';
 import { AppError } from './utils/errors.js';
 
@@ -62,6 +64,8 @@ app.use('/lti', ltiRouter);
 app.use('/api/elevenlabs', elevenlabsRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/memory', memoryRouter);
+app.use('/api/citas', citasRouter);
+app.use('/api/whatsapp', whatsappRouter);
 app.use('/api', apiRouter);
 
 // Health check

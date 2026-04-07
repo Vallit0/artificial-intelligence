@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { z } from "zod";
-import { ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Phone } from "lucide-react";
 import { ForgotPasswordModal } from "@/components/auth/ForgotPasswordModal";
 import AICompanionOrb from "@/components/AICompanionOrb";
 
@@ -20,6 +20,7 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [loading, setLoading] = useState(false);
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -48,7 +49,7 @@ const Auth = () => {
         toast({ title: "¡Bienvenido!", description: "Sesión iniciada correctamente" });
         navigate("/practice");
       } else {
-        await signUp(email, password, fullName || undefined);
+        await signUp(email, password, fullName || undefined, phoneNumber || undefined);
         toast({
           title: "¡Cuenta creada!",
           description: "Ya puedes comenzar a practicar",
@@ -110,13 +111,25 @@ const Auth = () => {
 
         <form onSubmit={handleSubmit} className="space-y-3 w-full max-w-sm">
           {!isLogin && (
-            <Input
-              type="text"
-              placeholder="Nombre completo"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              className="h-13 bg-card border border-border rounded-xl px-4 text-foreground placeholder:text-muted-foreground focus:border-primary transition-colors"
-            />
+            <>
+              <Input
+                type="text"
+                placeholder="Nombre completo"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className="h-13 bg-card border border-border rounded-xl px-4 text-foreground placeholder:text-muted-foreground focus:border-primary transition-colors"
+              />
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="tel"
+                  placeholder="WhatsApp (ej: 502 1234 5678)"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  className="h-13 bg-card border border-border rounded-xl pl-10 pr-4 text-foreground placeholder:text-muted-foreground focus:border-primary transition-colors"
+                />
+              </div>
+            </>
           )}
 
           <Input

@@ -41,7 +41,7 @@ export function verifyToken(token: string): { sub: string; email?: string } | nu
 // User Authentication
 // ============================================
 
-export async function signup(email: string, password: string, fullName?: string): Promise<{
+export async function signup(email: string, password: string, fullName?: string, phoneNumber?: string): Promise<{
   user: AuthUser;
   accessToken: string;
   refreshToken: string;
@@ -62,6 +62,7 @@ export async function signup(email: string, password: string, fullName?: string)
       email,
       passwordHash,
       fullName: fullName || null,
+      phoneNumber: phoneNumber || null,
       emailVerified: true,
       roles: {
         create: { role: 'learner' },
@@ -73,6 +74,7 @@ export async function signup(email: string, password: string, fullName?: string)
     id: user.id,
     email: user.email,
     fullName: user.fullName || undefined,
+    examenFinalEnabled: user.examenFinalEnabled,
   };
 
   const accessToken = generateAccessToken(authUser);
@@ -111,6 +113,7 @@ export async function login(email: string, password: string): Promise<{
     id: user.id,
     email: user.email,
     fullName: user.fullName || undefined,
+    examenFinalEnabled: user.examenFinalEnabled,
   };
 
   const accessToken = generateAccessToken(authUser);
@@ -176,6 +179,7 @@ export async function getUserById(userId: string): Promise<AuthUser | null> {
     id: user.id,
     email: user.email,
     fullName: user.fullName || undefined,
+    examenFinalEnabled: user.examenFinalEnabled,
   };
 }
 

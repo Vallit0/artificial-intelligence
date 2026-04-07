@@ -4,6 +4,7 @@
 
 import config from '../config/index.js';
 import { InternalError, BadRequestError } from '../utils/errors.js';
+import * as agentConfigService from './agentConfig.service.js';
 
 // ============================================
 // Signed URL Cache (per agentId, TTL-based)
@@ -38,18 +39,22 @@ function setCachedUrl(agentId: string, signedUrl: string): void {
 // ============================================
 
 /**
- * Resolves an agent ID from either:
- * - An environment variable name (e.g., "ELEVENLABS_AGENT_PROSPECTING_PAREJA")
- * - Falls back to the default ELEVENLABS_AGENT_ID
+ * Resolves an agent ID from:
+ * 1. Database (AgentConfig table) - admin-managed
+ * 2. Environment variable fallback
+ * 3. Default ELEVENLABS_AGENT_ID
  */
-function resolveAgentId(agentSecretName?: string | null): string {
+async function resolveAgentId(agentSecretName?: string | null): Promise<string> {
   if (agentSecretName) {
-    // Look up the agent ID from environment variables
-    const agentId = process.env[agentSecretName];
-    if (agentId) {
-      return agentId;
-    }
-    console.warn(`Agent secret "${agentSecretName}" not found in env, falling back to default`);
+    // 1. Check DB first (admin-configured)
+    const dbAgentId = await agentConfigService.resolve(agentSecretName);
+    if (dbAgentId) return dbAgentId;
+
+    // 2. Fallback to environment variable
+    const envAgentId = process.env[agentSecretName];
+    if (envAgentId) return envAgentId;
+
+    console.warn(`Agent "${agentSecretName}" not found in DB or env, falling back to default`);
   }
 
   if (!config.elevenlabs.agentId) {
@@ -68,7 +73,7 @@ export async function getConversationSignedUrl(agentSecretName?: string | null):
     throw new InternalError('ElevenLabs API key not configured');
   }
 
-  const agentId = resolveAgentId(agentSecretName);
+  const agentId = await resolveAgentId(agentSecretName);
 
   // Check cache first
   const cached = getCachedUrl(agentId);

@@ -3,13 +3,17 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAuth } from "@/hooks/useAuth";
 import { useStudents } from "@/hooks/useStudents";
-import { Award, Clock, Loader2, Play, Plus, Shield, Target, Timer, TrendingUp, Upload, Users } from "lucide-react";
+import { Award, Clock, Loader2, Play, Plus, Search, Shield, Target, Timer, TrendingUp, Upload, Users } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import StudentList from "@/components/admin/StudentList";
 import CreateUserModal from "@/components/admin/CreateUserModal";
 import BulkUploadModal from "@/components/admin/BulkUploadModal";
+import AgentConfigPanel from "@/components/admin/AgentConfigPanel";
+import LtiPlatformPanel from "@/components/admin/LtiPlatformPanel";
 import LeftSidebar from "@/components/scenarios/LeftSidebar";
 import MobileNavigation from "@/components/MobileNavigation";
 
@@ -17,10 +21,11 @@ export default function Admin() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { isAdmin, isLoading: adminLoading } = useAdmin();
-  const { students, isLoading: studentsLoading, assignGrade, refetch } = useStudents();
-  
+  const { students, isLoading: studentsLoading, assignGrade, toggleExamenFinal, refetch } = useStudents();
+
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Show loading while checking auth and admin status
   if (authLoading || adminLoading) {
@@ -81,6 +86,15 @@ export default function Admin() {
                 </div>
               </div>
             </div>
+
+        <Tabs defaultValue="students" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="students">Estudiantes</TabsTrigger>
+            <TabsTrigger value="agents">Agentes IA</TabsTrigger>
+            <TabsTrigger value="lti">LTI / Moodle</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="students">
         {/* Stats Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
           <Card>
@@ -231,17 +245,28 @@ export default function Admin() {
 
         {/* Students List */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Estudiantes</CardTitle>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => setShowBulkModal(true)}>
-                <Upload className="w-4 h-4 mr-2" />
-                Carga Masiva
-              </Button>
-              <Button size="sm" onClick={() => setShowCreateModal(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Nuevo Usuario
-              </Button>
+          <CardHeader className="space-y-4">
+            <div className="flex flex-row items-center justify-between">
+              <CardTitle>Estudiantes</CardTitle>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setShowBulkModal(true)}>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Carga Masiva
+                </Button>
+                <Button size="sm" onClick={() => setShowCreateModal(true)}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Nuevo Usuario
+                </Button>
+              </div>
+            </div>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nombre o email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
             </div>
           </CardHeader>
           <CardContent className="p-0">
@@ -252,14 +277,32 @@ export default function Admin() {
                 </div>
               ) : (
                 <StudentList
-                  students={students}
+                  students={students.filter((s) => {
+                    if (!searchQuery.trim()) return true;
+                    const q = searchQuery.toLowerCase();
+                    return (
+                      (s.full_name || "").toLowerCase().includes(q) ||
+                      (s.email || "").toLowerCase().includes(q)
+                    );
+                  })}
                   onAssignGrade={assignGrade}
+                  onToggleExamenFinal={toggleExamenFinal}
                   onRefetch={refetch}
                 />
               )}
             </ScrollArea>
           </CardContent>
         </Card>
+          </TabsContent>
+
+          <TabsContent value="agents">
+            <AgentConfigPanel />
+          </TabsContent>
+
+          <TabsContent value="lti">
+            <LtiPlatformPanel />
+          </TabsContent>
+        </Tabs>
           </div>
         </ScrollArea>
       </main>

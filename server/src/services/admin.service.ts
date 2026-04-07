@@ -10,6 +10,7 @@ interface CreateUserInput {
   email: string;
   password: string;
   fullName?: string;
+  phoneNumber?: string;
   isAdmin?: boolean;
 }
 
@@ -24,6 +25,8 @@ interface StudentWithStats {
   finalGrade: number | null;
   gradedBy: string | null;
   gradeNotes: string | null;
+  examenFinalEnabled: boolean;
+  phoneNumber: string | null;
 }
 
 // ============================================
@@ -52,6 +55,7 @@ export async function createUser(input: CreateUserInput) {
       email,
       passwordHash,
       fullName: input.fullName?.trim() || null,
+      phoneNumber: input.phoneNumber?.trim() || null,
       emailVerified: true,
       roles: {
         create: { role: input.isAdmin ? 'admin' : 'learner' },
@@ -194,7 +198,22 @@ export async function getAllStudents(): Promise<StudentWithStats[]> {
       finalGrade: user.studentGrade ? Number(user.studentGrade.finalGrade) : null,
       gradedBy: user.studentGrade?.gradedBy || null,
       gradeNotes: user.studentGrade?.notes || null,
+      examenFinalEnabled: user.examenFinalEnabled,
+      phoneNumber: user.phoneNumber,
     };
+  });
+}
+
+export async function toggleExamenFinal(userId: string, enabled: boolean) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) {
+    throw new NotFoundError('Usuario no encontrado');
+  }
+
+  return prisma.user.update({
+    where: { id: userId },
+    data: { examenFinalEnabled: enabled },
+    select: { id: true, examenFinalEnabled: true },
   });
 }
 

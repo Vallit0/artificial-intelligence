@@ -14,6 +14,7 @@ import Prospecting from "./pages/Prospecting";
 import Admin from "./pages/Admin";
 import ResetPassword from "./pages/ResetPassword";
 import LegadoDeVida from "./pages/LegadoDeVida";
+import CoachCenter from "./pages/CoachCenter";
 
 const queryClient = new QueryClient();
 
@@ -124,6 +125,13 @@ const AppRoutes = () => (
     <Route path="/admin" element={
       <ProtectedRoute>
         <Admin />
+      </ProtectedRoute>
+    } />
+
+    {/* Coach Center - protected */}
+    <Route path="/coach-center" element={
+      <ProtectedRoute>
+        <CoachCenter />
       </ProtectedRoute>
     } />
     

@@ -10,16 +10,18 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Award, Check, ChevronDown, ChevronUp, Clock, Eye, FileText, Pencil, Trash2 } from "lucide-react";
+import { Award, Check, ChevronDown, ChevronUp, Clock, Eye, FileText, GraduationCap, Lock, MessageCircle, Pencil, Trash2, Unlock } from "lucide-react";
 import StudentDetailModal from "./StudentDetailModal";
 import GradeModal from "./GradeModal";
 import CertificateModal from "./CertificateModal";
 import DeleteUserModal from "./DeleteUserModal";
 import { useToast } from "@/hooks/use-toast";
+import { api } from "@/lib/api-client";
 
 interface StudentListProps {
   students: Student[];
   onAssignGrade: (userId: string, grade: number, notes?: string) => Promise<boolean>;
+  onToggleExamenFinal: (userId: string, enabled: boolean) => Promise<boolean>;
   onRefetch: () => Promise<void>;
 }
 
@@ -32,7 +34,7 @@ const formatDuration = (seconds: number): string => {
   return `${minutes}m`;
 };
 
-export default function StudentList({ students, onAssignGrade, onRefetch }: StudentListProps) {
+export default function StudentList({ students, onAssignGrade, onToggleExamenFinal, onRefetch }: StudentListProps) {
   const { toast } = useToast();
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [gradeStudent, setGradeStudent] = useState<Student | null>(null);
@@ -41,6 +43,38 @@ export default function StudentList({ students, onAssignGrade, onRefetch }: Stud
   const [sortBy, setSortBy] = useState<"name" | "sessions" | "grade">("sessions");
   const [sortAsc, setSortAsc] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [togglingExamenId, setTogglingExamenId] = useState<string | null>(null);
+  const [sendingWhatsAppId, setSendingWhatsAppId] = useState<string | null>(null);
+
+  const handleSendTestWhatsApp = async (student: Student) => {
+    if (!student.phoneNumber) {
+      toast({
+        title: "Sin WhatsApp",
+        description: `${student.full_name || student.email} no tiene número de WhatsApp registrado.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    setSendingWhatsAppId(student.id);
+    try {
+      await api.post("/api/whatsapp/send-to-user", {
+        userId: student.id,
+        message: `Hola ${student.full_name || ""}! Este es un mensaje de prueba del Centro de Negocios Senoriales. Tu plataforma de entrenamiento esta activa.`,
+      });
+      toast({
+        title: "Mensaje enviado",
+        description: `WhatsApp enviado a ${student.full_name || student.email}.`,
+      });
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "No se pudo enviar el mensaje de WhatsApp.",
+        variant: "destructive",
+      });
+    } finally {
+      setSendingWhatsAppId(null);
+    }
+  };
 
   const handleApprove = async (student: Student) => {
     setApprovingId(student.id);
@@ -125,6 +159,7 @@ export default function StudentList({ students, onAssignGrade, onRefetch }: Stud
             </TableHead>
             <TableHead className="text-center">Tiempo Total</TableHead>
             <TableHead className="text-center">Promedio IA</TableHead>
+            <TableHead className="text-center">Examen Final</TableHead>
             <TableHead
               className="cursor-pointer hover:text-foreground text-center"
               onClick={() => handleSort("grade")}
@@ -166,6 +201,31 @@ export default function StudentList({ students, onAssignGrade, onRefetch }: Stud
                 )}
               </TableCell>
               <TableCell className="text-center">
+                <Button
+                  variant={student.examenFinalEnabled ? "default" : "outline"}
+                  size="sm"
+                  className="gap-1.5"
+                  disabled={togglingExamenId === student.id}
+                  onClick={async () => {
+                    setTogglingExamenId(student.id);
+                    await onToggleExamenFinal(student.id, !student.examenFinalEnabled);
+                    setTogglingExamenId(null);
+                  }}
+                >
+                  {student.examenFinalEnabled ? (
+                    <>
+                      <Unlock className="w-3.5 h-3.5" />
+                      Habilitado
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="w-3.5 h-3.5" />
+                      Bloqueado
+                    </>
+                  )}
+                </Button>
+              </TableCell>
+              <TableCell className="text-center">
                 {student.finalGrade !== null ? (
                   <Badge
                     variant={student.finalGrade >= 70 ? "default" : "secondary"}
@@ -196,6 +256,16 @@ export default function StudentList({ students, onAssignGrade, onRefetch }: Stud
                     title="Editar calificación"
                   >
                     <Pencil className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-green-600 hover:text-green-700"
+                    onClick={() => handleSendTestWhatsApp(student)}
+                    disabled={sendingWhatsAppId === student.id || !student.phoneNumber}
+                    title={student.phoneNumber ? "Enviar WhatsApp de prueba" : "Sin número de WhatsApp"}
+                  >
+                    <MessageCircle className="w-4 h-4" />
                   </Button>
                   <Button
                     variant="ghost"

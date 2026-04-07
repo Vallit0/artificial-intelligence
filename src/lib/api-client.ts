@@ -10,6 +10,7 @@ export interface ApiUser {
   id: string;
   email: string;
   fullName?: string;
+  examenFinalEnabled?: boolean;
 }
 
 class ApiClient {
@@ -75,6 +76,10 @@ class ApiClient {
 
   async post<T>(path: string, body?: unknown): Promise<T> {
     return this.request<T>('POST', path, body);
+  }
+
+  async put<T>(path: string, body?: unknown): Promise<T> {
+    return this.request<T>('PUT', path, body);
   }
 
   async patch<T>(path: string, body?: unknown): Promise<T> {

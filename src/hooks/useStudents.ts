@@ -22,6 +22,8 @@ export interface Student {
   averageScore: number | null;
   finalGrade: number | null;
   gradedAt: string | null;
+  examenFinalEnabled: boolean;
+  phoneNumber: string | null;
 }
 
 interface UseStudentsReturn {
@@ -30,6 +32,7 @@ interface UseStudentsReturn {
   error: string | null;
   refetch: () => Promise<void>;
   assignGrade: (userId: string, grade: number, notes?: string) => Promise<boolean>;
+  toggleExamenFinal: (userId: string, enabled: boolean) => Promise<boolean>;
 }
 
 export const useStudents = (): UseStudentsReturn => {
@@ -55,6 +58,8 @@ export const useStudents = (): UseStudentsReturn => {
         averageScore: s.averageScore,
         finalGrade: s.finalGrade,
         gradedAt: s.createdAt, // TODO: add gradeUpdatedAt to API
+        examenFinalEnabled: s.examenFinalEnabled ?? false,
+        phoneNumber: s.phoneNumber ?? null,
       }));
 
       setStudents(studentsWithData);
@@ -86,9 +91,20 @@ export const useStudents = (): UseStudentsReturn => {
     }
   };
 
+  const toggleExamenFinal = async (userId: string, enabled: boolean): Promise<boolean> => {
+    try {
+      await api.patch(`/api/admin/users/${userId}/examen-final`, { enabled });
+      await fetchStudents();
+      return true;
+    } catch (err) {
+      console.error("Error toggling examen final:", err);
+      return false;
+    }
+  };
+
   useEffect(() => {
     fetchStudents();
   }, [fetchStudents]);
 
-  return { students, isLoading, error, refetch: fetchStudents, assignGrade };
+  return { students, isLoading, error, refetch: fetchStudents, assignGrade, toggleExamenFinal };
 };

@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Target, Phone, LogOut, TrendingUp, Users, Settings, BookOpen } from "lucide-react";
+import { Target, Phone, LogOut, TrendingUp, Users, Settings, BookOpen, CalendarDays, Lock } from "lucide-react";
 import logoSenoriales from "@/assets/logo-senoriales.png";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -20,9 +20,12 @@ const LeftSidebar = () => {
     { icon: Users, label: "Prospeccion", href: "/prospecting" },
     { icon: Phone, label: "Llamada", href: "/practice" },
     { icon: BookOpen, label: "Legado de Vida", href: "/legado" },
-    { icon: Target, label: "Evaluacion", href: "/quests" },
+    { icon: Lock, label: "Examen Final", href: "/quests" },
     { icon: TrendingUp, label: "Mi Progreso", href: "/progress" },
-    ...(isAdmin ? [{ icon: Settings, label: "Admin", href: "/admin" }] : []),
+    ...(isAdmin ? [
+      { icon: CalendarDays, label: "Coach Center", href: "/coach-center" },
+      { icon: Settings, label: "Admin", href: "/admin" },
+    ] : []),
   ];
 
   const handleLogout = async () => {

@@ -1,14 +1,15 @@
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, GraduationCap, AlertTriangle, Mic, MicOff, Phone } from "lucide-react";
+import { ArrowLeft, GraduationCap, AlertTriangle, Lock, Mic, MicOff, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useElevenLabsConversation } from "@/hooks/useElevenLabsConversation";
+import { useAuth } from "@/hooks/useAuth";
 import LiveTranscript from "@/components/LiveTranscript";
 import VoiceOrb from "@/components/VoiceOrb";
 import { useToast } from "@/hooks/use-toast";
 import LeftSidebar from "@/components/scenarios/LeftSidebar";
- import MobileNavigation from "@/components/MobileNavigation";
+import MobileNavigation from "@/components/MobileNavigation";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface TranscriptMessage {
@@ -21,8 +22,11 @@ interface TranscriptMessage {
 export default function ExamenFinal() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [hasStarted, setHasStarted] = useState(false);
   const [transcriptMessages, setTranscriptMessages] = useState<TranscriptMessage[]>([]);
+
+  const isLocked = !user?.examenFinalEnabled;
 
   const handleTranscript = useCallback((text: string, isUser: boolean) => {
     setTranscriptMessages((prev) => [
@@ -99,7 +103,33 @@ export default function ExamenFinal() {
               </div>
             </div>
 
-            {!hasStarted ? (
+            {isLocked ? (
+              /* Locked State */
+              <Card className="border-muted">
+                <CardHeader className="text-center">
+                  <div className="mx-auto w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-4">
+                    <Lock className="h-10 w-10 text-muted-foreground" />
+                  </div>
+                  <CardTitle className="text-2xl">Examen Final Bloqueado</CardTitle>
+                  <CardDescription className="text-base max-w-lg mx-auto">
+                    Tu examen final aún no ha sido habilitado. Contacta a tu instructor o administrador
+                    para que te habilite el acceso cuando estés listo.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col items-center gap-4">
+                  <div className="bg-muted/50 rounded-lg p-4 w-full max-w-md">
+                    <h3 className="font-semibold mb-2 text-center">Mientras tanto...</h3>
+                    <p className="text-sm text-muted-foreground text-center">
+                      Sigue practicando con los escenarios de prospección y llamadas para prepararte
+                      para tu evaluación final.
+                    </p>
+                  </div>
+                  <Button variant="outline" onClick={() => navigate("/practice")}>
+                    Ir a Practicar
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : !hasStarted ? (
               /* Instructions Card */
               <Card className="border-primary/20">
                 <CardHeader className="text-center">

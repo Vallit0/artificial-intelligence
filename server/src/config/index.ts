@@ -43,6 +43,12 @@ export const config = {
     model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
   },
 
+  // WHAPI (WhatsApp)
+  whapi: {
+    apiUrl: process.env.WHAPI_API_URL || 'https://gate.whapi.cloud',
+    token: process.env.WHAPI_TOKEN || '3IvtbOMYP5PDhA6OLTLw4JUj2wXKaLq7',
+  },
+
   // Resend (email service)
   resendApiKey: process.env.RESEND_API_KEY || '',
   resendFromEmail: process.env.RESEND_FROM_EMAIL || 'Señoriales <onboarding@resend.dev>',
@@ -52,17 +58,32 @@ export const config = {
 export function validateConfig(): void {
   const required = ['jwtSecret'];
   const missing = required.filter(key => !config[key as keyof typeof config]);
-  
+
   if (missing.length > 0) {
     console.warn(`⚠️ Missing config: ${missing.join(', ')}`);
   }
-  
-  if (config.jwtSecret === 'change-this-in-production' && config.isProduction) {
-    throw new Error('❌ JWT_SECRET must be set in production');
+
+  if (config.isProduction) {
+    if (config.jwtSecret === 'change-this-in-production') {
+      throw new Error('❌ JWT_SECRET must be set in production');
+    }
+    if (config.jwtSecret.length < 8) {
+      console.warn('⚠️ JWT_SECRET is very short - consider using a longer secret');
+    }
+    if (config.corsOrigin === '*') {
+      console.warn('⚠️ CORS_ORIGIN is set to * in production - consider restricting');
+    }
+    if (!config.appUrl.startsWith('https://')) {
+      console.warn('⚠️ APP_URL should use HTTPS in production');
+    }
   }
-  
+
   if (!config.elevenlabs.apiKey) {
     console.warn('⚠️ ELEVENLABS_API_KEY not set - voice features disabled');
+  }
+
+  if (!config.whapi.token) {
+    console.warn('⚠️ WHAPI_TOKEN not set - WhatsApp features disabled');
   }
 }
 
