@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useMemo, forwardRef } from "react";
+import { useState, useCallback, useRef, useMemo, forwardRef, useEffect } from "react";
 import { ChevronLeft, ChevronRight, BookOpen, X, Play, Pause, Volume2 } from "lucide-react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
@@ -36,8 +36,26 @@ const LegadoDeVida = () => {
   const [opened, setOpened] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [headerIndex, setHeaderIndex] = useState(0);
+  const [headerVisible, setHeaderVisible] = useState(true);
   const bookRef = useRef<any>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const headerTexts = [
+    { title: "El Legado de Vida", subtitle: "Documento oficial del Legado de Vida" },
+    { title: "Practica cómo entregar", subtitle: "el Legado de Vida" },
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setHeaderVisible(false);
+      setTimeout(() => {
+        setHeaderIndex((prev) => (prev + 1) % headerTexts.length);
+        setHeaderVisible(true);
+      }, 600);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
 
   const maxSpread = Math.min(900, window.innerWidth - 100);
   const pageWidth = Math.round(maxSpread / 2);
@@ -107,15 +125,28 @@ const LegadoDeVida = () => {
 
       <main className="lg:ml-60 min-h-screen flex flex-col animate-fade-in">
         {/* Header */}
-        <div className="px-4 py-6">
-          <div className="max-w-3xl mx-auto">
-            <div className="flex items-center gap-3 mb-2">
-              <BookOpen className="w-8 h-8 text-primary" />
-              <h1 className="text-3xl font-bold text-foreground">El Legado de Vida</h1>
+        <div className="px-4 py-8">
+          <div className="max-w-3xl mx-auto text-center animate-fade-in">
+            <div
+              className="transition-all duration-500 ease-in-out"
+              style={{
+                opacity: headerVisible ? 1 : 0,
+                transform: headerVisible ? "translateY(0)" : "translateY(8px)",
+              }}
+            >
+              <div className="flex items-center justify-center gap-3 mb-2">
+                <BookOpen className="w-8 h-8 text-primary" />
+                <h1
+                  className="text-3xl font-bold text-foreground"
+                  style={{ fontFamily: "'Nunito', 'DIN Rounded', -apple-system, sans-serif" }}
+                >
+                  {headerTexts[headerIndex].title}
+                </h1>
+              </div>
+              <p className="text-muted-foreground">
+                {headerTexts[headerIndex].subtitle}
+              </p>
             </div>
-            <p className="text-muted-foreground">
-              Documento oficial del Legado de Vida.
-            </p>
           </div>
         </div>
 

@@ -10,6 +10,8 @@ interface AICompanionOrbProps {
   /** Trigger wink → dissolve transition */
   winkOut?: boolean;
   onWinkOutDone?: () => void;
+  /** Override the orb gradient (CSS linear-gradient value) */
+  gradient?: string;
   className?: string;
 }
 
@@ -20,6 +22,7 @@ const AICompanionOrb = ({
   energy = false,
   winkOut = false,
   onWinkOutDone,
+  gradient,
   className,
 }: AICompanionOrbProps) => {
   const [winkPhase, setWinkPhase] = useState<"idle" | "wink" | "dissolve" | "gone">("idle");
@@ -33,6 +36,9 @@ const AICompanionOrb = ({
         onWinkOutDone?.();
       }, 1200);
       return () => { clearTimeout(t1); clearTimeout(t2); };
+    }
+    if (!winkOut && winkPhase !== "idle") {
+      setWinkPhase("idle");
     }
   }, [winkOut, winkPhase, onWinkOutDone]);
 
@@ -88,9 +94,11 @@ const AICompanionOrb = ({
           style={{
             width: orbPx,
             height: orbPx,
-            background: speaking
-              ? "radial-gradient(circle at 40% 40%, #22d3ee, #a855f7, #06d6a0, #3b82f6)"
-              : "radial-gradient(circle at 40% 40%, #06b6d4, #7c3aed, #059669)",
+            background: gradient
+              ? gradient
+              : speaking
+                ? "radial-gradient(circle at 40% 40%, #22d3ee, #a855f7, #06d6a0, #3b82f6)"
+                : "radial-gradient(circle at 40% 40%, #06b6d4, #7c3aed, #059669)",
             backgroundSize: "300% 300%",
             animation: speaking
               ? "energyGradient 0.8s ease-in-out infinite, energyPulseCore 0.3s ease-in-out infinite alternate"
@@ -174,6 +182,7 @@ const AICompanionOrb = ({
         transition: "transform 0.5s ease, opacity 0.5s ease",
         transform: isDissolving ? "scale(0.3)" : "scale(1)",
         opacity: isDissolving ? 0 : 1,
+        animation: isDissolving ? "none" : "orbHeadBob 6s ease-in-out infinite",
       }}
     >
       {/* Aurora glow */}
@@ -208,7 +217,7 @@ const AICompanionOrb = ({
         style={{
           width: orbPx,
           height: orbPx,
-          background: "linear-gradient(135deg, #06b6d4 0%, #8b5cf6 40%, #06d6a0 70%, #0ea5e9 100%)",
+          background: gradient || "linear-gradient(135deg, #06b6d4 0%, #8b5cf6 40%, #06d6a0 70%, #0ea5e9 100%)",
           backgroundSize: "200% 200%",
           animation: speaking
             ? "orbGradient 1.5s ease-in-out infinite, orbBounce 0.6s ease-in-out infinite"
@@ -248,7 +257,7 @@ const AICompanionOrb = ({
           top: "50%",
           left: "50%",
           transform: "translate(-50%, -55%)",
-          animation: isWinking ? "none" : "orbLookAround 10s ease-in-out infinite",
+          animation: isWinking ? "none" : "orbLookAround 7s ease-in-out infinite",
         }}
       >
         {/* Left eye */}
@@ -259,7 +268,7 @@ const AICompanionOrb = ({
             borderRadius: `${eyeW}px`,
             backgroundColor: "white",
             boxShadow: `0 0 ${s.eye * 1.5}px rgba(255,255,255,0.9)`,
-            animation: isWinking ? "orbWinkLeft 0.6s ease-in-out forwards" : "orbExpressive 6s ease-in-out infinite",
+            animation: isWinking ? "orbWinkLeft 0.6s ease-in-out forwards" : "orbExpressive 5s ease-in-out infinite",
           }}
         />
         {/* Right eye */}
@@ -270,8 +279,8 @@ const AICompanionOrb = ({
             borderRadius: `${eyeW}px`,
             backgroundColor: "white",
             boxShadow: `0 0 ${s.eye * 1.5}px rgba(255,255,255,0.9)`,
-            animation: isWinking ? "orbWinkRight 0.6s ease-in-out forwards" : "orbExpressive 6s ease-in-out infinite",
-            animationDelay: isWinking ? "0s" : "0.3s",
+            animation: isWinking ? "orbWinkRight 0.6s ease-in-out forwards" : "orbExpressive 5s ease-in-out infinite",
+            animationDelay: isWinking ? "0s" : "0.2s",
           }}
         />
       </div>
@@ -290,22 +299,30 @@ const AICompanionOrb = ({
           50% { transform: scale(1.06); }
         }
         @keyframes orbExpressive {
-          0%, 15% { transform: scaleY(1) scaleX(1); }
-          17% { transform: scaleY(0.06) scaleX(1.2); }
-          19%, 30% { transform: scaleY(1) scaleX(1); }
-          45%, 50% { transform: scaleY(1.15) scaleX(0.9); }
-          55%, 70% { transform: scaleY(1) scaleX(1); }
-          80%, 83% { transform: scaleY(0.7) scaleX(1.15); }
-          86%, 100% { transform: scaleY(1) scaleX(1); }
+          0%, 10% { transform: scaleY(1) scaleX(1); }
+          12% { transform: scaleY(0.05) scaleX(1.3); }
+          14%, 22% { transform: scaleY(1) scaleX(1); }
+          24% { transform: scaleY(0.05) scaleX(1.3); }
+          26%, 38% { transform: scaleY(1) scaleX(1); }
+          42%, 48% { transform: scaleY(1.25) scaleX(0.85); }
+          52%, 62% { transform: scaleY(1) scaleX(1); }
+          66%, 70% { transform: scaleY(0.6) scaleX(1.2); }
+          74%, 85% { transform: scaleY(1) scaleX(1); }
+          88% { transform: scaleY(0.05) scaleX(1.3); }
+          91%, 100% { transform: scaleY(1) scaleX(1); }
         }
         @keyframes orbLookAround {
-          0%, 15% { transform: translate(-50%, -55%) translate(0, 0); }
-          20%, 30% { transform: translate(-50%, -55%) translate(${s.eye * 1.5}px, -${s.eye * 0.5}px); }
-          35%, 45% { transform: translate(-50%, -55%) translate(0, 0); }
-          50%, 58% { transform: translate(-50%, -55%) translate(-${s.eye * 1.5}px, ${s.eye * 0.3}px); }
-          63%, 72% { transform: translate(-50%, -55%) translate(0, -${s.eye * 0.6}px); }
-          77%, 85% { transform: translate(-50%, -55%) translate(${s.eye * 0.8}px, ${s.eye * 0.4}px); }
-          90%, 100% { transform: translate(-50%, -55%) translate(0, 0); }
+          0%, 8% { transform: translate(-50%, -55%) translate(0, 0); }
+          12%, 18% { transform: translate(-50%, -55%) translate(${s.eye * 3}px, -${s.eye * 1}px); }
+          22%, 26% { transform: translate(-50%, -55%) translate(0, 0); }
+          30%, 36% { transform: translate(-50%, -55%) translate(-${s.eye * 3.5}px, ${s.eye * 0.5}px); }
+          40%, 44% { transform: translate(-50%, -55%) translate(0, 0); }
+          48%, 54% { transform: translate(-50%, -55%) translate(${s.eye * 1.5}px, -${s.eye * 1.5}px); }
+          58%, 62% { transform: translate(-50%, -55%) translate(-${s.eye * 2}px, -${s.eye * 1}px); }
+          66%, 72% { transform: translate(-50%, -55%) translate(${s.eye * 2.5}px, ${s.eye * 1}px); }
+          76%, 82% { transform: translate(-50%, -55%) translate(0, ${s.eye * 0.8}px); }
+          86%, 92% { transform: translate(-50%, -55%) translate(-${s.eye * 1}px, 0); }
+          96%, 100% { transform: translate(-50%, -55%) translate(0, 0); }
         }
         @keyframes orbWinkLeft {
           0% { transform: scaleY(1); }
@@ -321,6 +338,15 @@ const AICompanionOrb = ({
         @keyframes orbAuroraRotate {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
+        }
+        @keyframes orbHeadBob {
+          0%, 10% { transform: translate(0, 0) rotate(0deg); }
+          15%, 25% { transform: translate(3px, -5px) rotate(3deg); }
+          30%, 40% { transform: translate(-2px, 2px) rotate(-2deg); }
+          45%, 55% { transform: translate(4px, -3px) rotate(4deg); }
+          60%, 70% { transform: translate(-4px, -2px) rotate(-3deg); }
+          75%, 85% { transform: translate(2px, 4px) rotate(2deg); }
+          90%, 100% { transform: translate(0, 0) rotate(0deg); }
         }
       `}</style>
     </div>

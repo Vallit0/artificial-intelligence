@@ -1,27 +1,18 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { LogIn, Users, Loader2, Wifi, WifiOff, MessageSquare, ArrowLeft } from "lucide-react";
+import { LogIn, Users, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
 import { useElevenLabsConversation } from "@/hooks/useElevenLabsConversation";
 import { FreeTierTimer } from "@/components/practice/FreeTierTimer";
 import { TimeUpModal } from "@/components/practice/TimeUpModal";
-import VoiceOrb from "@/components/VoiceOrb";
+import AICompanionOrb from "@/components/AICompanionOrb";
 import VoiceControls from "@/components/VoiceControls";
-import LiveTranscript from "@/components/LiveTranscript";
-import MobileTranscriptSheet from "@/components/practice/MobileTranscriptSheet";
 import logoSenoriales from "@/assets/logo-senoriales.png";
 
 type SessionState = "idle" | "connecting" | "active" | "timeup";
-
-interface TranscriptMessage {
-  id: string;
-  text: string;
-  isUser: boolean;
-  timestamp: Date;
-}
 
 const FREE_TIER_MAX_SECONDS = 180; // 3 minutes
 
@@ -32,17 +23,44 @@ const Landing = () => {
   const [isHovered, setIsHovered] = useState(false);
   const [sessionState, setSessionState] = useState<SessionState>("idle");
   const [connectionStatus, setConnectionStatus] = useState("");
-  const [transcriptMessages, setTranscriptMessages] = useState<TranscriptMessage[]>([]);
-  const [showTranscript, setShowTranscript] = useState(true);
   const [fadeOut, setFadeOut] = useState(false);
+  const [orbGrowing, setOrbGrowing] = useState(false);
+  const [orbWinking, setOrbWinking] = useState(false);
+  const [textIndex, setTextIndex] = useState(0);
+  const [textVisible, setTextVisible] = useState(true);
+  const [headerText, setHeaderText] = useState("");
+
+  const rotatingTexts = [
+    { title: "Álvaro", subtitle: "Tu coach personal de ventas" },
+    { title: "Centro de Negocios Digital", subtitle: "Señoriales Corporación de Servicio" },
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTextVisible(false);
+      setTimeout(() => {
+        setTextIndex((prev) => (prev + 1) % rotatingTexts.length);
+        setTextVisible(true);
+      }, 600);
+    }, 3500);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const fullText = "Centro de Negocios Señoriales";
+    let i = 0;
+    const timer = setInterval(() => {
+      i++;
+      setHeaderText(fullText.slice(0, i));
+      if (i >= fullText.length) clearInterval(timer);
+    }, 60);
+    return () => clearInterval(timer);
+  }, []);
 
   const isInSession = sessionState !== "idle";
 
-  const handleTranscript = useCallback((text: string, isUser: boolean) => {
-    setTranscriptMessages((prev) => [
-      ...prev,
-      { id: `${Date.now()}-${Math.random()}`, text, isUser, timestamp: new Date() },
-    ]);
+  const handleTranscript = useCallback((_text: string, _isUser: boolean) => {
+    // transcript not displayed on landing
   }, []);
 
   const handleError = useCallback((error: string) => {
@@ -77,20 +95,32 @@ const Landing = () => {
   }
 
   const handleStart = () => {
-    setFadeOut(true);
-    // Wait for fade out animation, then connect
+    // Step 1: grow the orb
+    setOrbGrowing(true);
+
+    // Step 2: wink after it grows
+    setTimeout(() => setOrbWinking(true), 400);
+
+    // Step 3: fade out the rest and connect
+    setTimeout(() => {
+      setFadeOut(true);
+    }, 800);
+
     setTimeout(() => {
       setSessionState("connecting");
       setConnectionStatus("Solicitando permisos de micrófono...");
-      setTranscriptMessages([]);
+      setOrbGrowing(false);
+      setOrbWinking(false);
       connect();
-    }, 500);
+    }, 1400);
   };
 
   const handleEndCall = () => {
     disconnect();
     setSessionState("idle");
     setFadeOut(false);
+    setOrbGrowing(false);
+    setOrbWinking(false);
     setConnectionStatus("");
     setTranscriptMessages([]);
   };
@@ -123,9 +153,12 @@ const Landing = () => {
           <img
             src={logoSenoriales}
             alt="Centro de Negocios Señoriales"
-            className="h-14 w-auto"
+            className="h-10 w-auto"
           />
-          <span className="text-xl font-bold text-foreground">Centro de Negocios Señoriales</span>
+          <span className="text-xl font-bold text-foreground">
+            {headerText}
+            <span className="inline-block w-[2px] h-5 bg-foreground ml-0.5 animate-pulse" />
+          </span>
         </div>
         {!isInSession ? (
           <Button
@@ -156,7 +189,7 @@ const Landing = () => {
         {/* ===== LANDING CONTENT (fades out) ===== */}
         {!isInSession && (
           <>
-            {/* Logo button */}
+            {/* Orb hero + logo */}
             <button
               onClick={handleStart}
               onMouseEnter={() => setIsHovered(true)}
@@ -166,46 +199,36 @@ const Landing = () => {
                 fadeOut ? "opacity-0 scale-95 pointer-events-none" : "opacity-100 scale-100 animate-fade-in"
               )}
             >
-              <div className="relative w-80 h-80 flex flex-col items-center justify-center">
-                {/* Circle */}
-                <div
-                  className={cn(
-                    "absolute rounded-full bg-turquoise transition-all duration-300 ease-in-out",
-                    "w-48 h-48 top-4",
-                    isHovered && "scale-110 shadow-lg"
-                  )}
-                />
-                {/* Triangle */}
-                <div
-                  className="absolute transition-all duration-300 ease-in-out"
-                  style={{ top: "70px" }}
-                >
-                  <svg
-                    width="200"
-                    height="140"
-                    viewBox="0 0 180 130"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                    className={cn("transition-transform duration-300", isHovered && "translate-y-1")}
-                  >
-                    <path d="M90 10 L175 125 L5 125 Z" className="fill-turquoise" />
-                    <path d="M90 10 L5 125" stroke="hsl(var(--background))" strokeWidth="6" />
-                    <path d="M90 10 L175 125" stroke="hsl(var(--background))" strokeWidth="6" />
-                  </svg>
-                </div>
-                {/* Text */}
-                <div className="absolute bottom-0 text-center">
-                  <h2
-                    className="text-2xl font-extrabold text-foreground mb-1"
-                    style={{ fontFamily: "'Nunito', 'DIN Rounded', -apple-system, sans-serif" }}
-                  >
-                    Álvaro
-                  </h2>
-                  <p className="text-sm font-semibold text-muted-foreground">
-                    Tu coach personal de ventas
-                  </p>
-                </div>
+              <div
+                className="transition-transform duration-500 ease-out"
+                style={{
+                  transform: orbGrowing ? "scale(1.5)" : isHovered ? "scale(1.05)" : "scale(1)",
+                }}
+              >
+                <AICompanionOrb size="lg" listening={false} speaking={false} winkOut={orbWinking} onWinkOutDone={() => {}} />
               </div>
+              <div
+                className="text-center mt-4 h-16 flex flex-col justify-center transition-all duration-500 ease-in-out"
+                style={{
+                  opacity: textVisible ? 1 : 0,
+                  transform: textVisible ? "translateY(0)" : "translateY(8px)",
+                }}
+              >
+                <h2
+                  className="text-2xl font-extrabold text-foreground mb-1"
+                  style={{ fontFamily: "'Nunito', 'DIN Rounded', -apple-system, sans-serif" }}
+                >
+                  {rotatingTexts[textIndex].title}
+                </h2>
+                <p className="text-sm font-semibold text-muted-foreground">
+                  {rotatingTexts[textIndex].subtitle}
+                </p>
+              </div>
+              <img
+                src={logoSenoriales}
+                alt="Centro de Negocios Señoriales"
+                className="h-12 w-auto mt-4 opacity-80"
+              />
             </button>
 
             {/* CTA Buttons */}
@@ -278,7 +301,7 @@ const Landing = () => {
                   Hablando con Álvaro (Coach)
                 </p>
 
-                <VoiceOrb isSpeaking={isSpeaking} isListening={!isMuted} size={isMobile ? "sm" : "lg"} />
+                <AICompanionOrb energy speaking={isSpeaking} listening={!isMuted} size={isMobile ? "sm" : "lg"} />
 
                 <VoiceControls
                   isMuted={isMuted}
@@ -291,61 +314,11 @@ const Landing = () => {
             {/* Connecting state - show loading orb */}
             {sessionState === "connecting" && (
               <div className="flex flex-col items-center gap-4">
-                <VoiceOrb isSpeaking={false} isListening={false} size={isMobile ? "sm" : "lg"} />
+                <AICompanionOrb energy speaking={false} listening={false} size={isMobile ? "sm" : "lg"} />
                 <p className="text-sm text-muted-foreground">Preparando sesión...</p>
               </div>
             )}
 
-            {/* Desktop transcript panel */}
-            {!isMobile && sessionState === "active" && showTranscript && (
-              <div className="w-80 h-[400px] bg-card border-2 border-border rounded-2xl flex flex-col shadow-[0_4px_0_0_hsl(var(--border))] absolute right-6 top-1/2 -translate-y-1/2">
-                <div className="flex items-center justify-between px-4 py-3 border-b-2 border-border">
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                    <span
-                      className="text-sm font-bold uppercase tracking-wider"
-                      style={{ fontFamily: "'Nunito', 'DIN Rounded', -apple-system, sans-serif" }}
-                    >
-                      Transcripción
-                    </span>
-                    {isConnected && (
-                      <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                    )}
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-6 p-0 font-bold"
-                    onClick={() => setShowTranscript(false)}
-                  >
-                    ×
-                  </Button>
-                </div>
-                <div className="flex-1 overflow-hidden">
-                  <LiveTranscript messages={transcriptMessages} />
-                </div>
-              </div>
-            )}
-
-            {/* Desktop toggle transcript button */}
-            {!isMobile && sessionState === "active" && !showTranscript && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="absolute bottom-6 right-6 rounded-xl font-bold uppercase tracking-wider border-2 z-10"
-                onClick={() => setShowTranscript(true)}
-              >
-                <MessageSquare className="h-4 w-4 mr-2" />
-                Mostrar transcripción
-              </Button>
-            )}
-
-            {/* Mobile transcript sheet */}
-            {isMobile && sessionState === "active" && (
-              <MobileTranscriptSheet
-                messages={transcriptMessages}
-              />
-            )}
           </div>
         )}
       </main>

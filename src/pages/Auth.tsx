@@ -5,8 +5,9 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { z } from "zod";
-import { X, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { ForgotPasswordModal } from "@/components/auth/ForgotPasswordModal";
+import AICompanionOrb from "@/components/AICompanionOrb";
 
 const authSchema = z.object({
   email: z.string().email("Email inválido"),
@@ -24,7 +25,7 @@ const Auth = () => {
   const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { signIn, signUp, isAdmin } = useAuth();
+  const { signIn, signUp } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,9 +46,6 @@ const Auth = () => {
       if (isLogin) {
         await signIn(email, password);
         toast({ title: "¡Bienvenido!", description: "Sesión iniciada correctamente" });
-        // After signIn resolves, isAdmin in context is updated but this
-        // component still has the stale closure. Navigate to /practice;
-        // the App routing will handle admin redirects.
         navigate("/practice");
       } else {
         await signUp(email, password, fullName || undefined);
@@ -72,112 +70,119 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-muted flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between p-4">
         <button
           onClick={() => navigate("/")}
           className="p-2 text-muted-foreground hover:text-foreground transition-colors"
         >
-          <X className="w-6 h-6" />
+          <ArrowLeft className="w-5 h-5" />
         </button>
         <Button
-          variant="outline"
+          variant="ghost"
           size="sm"
           onClick={() => setIsLogin(!isLogin)}
-          className="border-primary text-primary hover:bg-primary hover:text-primary-foreground font-bold uppercase tracking-wider"
+          className="font-bold text-sm text-muted-foreground hover:text-foreground"
         >
-          {isLogin ? "Registrarse" : "Iniciar Sesión"}
+          {isLogin ? "Crear cuenta" : "Ya tengo cuenta"}
         </Button>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex items-center justify-center px-6">
-        <div className="w-full max-w-sm">
-          <h1 className="text-2xl font-bold text-foreground text-center mb-8">
-            {isLogin ? "Iniciar Sesión" : "Crear Cuenta"}
-          </h1>
+      <div className="flex-1 flex flex-col items-center justify-center px-6 pb-8">
+        {/* Orb */}
+        <div className="mb-6">
+          <AICompanionOrb size="md" listening={false} speaking={false} />
+        </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && (
-              <div className="relative">
-                <Input
-                  type="text"
-                  placeholder="Nombre completo"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="h-14 bg-card border-2 border-border rounded-2xl px-4 text-foreground placeholder:text-muted-foreground focus:border-primary"
-                />
-              </div>
-            )}
+        <h1
+          className="text-2xl font-extrabold text-foreground text-center mb-1"
+          style={{ fontFamily: "'Nunito', 'DIN Rounded', -apple-system, sans-serif" }}
+        >
+          {isLogin ? "Bienvenido de vuelta" : "Crea tu cuenta"}
+        </h1>
+        <p className="text-sm text-muted-foreground text-center mb-8">
+          {isLogin
+            ? "Ingresa tus credenciales para continuar"
+            : "Empieza a entrenar con Álvaro"}
+        </p>
 
-            <div className="relative">
-              <Input
-                type="email"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="h-14 bg-card border-2 border-border rounded-2xl px-4 text-foreground placeholder:text-muted-foreground focus:border-primary"
-              />
-            </div>
+        <form onSubmit={handleSubmit} className="space-y-3 w-full max-w-sm">
+          {!isLogin && (
+            <Input
+              type="text"
+              placeholder="Nombre completo"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              className="h-13 bg-card border border-border rounded-xl px-4 text-foreground placeholder:text-muted-foreground focus:border-primary transition-colors"
+            />
+          )}
 
-            <div className="relative">
-              <Input
-                type={showPassword ? "text" : "password"}
-                placeholder="Contraseña"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={4}
-                className="h-14 bg-card border-2 border-border rounded-2xl px-4 pr-24 text-foreground placeholder:text-muted-foreground focus:border-primary"
-              />
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+          <Input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="h-13 bg-card border border-border rounded-xl px-4 text-foreground placeholder:text-muted-foreground focus:border-primary transition-colors"
+          />
+
+          <div className="relative">
+            <Input
+              type={showPassword ? "text" : "password"}
+              placeholder="Contraseña"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={4}
+              className="h-13 bg-card border border-border rounded-xl px-4 pr-24 text-foreground placeholder:text-muted-foreground focus:border-primary transition-colors"
+            />
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="p-1 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+              {isLogin && (
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="p-1 text-muted-foreground hover:text-foreground transition-colors"
+                  onClick={() => setForgotPasswordOpen(true)}
+                  className="text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
                 >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  ¿Olvidaste?
                 </button>
-                {isLogin && (
-                  <button
-                    type="button"
-                    onClick={() => setForgotPasswordOpen(true)}
-                    className="text-xs font-bold text-muted-foreground hover:text-primary uppercase tracking-wider"
-                  >
-                    ¿Olvidaste?
-                  </button>
-                )}
-              </div>
+              )}
             </div>
+          </div>
 
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full h-14 rounded-2xl text-base font-bold uppercase tracking-wider shadow-[0_4px_0_0_hsl(var(--primary)/0.4)] hover:shadow-[0_2px_0_0_hsl(var(--primary)/0.4)] hover:translate-y-[2px] transition-all"
-            >
-              {loading
-                ? "Cargando..."
-                : isLogin
-                ? "Iniciar Sesión"
-                : "Registrarse"}
-            </Button>
-          </form>
+          <Button
+            type="submit"
+            disabled={loading}
+            className="w-full h-13 rounded-xl text-base font-bold tracking-wide transition-all active:scale-[0.98]"
+          >
+            {loading
+              ? "Cargando..."
+              : isLogin
+              ? "Iniciar Sesión"
+              : "Registrarse"}
+          </Button>
+        </form>
 
-          {/* Terms */}
-          <p className="text-center text-xs text-muted-foreground mt-8">
-            Al iniciar sesión aceptas nuestros{" "}
-            <a href="#" className="text-primary hover:underline">
-              Términos
-            </a>{" "}
-            y{" "}
-            <a href="#" className="text-primary hover:underline">
-              Política de Privacidad
-            </a>
-            .
-          </p>
-        </div>
+        {/* Terms */}
+        <p className="text-center text-xs text-muted-foreground mt-6 max-w-xs">
+          Al continuar aceptas nuestros{" "}
+          <a href="#" className="text-primary hover:underline">
+            Términos
+          </a>{" "}
+          y{" "}
+          <a href="#" className="text-primary hover:underline">
+            Política de Privacidad
+          </a>
+          .
+        </p>
       </div>
 
       <ForgotPasswordModal

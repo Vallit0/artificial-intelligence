@@ -1,5 +1,4 @@
-import { Mic, MicOff, PhoneOff } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Mic, MicOff, Phone } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface VoiceControlsProps {
@@ -18,44 +17,33 @@ const VoiceControls = ({
   className,
 }: VoiceControlsProps) => {
   return (
-    <div
-      className={cn(
-        "flex items-center gap-4 sm:gap-8 px-4 sm:px-8 py-3 sm:py-4 bg-card border-2 border-border rounded-full shadow-[0_4px_0_0_hsl(var(--border))]",
-        className
-      )}
-    >
-      <Button
-        variant={isMuted ? "destructive" : "ghost"}
-        size="lg"
+    <div className={cn("flex items-center gap-8", className)}>
+      {/* Mute button */}
+      <button
         onClick={onMuteToggle}
         disabled={disabled}
         className={cn(
-          "flex items-center gap-2 rounded-full h-12 w-12 sm:h-auto sm:w-auto sm:px-4",
-          isMuted 
-            ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" 
-            : "text-foreground hover:bg-accent/20"
+          "flex items-center justify-center w-16 h-16 rounded-full transition-all duration-200 active:scale-90",
+          isMuted
+            ? "bg-muted-foreground/20 text-foreground ring-2 ring-foreground/30"
+            : "bg-muted text-foreground hover:bg-muted-foreground/15"
         )}
       >
         {isMuted ? (
-          <MicOff className="w-5 h-5 sm:w-5 sm:h-5" />
+          <MicOff className="w-7 h-7" />
         ) : (
-          <Mic className="w-5 h-5 sm:w-5 sm:h-5" />
+          <Mic className="w-7 h-7" />
         )}
-        <span className="font-bold hidden sm:inline">
-          {isMuted ? "Activar Mic" : "Silenciar"}
-        </span>
-      </Button>
+      </button>
 
-      <Button
-        variant="ghost"
-        size="lg"
+      {/* End call button */}
+      <button
         onClick={onEndCall}
         disabled={disabled}
-        className="flex items-center gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 rounded-full h-12 w-12 sm:h-auto sm:w-auto sm:px-4"
+        className="flex items-center justify-center w-16 h-16 rounded-full bg-red-500 text-white hover:bg-red-600 active:scale-90 transition-all duration-200 shadow-[0_4px_16px_rgba(239,68,68,0.4)]"
       >
-        <PhoneOff className="w-5 h-5" />
-        <span className="font-bold hidden sm:inline">Terminar</span>
-      </Button>
+        <Phone className="w-7 h-7 rotate-[135deg]" />
+      </button>
     </div>
   );
 };

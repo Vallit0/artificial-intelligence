@@ -43,7 +43,8 @@
       "Bash(xargs grep:*)",
       "Bash(sed:*)",
       "Bash(sed -i 's/<main className=\"lg:ml-60 min-h-screen flex flex-col\">/<main className=\"lg:ml-60 min-h-screen flex flex-col animate-fade-in\">/g' src/pages/Prospecting.tsx src/pages/LegadoDeVida.tsx)",
-      "Bash(sed -i 's/<main className=\"lg:ml-60 min-h-screen\">/<main className=\"lg:ml-60 min-h-screen animate-fade-in\">/g' src/pages/Progress.tsx src/pages/Quests.tsx src/pages/Admin.tsx src/pages/ExamenFinal.tsx)"
+      "Bash(sed -i 's/<main className=\"lg:ml-60 min-h-screen\">/<main className=\"lg:ml-60 min-h-screen animate-fade-in\">/g' src/pages/Progress.tsx src/pages/Quests.tsx src/pages/Admin.tsx src/pages/ExamenFinal.tsx)",
+      "Bash(findstr :3000)"
     ]
   }
 }

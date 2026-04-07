@@ -1,8 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import VoiceOrb from "@/components/VoiceOrb";
 import VoiceControls from "@/components/VoiceControls";
-import LogoMorph from "@/components/LogoMorph";
+import logoSenoriales from "@/assets/logo-senoriales.png";
 import EvaluationScreen from "@/components/practice/EvaluationScreen";
 import PracticeTimer from "@/components/PracticeTimer";
 import UserMenu from "@/components/UserMenu";
@@ -26,9 +25,9 @@ import {
   MessageSquare,
   Sparkles,
   Swords,
-  ShieldAlert,
-  Zap,
-  Handshake,
+  UserCheck,
+  MapPin,
+  BookOpen,
   GraduationCap,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -67,58 +66,65 @@ interface AgentSuggestion {
   label: string;
   description: string;
   icon: React.ElementType;
-  agentSecretName?: string; // maps to ElevenLabs agent env var
+  agentSecretName?: string;
   color: string;
+  orbGradient: string;
 }
 
 const agentSuggestions: AgentSuggestion[] = [
   {
     id: "coach",
     label: "Coach",
-    description: "Feedback y tips en tiempo real sobre tu tecnica de ventas",
+    description: "Feedback y tips en tiempo real sobre tu técnica de ventas",
     icon: Sparkles,
-    agentSecretName: undefined, // uses default ELEVENLABS_AGENT_ID
+    agentSecretName: undefined,
     color: "from-primary/15 to-primary/5 border-primary/30 hover:border-primary/60",
+    orbGradient: "linear-gradient(135deg, #7c3aed 0%, #a855f7 40%, #c084fc 70%, #7c3aed 100%)",
   },
   {
-    id: "roleplay",
-    label: "Role-Play",
-    description: "Practica una llamada completa con un cliente simulado",
+    id: "roleplay-cliente",
+    label: "Role-Play Cliente",
+    description: "Simula ser el cliente y practica cómo responder a un asesor",
     icon: Swords,
     agentSecretName: "ELEVENLABS_AGENT_ROLEPLAY",
     color: "from-secondary/15 to-secondary/5 border-secondary/30 hover:border-secondary/60",
+    orbGradient: "linear-gradient(135deg, #06b6d4 0%, #22d3ee 40%, #67e8f9 70%, #06b6d4 100%)",
   },
   {
-    id: "objeciones",
-    label: "Objeciones",
-    description: "Entrena respuestas a las objeciones mas comunes de clientes",
-    icon: ShieldAlert,
+    id: "roleplay-asesor",
+    label: "Role-Play Asesor",
+    description: "Practica tu rol como asesor con un cliente simulado",
+    icon: UserCheck,
     agentSecretName: "ELEVENLABS_AGENT_OBJECIONES",
     color: "from-orange-500/15 to-orange-500/5 border-orange-500/30 hover:border-orange-500/60",
+    orbGradient: "linear-gradient(135deg, #ea580c 0%, #f97316 40%, #fb923c 70%, #ea580c 100%)",
   },
   {
-    id: "pitch",
-    label: "Pitch Express",
-    description: "Practica tu elevator pitch en 60 segundos",
-    icon: Zap,
+    id: "prospeccion-fisica",
+    label: "Prospección Física",
+    description: "Entrena técnicas de prospección presencial y en campo",
+    icon: MapPin,
     agentSecretName: "ELEVENLABS_AGENT_PITCH",
-    color: "from-yellow-500/15 to-yellow-500/5 border-yellow-500/30 hover:border-yellow-500/60",
+    color: "from-emerald-500/15 to-emerald-500/5 border-emerald-500/30 hover:border-emerald-500/60",
+    orbGradient: "linear-gradient(135deg, #059669 0%, #10b981 40%, #34d399 70%, #059669 100%)",
   },
   {
-    id: "cierre",
-    label: "Cierre",
-    description: "Enfocate en tecnicas de cierre y compromiso",
-    icon: Handshake,
+    id: "legado-vida",
+    label: "Legado de Vida",
+    description: "Practica cómo presentar y entregar el Legado de Vida",
+    icon: BookOpen,
     agentSecretName: "ELEVENLABS_AGENT_CIERRE",
-    color: "from-emerald-500/15 to-emerald-500/5 border-emerald-500/30 hover:border-emerald-500/60",
+    color: "from-yellow-500/15 to-yellow-500/5 border-yellow-500/30 hover:border-yellow-500/60",
+    orbGradient: "linear-gradient(135deg, #ca8a04 0%, #eab308 40%, #facc15 70%, #ca8a04 100%)",
   },
   {
     id: "examen",
     label: "Examen Final",
-    description: "Evaluacion completa de todas tus habilidades",
+    description: "Evaluación completa de todas tus habilidades",
     icon: GraduationCap,
     agentSecretName: "ELEVENLABS_AGENT_EXAMEN_FINAL",
     color: "from-rose-500/15 to-rose-500/5 border-rose-500/30 hover:border-rose-500/60",
+    orbGradient: "linear-gradient(135deg, #e11d48 0%, #f43f5e 40%, #fb7185 70%, #e11d48 100%)",
   },
 ];
 
@@ -139,6 +145,8 @@ const Practice = () => {
 
   const [sessionState, setSessionState] = useState<SessionState>("idle");
   const [orbWinking, setOrbWinking] = useState(false);
+  const [orbGrowing, setOrbGrowing] = useState(false);
+  const [orbGradient, setOrbGradient] = useState<string | undefined>(undefined);
   const [scenario, setScenario] = useState<Scenario | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<string>("");
   const [transcriptMessages, setTranscriptMessages] = useState<TranscriptMessage[]>([]);
@@ -151,6 +159,9 @@ const Practice = () => {
   const { savePracticeSession } = usePracticeSessions();
   const { playStartCall, playConnected, playEndCall } = useCallSounds();
 
+  const [greetingIndex, setGreetingIndex] = useState(0);
+  const [greetingVisible, setGreetingVisible] = useState(true);
+
   // Resolve which agent secret to use
   const activeAgentSecret = selectedAgent?.agentSecretName || agentParam || undefined;
 
@@ -158,10 +169,26 @@ const Practice = () => {
   const getGreeting = () => {
     const hour = new Date().getHours();
     const name = user?.fullName?.split(" ")[0] || "";
-    if (hour < 12) return name ? `Buenos dias, ${name}` : "Buenos dias";
+    if (hour < 12) return name ? `Buenos días, ${name}` : "Buenos días";
     if (hour < 18) return name ? `Buenas tardes, ${name}` : "Buenas tardes";
     return name ? `Buenas noches, ${name}` : "Buenas noches";
   };
+
+  const greetingTexts = [
+    { title: getGreeting(), subtitle: "Elige cómo quieres practicar hoy" },
+    { title: "¿Qué deseas practicar hoy?", subtitle: "Selecciona un modo para empezar" },
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setGreetingVisible(false);
+      setTimeout(() => {
+        setGreetingIndex((prev) => (prev + 1) % 2);
+        setGreetingVisible(true);
+      }, 600);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Fetch scenario details
   useEffect(() => {
@@ -239,22 +266,33 @@ const Practice = () => {
 
   const handleStart = async (agent?: AgentSuggestion) => {
     if (agent) setSelectedAgent(agent);
-    setOrbWinking(true);
 
-    setSessionState("connecting");
-    setConnectionStatus("Solicitando permisos de microfono...");
-    setTranscriptMessages([]);
-    setAgentEvaluation(null);
+    // Step 1: change orb color and grow
+    if (agent) setOrbGradient(agent.orbGradient);
+    setOrbGrowing(true);
 
-    if (user && scenarioId) {
-      const sessionId = await savePracticeSession(0, undefined, scenarioId);
-      setCurrentSessionId(sessionId);
-    } else {
-      setCurrentSessionId(null);
-    }
+    // Step 2: wink after it grows
+    setTimeout(() => setOrbWinking(true), 400);
 
-    playStartCall();
-    connect();
+    // Step 3: after wink completes, transition to connecting
+    setTimeout(async () => {
+      setSessionState("connecting");
+      setConnectionStatus("Solicitando permisos de microfono...");
+      setTranscriptMessages([]);
+      setAgentEvaluation(null);
+
+      if (user && scenarioId) {
+        const sessionId = await savePracticeSession(0, undefined, scenarioId);
+        setCurrentSessionId(sessionId);
+      } else {
+        setCurrentSessionId(null);
+      }
+
+      playStartCall();
+      connect();
+      setOrbGrowing(false);
+      setOrbWinking(false);
+    }, 1200);
   };
 
   const handleEndCall = async () => {
@@ -308,6 +346,7 @@ const Practice = () => {
     if (isConnected) disconnect();
     if (sessionState === "idle" && selectedAgent) {
       setSelectedAgent(null);
+      setOrbGradient(undefined);
       return;
     }
     navigate(user ? "/scenarios" : "/");
@@ -377,25 +416,42 @@ const Practice = () => {
         {sessionState === "idle" && !selectedAgent && (
           <div className="flex flex-col items-center w-full max-w-2xl px-4 animate-fade-in">
             {/* AI Companion Orb */}
-            <div className="mb-6">
+            <div
+              className="mb-4 transition-transform duration-500 ease-out"
+              style={{ transform: orbGrowing ? "scale(1.6)" : "scale(1)" }}
+            >
               <AICompanionOrb
                 size="md"
                 listening
                 winkOut={orbWinking}
-                onWinkOutDone={() => setOrbWinking(false)}
+                onWinkOutDone={() => {}}
+                gradient={orbGradient}
               />
             </div>
+            <img
+              src={logoSenoriales}
+              alt="Centro de Negocios Señoriales"
+              className="h-10 w-auto mb-4 opacity-80"
+            />
 
             {/* Greeting */}
-            <h1
-              className="text-2xl sm:text-3xl font-bold text-foreground mb-2 text-center"
-              style={{ fontFamily: "'Nunito', 'DIN Rounded', -apple-system, sans-serif" }}
+            <div
+              className="text-center mb-8 h-16 flex flex-col justify-center transition-all duration-500 ease-in-out"
+              style={{
+                opacity: greetingVisible ? 1 : 0,
+                transform: greetingVisible ? "translateY(0)" : "translateY(8px)",
+              }}
             >
-              {getGreeting()}
-            </h1>
-            <p className="text-muted-foreground mb-8 text-center text-sm sm:text-base">
-              Elige como quieres practicar hoy
-            </p>
+              <h1
+                className="text-2xl sm:text-3xl font-bold text-foreground mb-1"
+                style={{ fontFamily: "'Nunito', 'DIN Rounded', -apple-system, sans-serif" }}
+              >
+                {greetingTexts[greetingIndex].title}
+              </h1>
+              <p className="text-muted-foreground text-sm sm:text-base">
+                {greetingTexts[greetingIndex].subtitle}
+              </p>
+            </div>
 
             {/* Suggestion bubbles grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full mb-8">
@@ -405,7 +461,7 @@ const Practice = () => {
                   <button
                     key={agent.id}
                     onClick={() => handleStart(agent)}
-                    className={`group flex items-start gap-3 p-4 rounded-2xl border-2 bg-gradient-to-br text-left transition-all duration-200 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98] ${agent.color}`}
+                    className={`group flex items-start gap-3 p-4 rounded-2xl border-2 bg-gradient-to-br text-left transition-all duration-200 hover:scale-[1.03] hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.97] shadow-md ${agent.color}`}
                   >
                     <div className="shrink-0 mt-0.5">
                       <Icon className="w-5 h-5 text-foreground/70 group-hover:text-foreground transition-colors" />
@@ -443,7 +499,7 @@ const Practice = () => {
           </div>
         )}
 
-        {/* ===== CONNECTING STATE: Logo morph ===== */}
+        {/* ===== CONNECTING STATE: Orb ===== */}
         {(sessionState === "connecting" || (sessionState === "idle" && selectedAgent)) && (
           <div className="flex flex-col items-center gap-4 animate-fade-in">
             {selectedAgent && (
@@ -452,11 +508,18 @@ const Practice = () => {
                 <span className="text-sm font-bold text-foreground">{selectedAgent.label}</span>
               </div>
             )}
-            <LogoMorph
-              onClick={() => handleStart(selectedAgent || undefined)}
-              isConnecting={isConnecting || sessionState === "connecting"}
-              isMorphing={sessionState === "connecting"}
-            />
+            <button onClick={() => handleStart(selectedAgent || undefined)}>
+              <AICompanionOrb
+                size="lg"
+                energy
+                speaking={false}
+                listening={isConnecting}
+                gradient={selectedAgent?.orbGradient}
+              />
+            </button>
+            {sessionState === "connecting" && (
+              <p className="text-sm text-muted-foreground">Preparando sesión...</p>
+            )}
           </div>
         )}
 
@@ -481,7 +544,7 @@ const Practice = () => {
 
               {!isFreeTier && <PracticeTimer totalSeconds={sessionTime} />}
 
-              <AICompanionOrb speaking={isSpeaking} listening={!isMuted} size={isMobile ? "sm" : "lg"} energy />
+              <AICompanionOrb speaking={isSpeaking} listening={!isMuted} size={isMobile ? "sm" : "lg"} energy gradient={selectedAgent?.orbGradient} />
 
               <VoiceControls isMuted={isMuted} onMuteToggle={toggleMute} onEndCall={handleEndCall} />
             </div>
