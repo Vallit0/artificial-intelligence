@@ -198,26 +198,43 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     setIsMuted(false);
 
     try {
+      // Check for secure context (getUserMedia requires HTTPS or localhost)
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error("Tu navegador no soporta acceso al micrófono. Asegúrate de usar HTTPS.");
+      }
+
       // Use pre-fetched URL if available, otherwise fetch in parallel with mic
       const hasPreFetched = !!prefetchedUrlRef.current;
 
-      const [rawStream, data] = await Promise.all([
-        navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: { ideal: true },
-            noiseSuppression: { ideal: true },
-            autoGainControl: { ideal: true },
-            sampleRate: { ideal: 16000 },
-            channelCount: { ideal: 1 },
-          },
-        }),
-        hasPreFetched
-          ? Promise.resolve({ signedUrl: prefetchedUrlRef.current! })
-          : api.post<{ signedUrl: string; scenario?: any }>("/api/elevenlabs/conversation-token", {
-              scenarioId: scenarioIdRef.current,
-              agentSecretName: agentSecretNameRef.current,
-            }),
-      ]);
+      let rawStream: MediaStream;
+      let data: { signedUrl: string; scenario?: any };
+
+      try {
+        [rawStream, data] = await Promise.all([
+          navigator.mediaDevices.getUserMedia({
+            audio: {
+              echoCancellation: { ideal: true },
+              noiseSuppression: { ideal: true },
+              autoGainControl: { ideal: true },
+              sampleRate: { ideal: 16000 },
+              channelCount: { ideal: 1 },
+            },
+          }),
+          hasPreFetched
+            ? Promise.resolve({ signedUrl: prefetchedUrlRef.current! })
+            : api.post<{ signedUrl: string; scenario?: any }>("/api/elevenlabs/conversation-token", {
+                scenarioId: scenarioIdRef.current,
+                agentSecretName: agentSecretNameRef.current,
+              }),
+        ]);
+      } catch (micError: any) {
+        if (micError?.name === "NotAllowedError") {
+          throw new Error("Permiso de micrófono denegado. Habilita el acceso al micrófono en tu navegador.");
+        } else if (micError?.name === "NotFoundError") {
+          throw new Error("No se encontró un micrófono. Conecta un micrófono e intenta de nuevo.");
+        }
+        throw micError;
+      }
 
       rawStreamRef.current = rawStream;
       prefetchedUrlRef.current = null; // Consumed
