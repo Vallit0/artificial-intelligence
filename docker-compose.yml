@@ -13,7 +13,7 @@ services:
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://senoriales:senoriales@db:5432/senoriales
-      - CORS_ORIGIN=http://localhost,http://localhost:3000
+      - CORS_ORIGIN=http://localhost,http://localhost:3000,http://10.4.6.4,http://10.4.6.4:3000
       - JWT_SECRET=${JWT_SECRET:-senoriales-dev-secret-change-in-prod}
     ports:
       - "3000:3000"

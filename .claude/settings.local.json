@@ -54,7 +54,9 @@
       "WebFetch(domain:community.n8n.io)",
       "WebFetch(domain:imannajafi.com)",
       "Bash(ls -la /c/Users/estua/Documents/ai/senoriales-48152aa7/.env*)",
-      "Bash(npx shadcn@latest add tabs --yes)"
+      "Bash(npx shadcn@latest add tabs --yes)",
+      "Bash(docker exec senoriales-48152aa7-app-1:*)",
+      "Bash(MSYS_NO_PATHCONV=1 docker exec senoriales-48152aa7-app-1:*)"
     ]
   }
 }
