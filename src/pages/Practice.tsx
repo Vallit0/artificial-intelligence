@@ -162,9 +162,29 @@ const Practice = () => {
 
   const [greetingIndex, setGreetingIndex] = useState(0);
   const [greetingVisible, setGreetingVisible] = useState(true);
+  const [pokeBubble, setPokeBubble] = useState<string | null>(null);
+  const pokeBubbleTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Resolve which agent secret to use
   const activeAgentSecret = selectedAgent?.agentSecretName || agentParam || undefined;
+
+  const pokeMessages = [
+    "¡Oye!",
+    "¡No me toques!",
+    "¡Ya basta!",
+    "¡Estoy trabajando!",
+    "¡Déjame en paz!",
+    "¡Auch!",
+    "¡Para ya!",
+    "¡Qué molesto!",
+  ];
+
+  const handleOrbPoke = () => {
+    if (pokeBubbleTimeout.current) clearTimeout(pokeBubbleTimeout.current);
+    const msg = pokeMessages[Math.floor(Math.random() * pokeMessages.length)];
+    setPokeBubble(msg);
+    pokeBubbleTimeout.current = setTimeout(() => setPokeBubble(null), 1800);
+  };
 
   // Personalized greeting based on time of day
   const getGreeting = () => {
@@ -417,17 +437,33 @@ const Practice = () => {
         {sessionState === "idle" && !selectedAgent && (
           <div className="flex flex-col items-center w-full max-w-2xl px-4 animate-fade-in">
             {/* AI Companion Orb */}
-            <div
-              className="mb-4 transition-transform duration-500 ease-out"
-              style={{ transform: orbGrowing ? "scale(1.6)" : "scale(1)" }}
-            >
-              <AICompanionOrb
-                size="md"
-                listening
-                winkOut={orbWinking}
-                onWinkOutDone={() => {}}
-                gradient={orbGradient}
-              />
+            <div className="relative mb-4">
+              {/* Poke speech bubble */}
+              {pokeBubble && (
+                <div
+                  className="absolute -top-10 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 bg-white dark:bg-zinc-800 text-foreground text-xs font-bold rounded-xl shadow-lg whitespace-nowrap animate-fade-in"
+                  style={{
+                    animation: "pokeBubbleIn 0.2s ease-out",
+                  }}
+                >
+                  {pokeBubble}
+                  <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white dark:bg-zinc-800 rotate-45 shadow-sm" />
+                </div>
+              )}
+              <div
+                className="transition-transform duration-500 ease-out"
+                style={{ transform: orbGrowing ? "scale(1.6)" : "scale(1)" }}
+              >
+                <AICompanionOrb
+                  size="md"
+                  listening
+                  winkOut={orbWinking}
+                  onWinkOutDone={() => {}}
+                  gradient={orbGradient}
+                  interactive
+                  onPoke={handleOrbPoke}
+                />
+              </div>
             </div>
             <img
               src={logoSenoriales}
@@ -555,6 +591,13 @@ const Practice = () => {
       </div>
 
       {user && <MobileNavigation />}
+
+      <style>{`
+        @keyframes pokeBubbleIn {
+          0% { opacity: 0; transform: translateX(-50%) translateY(6px) scale(0.8); }
+          100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+        }
+      `}</style>
     </div>
   );
 };

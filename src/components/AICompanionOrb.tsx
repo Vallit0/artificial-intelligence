@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { cn } from "@/lib/utils";
 
 interface AICompanionOrbProps {
@@ -12,6 +12,10 @@ interface AICompanionOrbProps {
   onWinkOutDone?: () => void;
   /** Override the orb gradient (CSS linear-gradient value) */
   gradient?: string;
+  /** Enable interactive behaviors (mouse tracking, poke) */
+  interactive?: boolean;
+  /** Callback when user pokes the orb */
+  onPoke?: () => void;
   className?: string;
 }
 
@@ -23,9 +27,73 @@ const AICompanionOrb = ({
   winkOut = false,
   onWinkOutDone,
   gradient,
+  interactive = false,
+  onPoke,
   className,
 }: AICompanionOrbProps) => {
   const [winkPhase, setWinkPhase] = useState<"idle" | "wink" | "dissolve" | "gone">("idle");
+  const [pokeState, setPokeState] = useState<"idle" | "annoyed" | "angry">("idle");
+  const [pokeCount, setPokeCount] = useState(0);
+  const [eyeOffset, setEyeOffset] = useState({ x: 0, y: 0 });
+  const [mouseNear, setMouseNear] = useState(false);
+  const orbRef = useRef<HTMLDivElement>(null);
+  const pokeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Mouse tracking for eyes
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!orbRef.current || !interactive || energy) return;
+    const rect = orbRef.current.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const dx = e.clientX - centerX;
+    const dy = e.clientY - centerY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const maxDist = 300;
+
+    if (dist < maxDist) {
+      setMouseNear(true);
+      const maxOffset = 6;
+      const factor = Math.min(dist / maxDist, 1);
+      const angle = Math.atan2(dy, dx);
+      setEyeOffset({
+        x: Math.cos(angle) * maxOffset * factor,
+        y: Math.sin(angle) * maxOffset * factor,
+      });
+    } else {
+      setMouseNear(false);
+      setEyeOffset({ x: 0, y: 0 });
+    }
+  }, [interactive, energy]);
+
+  useEffect(() => {
+    if (!interactive || energy) return;
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, [interactive, energy, handleMouseMove]);
+
+  // Poke handler
+  const handlePoke = useCallback(() => {
+    if (!interactive || energy || winkPhase !== "idle") return;
+    const newCount = pokeCount + 1;
+    setPokeCount(newCount);
+    onPoke?.();
+
+    if (pokeTimeoutRef.current) clearTimeout(pokeTimeoutRef.current);
+
+    if (newCount >= 3) {
+      setPokeState("angry");
+      pokeTimeoutRef.current = setTimeout(() => {
+        setPokeState("idle");
+        setPokeCount(0);
+      }, 2000);
+    } else {
+      setPokeState("annoyed");
+      pokeTimeoutRef.current = setTimeout(() => {
+        setPokeState("idle");
+        setPokeCount(0);
+      }, 1500);
+    }
+  }, [interactive, energy, winkPhase, pokeCount, onPoke]);
 
   useEffect(() => {
     if (winkOut && winkPhase === "idle") {
@@ -173,16 +241,28 @@ const AICompanionOrb = ({
   const isWinking = winkPhase === "wink";
   const isDissolving = winkPhase === "dissolve";
 
+  const pokeShake = pokeState === "angry"
+    ? "orbAngryShake 0.15s ease-in-out infinite"
+    : pokeState === "annoyed"
+      ? "orbAnnoyedShake 0.3s ease-in-out"
+      : "";
+
   return (
     <div
-      className={cn("relative flex items-center justify-center", className)}
+      ref={orbRef}
+      className={cn("relative flex items-center justify-center", interactive && !energy ? "cursor-pointer" : "", className)}
+      onClick={handlePoke}
       style={{
         width: s.orb * s.glowScale,
         height: s.orb * s.glowScale,
         transition: "transform 0.5s ease, opacity 0.5s ease",
         transform: isDissolving ? "scale(0.3)" : "scale(1)",
         opacity: isDissolving ? 0 : 1,
-        animation: isDissolving ? "none" : "orbHeadBob 6s ease-in-out infinite",
+        animation: isDissolving
+          ? "none"
+          : pokeShake
+            ? pokeShake
+            : "orbHeadBob 6s ease-in-out infinite",
       }}
     >
       {/* Aurora glow */}
@@ -256,34 +336,65 @@ const AICompanionOrb = ({
           gap: s.eyeGap,
           top: "50%",
           left: "50%",
-          transform: "translate(-50%, -55%)",
-          animation: isWinking ? "none" : "orbLookAround 7s ease-in-out infinite",
+          transform: mouseNear && pokeState === "idle"
+            ? `translate(calc(-50% + ${eyeOffset.x}px), calc(-55% + ${eyeOffset.y}px))`
+            : "translate(-50%, -55%)",
+          transition: mouseNear ? "transform 0.1s ease-out" : "transform 0.3s ease-out",
+          animation: isWinking || mouseNear || pokeState !== "idle" ? "none" : "orbLookAround 7s ease-in-out infinite",
         }}
       >
         {/* Left eye */}
         <div
           style={{
             width: eyeW,
-            height: eyeH,
+            height: pokeState === "angry" ? eyeH * 0.3 : pokeState === "annoyed" ? eyeH * 0.5 : eyeH,
             borderRadius: `${eyeW}px`,
             backgroundColor: "white",
             boxShadow: `0 0 ${s.eye * 1.5}px rgba(255,255,255,0.9)`,
-            animation: isWinking ? "orbWinkLeft 0.6s ease-in-out forwards" : "orbExpressive 5s ease-in-out infinite",
+            animation: isWinking
+              ? "orbWinkLeft 0.6s ease-in-out forwards"
+              : pokeState !== "idle"
+                ? "none"
+                : "orbExpressive 5s ease-in-out infinite",
+            transition: "height 0.15s ease-out",
           }}
         />
         {/* Right eye */}
         <div
           style={{
             width: eyeW,
-            height: eyeH,
+            height: pokeState === "angry" ? eyeH * 0.3 : pokeState === "annoyed" ? eyeH * 0.5 : eyeH,
             borderRadius: `${eyeW}px`,
             backgroundColor: "white",
             boxShadow: `0 0 ${s.eye * 1.5}px rgba(255,255,255,0.9)`,
-            animation: isWinking ? "orbWinkRight 0.6s ease-in-out forwards" : "orbExpressive 5s ease-in-out infinite",
+            animation: isWinking
+              ? "orbWinkRight 0.6s ease-in-out forwards"
+              : pokeState !== "idle"
+                ? "none"
+                : "orbExpressive 5s ease-in-out infinite",
             animationDelay: isWinking ? "0s" : "0.2s",
+            transition: "height 0.15s ease-out",
           }}
         />
       </div>
+
+      {/* Annoyed mouth - shows when poked */}
+      {pokeState !== "idle" && (
+        <div
+          className="absolute pointer-events-none"
+          style={{
+            top: "62%",
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: pokeState === "angry" ? s.eye * 3 : s.eye * 2,
+            height: pokeState === "angry" ? s.eye * 0.8 : s.eye * 0.5,
+            borderRadius: "0 0 50% 50%",
+            backgroundColor: "white",
+            boxShadow: `0 0 ${s.eye}px rgba(255,255,255,0.8)`,
+            transition: "all 0.15s ease-out",
+          }}
+        />
+      )}
 
       <style>{`
         @keyframes orbGradient {
@@ -347,6 +458,19 @@ const AICompanionOrb = ({
           60%, 70% { transform: translate(-4px, -2px) rotate(-3deg); }
           75%, 85% { transform: translate(2px, 4px) rotate(2deg); }
           90%, 100% { transform: translate(0, 0) rotate(0deg); }
+        }
+        @keyframes orbAnnoyedShake {
+          0% { transform: translateX(0); }
+          20% { transform: translateX(-4px) rotate(-2deg); }
+          40% { transform: translateX(4px) rotate(2deg); }
+          60% { transform: translateX(-3px) rotate(-1deg); }
+          80% { transform: translateX(2px) rotate(1deg); }
+          100% { transform: translateX(0) rotate(0deg); }
+        }
+        @keyframes orbAngryShake {
+          0% { transform: translateX(-3px) rotate(-3deg); }
+          50% { transform: translateX(3px) rotate(3deg); }
+          100% { transform: translateX(-3px) rotate(-3deg); }
         }
       `}</style>
     </div>
