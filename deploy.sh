@@ -7,7 +7,7 @@
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
-BRANCH="main"
+BRANCH="develop"
 LOG_FILE="$REPO_DIR/deploy.log"
 COMPOSE_FILE="$REPO_DIR/docker-compose.yml"
 
