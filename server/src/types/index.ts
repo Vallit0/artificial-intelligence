@@ -11,7 +11,8 @@ import { Request } from 'express';
 export interface User {
   id: string;
   email: string;
-  fullName?: string;
+  firstName?: string;
+  lastName?: string;
   avatarUrl?: string;
   emailVerified: boolean;
   createdAt: Date;
@@ -21,7 +22,8 @@ export interface User {
 export interface AuthUser {
   id: string;
   email: string;
-  fullName?: string;
+  firstName?: string;
+  lastName?: string;
   examenFinalEnabled?: boolean;
 }
 

@@ -43,7 +43,7 @@ export default function StudentDetailModal({
       <DialogContent className="max-w-2xl max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="text-xl">
-            {student.full_name || "Sin nombre"}
+            {[student.first_name, student.last_name].filter(Boolean).join(' ') || "Sin nombre"}
           </DialogTitle>
           <p className="text-sm text-muted-foreground">{student.email}</p>
         </DialogHeader>

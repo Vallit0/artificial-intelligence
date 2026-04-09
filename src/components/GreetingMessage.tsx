@@ -19,12 +19,9 @@ const GreetingMessage = () => {
   }, []);
 
   const userName = useMemo(() => {
-    // Try to get name from user metadata first
-    const fullName = user?.user_metadata?.full_name;
-    if (fullName) {
-      return fullName.split(" ")[0]; // Get first name only
+    if (user?.firstName) {
+      return user.firstName;
     }
-    // Fallback to email prefix
     if (user?.email) {
       return user.email.split("@")[0];
     }

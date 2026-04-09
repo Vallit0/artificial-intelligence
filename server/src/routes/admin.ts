@@ -82,6 +82,20 @@ adminRouter.patch('/users/:id/password', async (req: AuthRequest, res: Response,
 });
 
 // ============================================
+// PATCH /api/admin/users/:id/name
+// ============================================
+adminRouter.patch('/users/:id/name', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { firstName, lastName } = req.body;
+    const result = await adminService.updateUserName(req.params.id, firstName, lastName);
+    res.json({ success: true, ...result });
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
+// ============================================
 // PATCH /api/admin/users/:id/examen-final
 // ============================================
 adminRouter.patch('/users/:id/examen-final', async (req: AuthRequest, res: Response, next: NextFunction) => {

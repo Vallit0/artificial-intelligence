@@ -19,7 +19,8 @@ const Auth = () => {
   const [isLogin, setIsLogin] = useState(searchParams.get("mode") !== "signup");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [loading, setLoading] = useState(false);
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
@@ -49,7 +50,7 @@ const Auth = () => {
         toast({ title: "¡Bienvenido!", description: "Sesión iniciada correctamente" });
         navigate("/practice");
       } else {
-        await signUp(email, password, fullName || undefined, phoneNumber || undefined);
+        await signUp(email, password, firstName || undefined, lastName || undefined, phoneNumber || undefined);
         toast({
           title: "¡Cuenta creada!",
           description: "Ya puedes comenzar a practicar",
@@ -114,9 +115,16 @@ const Auth = () => {
             <>
               <Input
                 type="text"
-                placeholder="Nombre completo"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Nombre"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                className="h-13 bg-card border border-border rounded-xl px-4 text-foreground placeholder:text-muted-foreground focus:border-primary transition-colors"
+              />
+              <Input
+                type="text"
+                placeholder="Apellido"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
                 className="h-13 bg-card border border-border rounded-xl px-4 text-foreground placeholder:text-muted-foreground focus:border-primary transition-colors"
               />
               <div className="relative">

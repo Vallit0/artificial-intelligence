@@ -9,7 +9,8 @@ import { BadRequestError, ConflictError, NotFoundError } from '../utils/errors.j
 interface CreateUserInput {
   email: string;
   password: string;
-  fullName?: string;
+  firstName?: string;
+  lastName?: string;
   phoneNumber?: string;
   isAdmin?: boolean;
 }
@@ -17,7 +18,8 @@ interface CreateUserInput {
 interface StudentWithStats {
   id: string;
   email: string;
-  fullName: string | null;
+  firstName: string | null;
+  lastName: string | null;
   createdAt: Date;
   totalSessions: number;
   totalDuration: number;
@@ -54,7 +56,8 @@ export async function createUser(input: CreateUserInput) {
     data: {
       email,
       passwordHash,
-      fullName: input.fullName?.trim() || null,
+      firstName: input.firstName?.trim() || null,
+      lastName: input.lastName?.trim() || null,
       phoneNumber: input.phoneNumber?.trim() || null,
       emailVerified: true,
       roles: {
@@ -110,7 +113,8 @@ export async function bulkCreateUsers(users: CreateUserInput[]) {
         data: {
           email,
           passwordHash,
-          fullName: userData.fullName?.trim() || null,
+          firstName: userData.firstName?.trim() || null,
+          lastName: userData.lastName?.trim() || null,
           emailVerified: true,
           roles: { create: { role: 'learner' } },
         },
@@ -190,7 +194,8 @@ export async function getAllStudents(): Promise<StudentWithStats[]> {
     return {
       id: user.id,
       email: user.email,
-      fullName: user.fullName,
+      firstName: user.firstName,
+      lastName: user.lastName,
       createdAt: user.createdAt,
       totalSessions: sessions.length,
       totalDuration: sessions.reduce((acc, s) => acc + s.durationSeconds, 0),
@@ -226,6 +231,22 @@ export async function upsertGrade(userId: string, gradedBy: string, finalGrade: 
     where: { userId },
     create: { userId, gradedBy, finalGrade, notes: notes || null },
     update: { gradedBy, finalGrade, notes: notes || null },
+  });
+}
+
+export async function updateUserName(userId: string, firstName?: string, lastName?: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) {
+    throw new NotFoundError('Usuario no encontrado');
+  }
+
+  return prisma.user.update({
+    where: { id: userId },
+    data: {
+      firstName: firstName?.trim() || null,
+      lastName: lastName?.trim() || null,
+    },
+    select: { id: true, firstName: true, lastName: true },
   });
 }
 

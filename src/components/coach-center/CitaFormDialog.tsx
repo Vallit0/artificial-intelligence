@@ -110,7 +110,7 @@ export default function CitaFormDialog({
     setForm((f) => ({
       ...f,
       asesorId: userId,
-      asesorName: u?.fullName || u?.email || "",
+      asesorName: [u?.firstName, u?.lastName].filter(Boolean).join(' ') || u?.email || "",
     }));
   };
 
@@ -166,7 +166,7 @@ export default function CitaFormDialog({
               <SelectContent>
                 {users.map((u) => (
                   <SelectItem key={u.id} value={u.id}>
-                    {u.fullName || u.email}
+                    {[u.firstName, u.lastName].filter(Boolean).join(' ') || u.email}
                   </SelectItem>
                 ))}
               </SelectContent>

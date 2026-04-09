@@ -40,7 +40,7 @@ export default function CertificateModal({
       });
 
       const link = document.createElement("a");
-      link.download = `certificado-${student.full_name || "estudiante"}.png`;
+      link.download = `certificado-${[student.first_name, student.last_name].filter(Boolean).join(' ') || "estudiante"}.png`;
       link.href = canvas.toDataURL("image/png");
       link.click();
 
@@ -80,7 +80,7 @@ export default function CertificateModal({
       });
 
       pdf.addImage(imgData, "PNG", 0, 0, canvas.width / 2, canvas.height / 2);
-      pdf.save(`certificado-${student.full_name || "estudiante"}.pdf`);
+      pdf.save(`certificado-${[student.first_name, student.last_name].filter(Boolean).join(' ') || "estudiante"}.pdf`);
 
       toast({
         title: "Certificado descargado",
@@ -112,7 +112,7 @@ export default function CertificateModal({
         <div className="overflow-auto bg-muted p-4 rounded-lg">
           <CertificatePreview
             ref={certificateRef}
-            studentName={student.full_name || student.email || "Estudiante"}
+            studentName={[student.first_name, student.last_name].filter(Boolean).join(' ') || student.email || "Estudiante"}
             grade={student.finalGrade}
           />
         </div>

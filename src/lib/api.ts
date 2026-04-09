@@ -98,11 +98,11 @@ export const authApi = {
     return data;
   },
 
-  async signup(email: string, password: string, fullName?: string) {
+  async signup(email: string, password: string, firstName?: string, lastName?: string) {
     const response = await fetch(`${API_BASE_URL}/auth/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, fullName }),
+      body: JSON.stringify({ email, password, firstName, lastName }),
     });
 
     if (!response.ok) {

@@ -41,7 +41,7 @@ export function verifyToken(token: string): { sub: string; email?: string } | nu
 // User Authentication
 // ============================================
 
-export async function signup(email: string, password: string, fullName?: string, phoneNumber?: string): Promise<{
+export async function signup(email: string, password: string, firstName?: string, lastName?: string, phoneNumber?: string): Promise<{
   user: AuthUser;
   accessToken: string;
   refreshToken: string;
@@ -61,7 +61,8 @@ export async function signup(email: string, password: string, fullName?: string,
     data: {
       email,
       passwordHash,
-      fullName: fullName || null,
+      firstName: firstName || null,
+      lastName: lastName || null,
       phoneNumber: phoneNumber || null,
       emailVerified: true,
       roles: {
@@ -73,7 +74,8 @@ export async function signup(email: string, password: string, fullName?: string,
   const authUser: AuthUser = {
     id: user.id,
     email: user.email,
-    fullName: user.fullName || undefined,
+    firstName: user.firstName || undefined,
+    lastName: user.lastName || undefined,
     examenFinalEnabled: user.examenFinalEnabled,
   };
 
@@ -112,7 +114,8 @@ export async function login(email: string, password: string): Promise<{
   const authUser: AuthUser = {
     id: user.id,
     email: user.email,
-    fullName: user.fullName || undefined,
+    firstName: user.firstName || undefined,
+    lastName: user.lastName || undefined,
     examenFinalEnabled: user.examenFinalEnabled,
   };
 
@@ -156,7 +159,8 @@ export async function refreshAccessToken(refreshToken: string): Promise<string> 
   return generateAccessToken({
     id: user.id,
     email: user.email,
-    fullName: user.fullName || undefined,
+    firstName: user.firstName || undefined,
+    lastName: user.lastName || undefined,
   });
 }
 
@@ -178,7 +182,8 @@ export async function getUserById(userId: string): Promise<AuthUser | null> {
   return {
     id: user.id,
     email: user.email,
-    fullName: user.fullName || undefined,
+    firstName: user.firstName || undefined,
+    lastName: user.lastName || undefined,
     examenFinalEnabled: user.examenFinalEnabled,
   };
 }

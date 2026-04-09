@@ -9,7 +9,8 @@ type AuthChangeCallback = (user: ApiUser | null) => void;
 export interface ApiUser {
   id: string;
   email: string;
-  fullName?: string;
+  firstName?: string;
+  lastName?: string;
   examenFinalEnabled?: boolean;
 }
 

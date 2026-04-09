@@ -238,7 +238,8 @@ ltiRouter.post('/launch', async (req: Request, res: Response) => {
         user = await prisma.user.create({
           data: {
             email,
-            fullName: name,
+            firstName: name?.split(' ')[0] || null,
+            lastName: name?.split(' ').slice(1).join(' ') || null,
             emailVerified: true,
             roles: { create: { role: 'learner' } },
           },
@@ -266,7 +267,7 @@ ltiRouter.post('/launch', async (req: Request, res: Response) => {
     // Generate tokens
     const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
 
-    const authUser = { id: user.id, email: user.email, fullName: user.fullName || undefined };
+    const authUser = { id: user.id, email: user.email, firstName: user.firstName || undefined, lastName: user.lastName || undefined };
     const accessToken = generateAccessToken(authUser);
     const refreshToken = generateRefreshToken(authUser);
 

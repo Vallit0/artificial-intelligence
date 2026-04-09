@@ -33,7 +33,8 @@ interface BulkUploadModalProps {
 interface ParsedUser {
   email: string;
   password: string;
-  fullName?: string;
+  firstName?: string;
+  lastName?: string;
   validationError?: string;
 }
 
@@ -125,7 +126,8 @@ export default function BulkUploadModal({
         const user: ParsedUser = {
           email: parts[0].toLowerCase(),
           password: parts[1],
-          fullName: parts[2] || undefined,
+          firstName: parts[2] || undefined,
+          lastName: parts[3] || undefined,
         };
         user.validationError = validateUser(user);
         users.push(user);
@@ -214,7 +216,8 @@ export default function BulkUploadModal({
         users: validUsers.map((u) => ({
           email: u.email.trim(),
           password: u.password,
-          fullName: u.fullName?.trim(),
+          firstName: u.firstName?.trim(),
+          lastName: u.lastName?.trim(),
         }))
       });
 
@@ -253,7 +256,7 @@ export default function BulkUploadModal({
   };
 
   const downloadTemplate = () => {
-    const csvContent = "email,password,nombre_completo\nusuario1@ejemplo.com,password123,Juan Pérez\nusuario2@ejemplo.com,password456,María García";
+    const csvContent = "email,password,nombre,apellido\nusuario1@ejemplo.com,password123,Juan,Pérez\nusuario2@ejemplo.com,password456,María,García";
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -283,7 +286,7 @@ export default function BulkUploadModal({
             <Alert className="mb-4">
               <FileText className="h-4 w-4" />
               <AlertDescription>
-                El archivo CSV debe tener las columnas: <strong>email, password, nombre_completo</strong> (nombre es opcional).
+                El archivo CSV debe tener las columnas: <strong>email, password, nombre, apellido</strong> (nombre y apellido son opcionales).
                 Separador: coma (,) o punto y coma (;)
               </AlertDescription>
             </Alert>
@@ -354,8 +357,8 @@ export default function BulkUploadModal({
                   >
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-foreground truncate">{user.email || "(vacío)"}</p>
-                      {user.fullName && (
-                        <p className="text-sm text-muted-foreground truncate">{user.fullName}</p>
+                      {(user.firstName || user.lastName) && (
+                        <p className="text-sm text-muted-foreground truncate">{[user.firstName, user.lastName].filter(Boolean).join(' ')}</p>
                       )}
                       {user.validationError && (
                         <p className="text-sm text-destructive">{user.validationError}</p>

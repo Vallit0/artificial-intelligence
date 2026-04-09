@@ -220,7 +220,7 @@ export default function Admin() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-foreground truncate">
-                            {student.full_name || student.email}
+                            {[student.first_name, student.last_name].filter(Boolean).join(' ') || student.email}
                           </p>
                           <p className="text-xs text-muted-foreground">
                             {student.totalSessions} sesiones
@@ -281,7 +281,7 @@ export default function Admin() {
                     if (!searchQuery.trim()) return true;
                     const q = searchQuery.toLowerCase();
                     return (
-                      (s.full_name || "").toLowerCase().includes(q) ||
+                      [s.first_name, s.last_name].filter(Boolean).join(' ').toLowerCase().includes(q) ||
                       (s.email || "").toLowerCase().includes(q)
                     );
                   })}

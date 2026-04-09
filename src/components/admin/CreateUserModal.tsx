@@ -35,7 +35,8 @@ export default function CreateUserModal({
   const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +45,8 @@ export default function CreateUserModal({
   const resetForm = () => {
     setEmail("");
     setPassword("");
-    setFullName("");
+    setFirstName("");
+    setLastName("");
     setIsAdmin(false);
     setError(null);
     setSuccess(false);
@@ -83,7 +85,8 @@ export default function CreateUserModal({
       await api.post("/api/admin/users", {
         email: email.trim().toLowerCase(),
         password,
-        fullName: fullName.trim(),
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
         isAdmin,
       });
 
@@ -139,17 +142,31 @@ export default function CreateUserModal({
             </Alert>
           )}
 
-          <div className="space-y-2">
-            <Label htmlFor="fullName">Nombre Completo</Label>
-            <Input
-              id="fullName"
-              type="text"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Juan Pérez"
-              disabled={isSubmitting || success}
-              maxLength={100}
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="firstName">Nombre</Label>
+              <Input
+                id="firstName"
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="Juan"
+                disabled={isSubmitting || success}
+                maxLength={50}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="lastName">Apellido</Label>
+              <Input
+                id="lastName"
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder="Pérez"
+                disabled={isSubmitting || success}
+                maxLength={50}
+              />
+            </div>
           </div>
 
           <div className="space-y-2">

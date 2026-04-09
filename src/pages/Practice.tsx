@@ -85,7 +85,7 @@ const agentSuggestions: AgentSuggestion[] = [
   {
     id: "roleplay-cliente",
     label: "Role-Play Cliente",
-    description: "Simula ser el cliente y practica cómo responder a un asesor",
+    description: "Álvaro es un Cliente",
     icon: Swords,
     agentSecretName: "ELEVENLABS_AGENT_ROLEPLAY_CLIENTE",
     color: "from-secondary/15 to-secondary/5 border-secondary/30 hover:border-secondary/60",
@@ -94,7 +94,7 @@ const agentSuggestions: AgentSuggestion[] = [
   {
     id: "roleplay-asesor",
     label: "Role-Play Asesor",
-    description: "Practica tu rol como cliente con un asesor simulado",
+    description: "Álvaro es un Asesor",
     icon: UserCheck,
     agentSecretName: "ELEVENLABS_AGENT_ROLEPLAY_ASESOR",
     color: "from-orange-500/15 to-orange-500/5 border-orange-500/30 hover:border-orange-500/60",
@@ -189,7 +189,7 @@ const Practice = () => {
   // Personalized greeting based on time of day
   const getGreeting = () => {
     const hour = new Date().getHours();
-    const name = user?.fullName?.split(" ")[0] || "";
+    const name = user?.firstName || "";
     if (hour < 12) return name ? `Buenos días, ${name}` : "Buenos días";
     if (hour < 18) return name ? `Buenas tardes, ${name}` : "Buenas tardes";
     return name ? `Buenas noches, ${name}` : "Buenas noches";
@@ -258,7 +258,7 @@ const Practice = () => {
     sessionId: currentSessionId,
     agentSecretName: activeAgentSecret,
     userId: user?.id || null,
-    userName: user?.fullName || null,
+    userName: user?.firstName || null,
     onTranscript: handleTranscript,
     onEvaluation: handleEvaluation,
     onError: handleError,

@@ -40,7 +40,8 @@ model User {
   id            String   @id @default(uuid())
   email         String   @unique
   passwordHash  String?  @map("password_hash")
-  fullName      String?  @map("full_name")
+  firstName     String?  @map("first_name")
+  lastName      String?  @map("last_name")
   avatarUrl     String?  @map("avatar_url")
   phoneNumber         String?  @map("phone_number")
   emailVerified       Boolean  @default(false) @map("email_verified")

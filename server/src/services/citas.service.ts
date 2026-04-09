@@ -54,8 +54,8 @@ export async function getCitasByRange(
     where,
     orderBy: [{ fecha: 'asc' }, { horaInicio: 'asc' }],
     include: {
-      asesor: { select: { id: true, email: true, fullName: true } },
-      creator: { select: { id: true, email: true, fullName: true } },
+      asesor: { select: { id: true, email: true, firstName: true, lastName: true } },
+      creator: { select: { id: true, email: true, firstName: true, lastName: true } },
     },
   });
 }
@@ -86,8 +86,8 @@ export async function createCita(data: CreateCitaInput, createdBy: string) {
       createdBy,
     },
     include: {
-      asesor: { select: { id: true, email: true, fullName: true } },
-      creator: { select: { id: true, email: true, fullName: true } },
+      asesor: { select: { id: true, email: true, firstName: true, lastName: true } },
+      creator: { select: { id: true, email: true, firstName: true, lastName: true } },
     },
   });
 }
@@ -110,8 +110,8 @@ export async function updateCita(id: string, data: UpdateCitaInput) {
     where: { id },
     data: updateData,
     include: {
-      asesor: { select: { id: true, email: true, fullName: true } },
-      creator: { select: { id: true, email: true, fullName: true } },
+      asesor: { select: { id: true, email: true, firstName: true, lastName: true } },
+      creator: { select: { id: true, email: true, firstName: true, lastName: true } },
     },
   });
 }
@@ -145,7 +145,7 @@ export async function getDirectors() {
 // ============================================
 export async function getUsers() {
   return prisma.user.findMany({
-    select: { id: true, email: true, fullName: true },
-    orderBy: { fullName: 'asc' },
+    select: { id: true, email: true, firstName: true, lastName: true },
+    orderBy: { firstName: 'asc' },
   });
 }

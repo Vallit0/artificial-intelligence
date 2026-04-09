@@ -10,11 +10,12 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Award, Check, ChevronDown, ChevronUp, Clock, Eye, FileText, GraduationCap, Lock, MessageCircle, Pencil, Trash2, Unlock } from "lucide-react";
+import { Award, Check, ChevronDown, ChevronUp, Clock, Eye, FileText, GraduationCap, Lock, MessageCircle, Pencil, Trash2, Unlock, UserPen } from "lucide-react";
 import StudentDetailModal from "./StudentDetailModal";
 import GradeModal from "./GradeModal";
 import CertificateModal from "./CertificateModal";
 import DeleteUserModal from "./DeleteUserModal";
+import EditNameModal from "./EditNameModal";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api-client";
 
@@ -40,6 +41,7 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
   const [gradeStudent, setGradeStudent] = useState<Student | null>(null);
   const [certificateStudent, setCertificateStudent] = useState<Student | null>(null);
   const [deleteStudent, setDeleteStudent] = useState<Student | null>(null);
+  const [editNameStudent, setEditNameStudent] = useState<Student | null>(null);
   const [sortBy, setSortBy] = useState<"name" | "sessions" | "grade">("sessions");
   const [sortAsc, setSortAsc] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
@@ -50,7 +52,7 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
     if (!student.phoneNumber) {
       toast({
         title: "Sin WhatsApp",
-        description: `${student.full_name || student.email} no tiene número de WhatsApp registrado.`,
+        description: `${[student.first_name, student.last_name].filter(Boolean).join(' ') || student.email} no tiene número de WhatsApp registrado.`,
         variant: "destructive",
       });
       return;
@@ -59,11 +61,11 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
     try {
       await api.post("/api/whatsapp/send-to-user", {
         userId: student.id,
-        message: `Hola ${student.full_name || ""}! Este es un mensaje de prueba del Centro de Negocios Senoriales. Tu plataforma de entrenamiento esta activa.`,
+        message: `Hola ${[student.first_name, student.last_name].filter(Boolean).join(' ') || ""}! Este es un mensaje de prueba del Centro de Negocios Senoriales. Tu plataforma de entrenamiento esta activa.`,
       });
       toast({
         title: "Mensaje enviado",
-        description: `WhatsApp enviado a ${student.full_name || student.email}.`,
+        description: `WhatsApp enviado a ${[student.first_name, student.last_name].filter(Boolean).join(' ') || student.email}.`,
       });
     } catch (err) {
       toast({
@@ -84,7 +86,7 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
     if (success) {
       toast({
         title: "Estudiante aprobado",
-        description: `${student.full_name || student.email} ha sido dado de alta exitosamente.`,
+        description: `${[student.first_name, student.last_name].filter(Boolean).join(' ') || student.email} ha sido dado de alta exitosamente.`,
       });
     } else {
       toast({
@@ -108,8 +110,8 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
     let comparison = 0;
     switch (sortBy) {
       case "name":
-        comparison = (a.full_name || a.email || "").localeCompare(
-          b.full_name || b.email || ""
+        comparison = ([a.first_name, a.last_name].filter(Boolean).join(' ') || a.email || "").localeCompare(
+          [b.first_name, b.last_name].filter(Boolean).join(' ') || b.email || ""
         );
         break;
       case "sessions":
@@ -175,7 +177,7 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
               <TableCell>
                 <div>
                   <p className="font-medium text-foreground">
-                    {student.full_name || "Sin nombre"}
+                    {[student.first_name, student.last_name].filter(Boolean).join(' ') || "Sin nombre"}
                   </p>
                   <p className="text-sm text-muted-foreground">{student.email}</p>
                 </div>
@@ -247,6 +249,15 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
                     title="Ver detalle"
                   >
                     <Eye className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setEditNameStudent(student)}
+                    title="Editar nombre"
+                  >
+                    <UserPen className="w-4 h-4" />
                   </Button>
                   <Button
                     variant="ghost"
@@ -336,6 +347,13 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
         student={deleteStudent}
         open={!!deleteStudent}
         onOpenChange={(open) => !open && setDeleteStudent(null)}
+        onSuccess={onRefetch}
+      />
+
+      <EditNameModal
+        student={editNameStudent}
+        open={!!editNameStudent}
+        onOpenChange={(open) => !open && setEditNameStudent(null)}
         onSuccess={onRefetch}
       />
     </>

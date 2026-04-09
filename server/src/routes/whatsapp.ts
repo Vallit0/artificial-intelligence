@@ -51,7 +51,7 @@ whatsappRouter.post('/send-to-user', authMiddleware, requireRole('admin'), async
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { phoneNumber: true, fullName: true },
+      select: { phoneNumber: true, firstName: true, lastName: true },
     });
 
     if (!user?.phoneNumber) {

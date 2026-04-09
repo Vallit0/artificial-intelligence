@@ -43,7 +43,7 @@ export default function DeleteUserModal({
 
       toast({
         title: "Usuario eliminado",
-        description: `${student.full_name || student.email} ha sido eliminado`,
+        description: `${[student.first_name, student.last_name].filter(Boolean).join(' ') || student.email} ha sido eliminado`,
       });
 
       onOpenChange(false);
@@ -73,7 +73,7 @@ export default function DeleteUserModal({
           <AlertDialogTitle>¿Eliminar usuario?</AlertDialogTitle>
           <AlertDialogDescription>
             Esta acción eliminará permanentemente a{" "}
-            <strong>{student.full_name || student.email}</strong> y todos sus datos
+            <strong>{[student.first_name, student.last_name].filter(Boolean).join(' ') || student.email}</strong> y todos sus datos
             asociados. Esta acción no se puede deshacer.
           </AlertDialogDescription>
         </AlertDialogHeader>

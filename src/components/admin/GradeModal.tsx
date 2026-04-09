@@ -59,7 +59,7 @@ export default function GradeModal({
     if (success) {
       toast({
         title: "Nota asignada",
-        description: `Se ha asignado la nota ${gradeValue} a ${student?.full_name || student?.email}`,
+        description: `Se ha asignado la nota ${gradeValue} a ${[student?.first_name, student?.last_name].filter(Boolean).join(' ') || student?.email}`,
       });
     } else {
       toast({
@@ -82,7 +82,7 @@ export default function GradeModal({
         <div className="space-y-4 py-4">
           <div className="p-3 bg-muted rounded-lg">
             <p className="font-medium text-foreground">
-              {student.full_name || "Sin nombre"}
+              {[student.first_name, student.last_name].filter(Boolean).join(' ') || "Sin nombre"}
             </p>
             <p className="text-sm text-muted-foreground">{student.email}</p>
           </div>

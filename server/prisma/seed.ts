@@ -96,7 +96,8 @@ async function main() {
       data: {
         email: adminEmail,
         passwordHash: adminHash,
-        fullName: 'Administrador',
+        firstName: 'Admin',
+        lastName: 'Administrador',
         emailVerified: true,
         roles: {
           create: { role: 'admin' },
@@ -117,7 +118,8 @@ async function main() {
       data: {
         email: demoEmail,
         passwordHash: demoHash,
-        fullName: 'Usuario Demo',
+        firstName: 'Usuario',
+        lastName: 'Demo',
         emailVerified: true,
         roles: {
           create: { role: 'learner' },

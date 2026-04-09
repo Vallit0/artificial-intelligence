@@ -19,8 +19,8 @@ export interface Cita {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
-  asesor: { id: string; email: string; fullName?: string };
-  creator: { id: string; email: string; fullName?: string };
+  asesor: { id: string; email: string; firstName?: string; lastName?: string };
+  creator: { id: string; email: string; firstName?: string; lastName?: string };
 }
 
 export interface CitaInput {
@@ -42,7 +42,8 @@ export interface CitaInput {
 export interface CitaUser {
   id: string;
   email: string;
-  fullName?: string;
+  firstName?: string;
+  lastName?: string;
 }
 
 export function useCitas(

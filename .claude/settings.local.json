@@ -71,7 +71,9 @@
       "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('server/public/documents/send_whatsapp_tool.json','utf8'\\)\\); console.log\\('JSON valido'\\)\")",
       "Bash(node:*)",
       "Bash(python3 -m json.tool)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(ls -la /c/Users/estua/Documents/ai/senoriales-48152aa7/server/*.json)"
     ]
   }
 }

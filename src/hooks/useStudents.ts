@@ -14,7 +14,8 @@ export interface StudentSession {
 export interface Student {
   id: string;
   email: string | null;
-  full_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
   created_at: string;
   sessions: StudentSession[];
   totalSessions: number;
@@ -50,7 +51,8 @@ export const useStudents = (): UseStudentsReturn => {
       const studentsWithData: Student[] = (data || []).map((s) => ({
         id: s.id,
         email: s.email,
-        full_name: s.fullName,
+        first_name: s.firstName,
+        last_name: s.lastName,
         created_at: s.createdAt,
         sessions: [], // Sessions are aggregated server-side
         totalSessions: s.totalSessions,
