@@ -63,7 +63,15 @@
       "Bash(find:*)",
       "Bash(docker rmi senoriales-48152aa7-app:latest:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(docker-compose down:*)",
+      "Bash(mkdir -p \"C:\\\\Users\\\\estua\\\\Documents\\\\ai\\\\senoriales-48152aa7\\\\server\\\\public\\\\documents\")",
+      "Bash(cp \"C:\\\\Users\\\\estua\\\\Documents\\\\ai\\\\senoriales-48152aa7\\\\src\\\\assets\\\\legado-vida.pdf\" \"C:\\\\Users\\\\estua\\\\Documents\\\\ai\\\\senoriales-48152aa7\\\\server\\\\public\\\\documents\\\\legado-vida.pdf\")",
+      "Bash(python -c \"import json; json.load\\(open\\('server/public/documents/send_whatsapp_tool.json'\\)\\); print\\('JSON valido'\\)\")",
+      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('server/public/documents/send_whatsapp_tool.json','utf8'\\)\\); console.log\\('JSON valido'\\)\")",
+      "Bash(node:*)",
+      "Bash(python3 -m json.tool)",
+      "Bash(python3:*)"
     ]
   }
 }

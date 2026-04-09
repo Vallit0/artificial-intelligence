@@ -1,0 +1,58 @@
+{
+  "type": "webhook",
+  "name": "send_whatsapp_document",
+  "description": "Envia un documento o mensaje por WhatsApp al prospecto. Para enviar el brochure de Legado de Vida usa document_id legado-vida. Siempre confirma con el prospecto antes de enviar y pidele su numero de telefono con codigo de pais ejemplo 50212345678 para Guatemala.",
+  "api_schema": {
+    "url": "https://tu-dominio.com/api/whatsapp/agent-send",
+    "method": "POST",
+    "path_params_schema": [],
+    "query_params_schema": [],
+    "request_body_schema": {
+      "id": "send_whatsapp_body",
+      "type": "object",
+      "description": "Cuerpo de la solicitud para enviar mensaje o documento por WhatsApp",
+      "required": true,
+      "properties": [
+        {
+          "id": "phone_number",
+          "description": "Numero de telefono del prospecto con codigo de pais sin espacios ni guiones. Ejemplo 50212345678 para Guatemala.",
+          "type": "string",
+          "required": true,
+          "dynamic_variable": "",
+          "constant_value": ""
+        },
+        {
+          "id": "message",
+          "description": "Mensaje de texto para enviar o caption que acompana al documento.",
+          "type": "string",
+          "required": false,
+          "dynamic_variable": "",
+          "constant_value": ""
+        },
+        {
+          "id": "document_id",
+          "description": "ID del documento predefinido a enviar. Usar legado-vida para el brochure Legado de Vida. Dejar vacio si solo se envia mensaje de texto.",
+          "type": "string",
+          "required": false,
+          "dynamic_variable": "",
+          "constant_value": ""
+        }
+      ]
+    },
+    "request_headers": [],
+    "content_type": "application/json",
+    "auth_connection": null
+  },
+  "response_timeout_secs": 20,
+  "dynamic_variables": {
+    "dynamic_variable_placeholders": {}
+  },
+  "assignments": [],
+  "disable_interruptions": false,
+  "force_pre_tool_speech": "auto",
+  "tool_call_sound": null,
+  "tool_call_sound_behavior": "auto",
+  "execution_mode": "immediate",
+  "tool_error_handling_mode": "auto",
+  "response_mocks": []
+}

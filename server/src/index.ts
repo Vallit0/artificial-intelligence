@@ -96,6 +96,19 @@ app.get('/health', async (req, res) => {
 });
 
 // ============================================
+// Public Documents (always served — used by ElevenLabs agent tools)
+// ============================================
+const publicDocsPath = path.join(__dirname, '../../public/documents');
+app.use('/documents', express.static(publicDocsPath, {
+  maxAge: '7d',
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.pdf')) {
+      res.setHeader('Content-Type', 'application/pdf');
+    }
+  },
+}));
+
+// ============================================
 // Static Files (Production)
 // ============================================
 

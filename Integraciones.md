@@ -243,6 +243,81 @@ JWT_SECRET=tu-secreto-seguro
 
 ---
 
+## 2.5. ElevenLabs Server Tool: WhatsApp (Mensajes y Documentos)
+
+Permite que los agentes de ElevenLabs envien mensajes de texto y documentos PDF por WhatsApp durante la conversacion.
+
+### Prerequisitos
+
+- WHAPI configurado con `WHAPI_TOKEN` en `.env`
+- El numero de telefono del prospecto debe proporcionarse durante la conversacion
+
+### Server Tool: `send_whatsapp_message`
+
+Este tool ya existe para enviar mensajes de texto. Ahora tambien soporta envio de documentos.
+
+1. Ve al dashboard de ElevenLabs > Tu agente > **Tools** > **Add Tool** > **Server Tool**
+2. Configura:
+
+| Campo | Valor |
+|-------|-------|
+| **Name** | `send_whatsapp_message` |
+| **Description** | `Envia un mensaje o documento por WhatsApp al prospecto. Para enviar el brochure de Legado de Vida, usa document_id "legado-vida". Siempre confirma con el prospecto antes de enviar. Necesitas su numero de telefono con codigo de pais (ej: 50212345678).` |
+| **Method** | `POST` |
+| **URL** | `https://tu-dominio.com/api/whatsapp/agent-send` |
+| **Wait for response** | **Activado** |
+
+3. En **Request Body**, configura estos parametros (todos **dynamic** para que el LLM los llene):
+
+```json
+{
+  "phone_number": "<numero de telefono con codigo de pais, ej: 50212345678>",
+  "message": "<mensaje de texto o caption del documento>",
+  "document_id": "<ID del documento predefinido: legado-vida>"
+}
+```
+
+### Parametros del Request Body
+
+| Parametro | Tipo | Requerido | Descripcion |
+|-----------|------|-----------|-------------|
+| `phone_number` | string | Si | Numero de telefono con codigo de pais (ej: `50212345678`) |
+| `message` | string | No | Mensaje de texto, o caption si se envia documento |
+| `document_id` | string | No | ID de documento predefinido. Valores: `legado-vida` |
+
+### Documentos Disponibles
+
+| document_id | Documento |
+|-------------|-----------|
+| `legado-vida` | Brochure "Legado de Vida" - informacion sobre planes de prevision funeraria |
+
+### Ejemplo de uso en el System Prompt del agente
+
+Agrega al prompt del agente instrucciones como:
+
+```
+Cuando el prospecto muestre interes en los planes de prevision, ofrecele enviarle el brochure
+"Legado de Vida" por WhatsApp. Pidele su numero de telefono con codigo de pais (Guatemala: 502).
+Usa la herramienta send_whatsapp_message con document_id "legado-vida" para enviar el PDF.
+Tambien puedes enviar mensajes de texto de seguimiento usando solo el campo message.
+```
+
+### Agregar nuevos documentos
+
+Para agregar mas documentos disponibles:
+
+1. Coloca el archivo PDF en `server/public/documents/`
+2. Agrega la entrada en `AVAILABLE_DOCUMENTS` en `server/src/routes/whatsapp.ts`:
+```typescript
+const AVAILABLE_DOCUMENTS: Record<string, { filename: string; path: string }> = {
+  'legado-vida': { filename: 'Legado de Vida - Señoriales.pdf', path: '/documents/legado-vida.pdf' },
+  'nuevo-doc': { filename: 'Mi Nuevo Documento.pdf', path: '/documents/nuevo-doc.pdf' },
+};
+```
+3. Actualiza la descripcion del Server Tool en ElevenLabs para incluir el nuevo `document_id`
+
+---
+
 ## 3. Configuracion de Agentes por Funcionalidad
 
 Cada boton de sugerencia en la pantalla de practica mapea a un agente de ElevenLabs diferente:
