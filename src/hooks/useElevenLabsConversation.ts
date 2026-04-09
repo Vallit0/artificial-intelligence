@@ -52,7 +52,6 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
   const [sessionTime, setSessionTime] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isConnectedRef = useRef(false);
-  const rawStreamRef = useRef<MediaStream | null>(null);
   const prefetchedUrlRef = useRef<string | null>(null);
   const memoryContextRef = useRef<string | null>(null);
 
@@ -66,14 +65,17 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
         setSessionTime((prev) => prev + 1);
       }, 1000);
     },
-    onDisconnect: () => {
-      console.log("Disconnected from ElevenLabs agent");
+    onDisconnect: (details: unknown) => {
+      console.log("Disconnected from ElevenLabs agent, details:", JSON.stringify(details));
       isConnectedRef.current = false;
       setIsMuted(false);
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
+    },
+    onStatusChange: ({ status }: { status: string }) => {
+      console.log("[DEBUG] Status changed:", status);
     },
     onMessage: (message) => {
       console.log("Message from agent:", message);
@@ -198,45 +200,20 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     setIsMuted(false);
 
     try {
-      // Check for secure context (getUserMedia requires HTTPS or localhost)
-      if (!navigator.mediaDevices?.getUserMedia) {
-        throw new Error("Tu navegador no soporta acceso al micrófono. Asegúrate de usar HTTPS.");
-      }
-
-      // Use pre-fetched URL if available, otherwise fetch in parallel with mic
+      // Use pre-fetched URL if available, otherwise fetch now
       const hasPreFetched = !!prefetchedUrlRef.current;
 
-      let rawStream: MediaStream;
       let data: { signedUrl: string; scenario?: any };
 
-      try {
-        [rawStream, data] = await Promise.all([
-          navigator.mediaDevices.getUserMedia({
-            audio: {
-              echoCancellation: { ideal: true },
-              noiseSuppression: { ideal: true },
-              autoGainControl: { ideal: true },
-              sampleRate: { ideal: 16000 },
-              channelCount: { ideal: 1 },
-            },
-          }),
-          hasPreFetched
-            ? Promise.resolve({ signedUrl: prefetchedUrlRef.current! })
-            : api.post<{ signedUrl: string; scenario?: any }>("/api/elevenlabs/conversation-token", {
-                scenarioId: scenarioIdRef.current,
-                agentSecretName: agentSecretNameRef.current,
-              }),
-        ]);
-      } catch (micError: any) {
-        if (micError?.name === "NotAllowedError") {
-          throw new Error("Permiso de micrófono denegado. Habilita el acceso al micrófono en tu navegador.");
-        } else if (micError?.name === "NotFoundError") {
-          throw new Error("No se encontró un micrófono. Conecta un micrófono e intenta de nuevo.");
-        }
-        throw micError;
+      if (hasPreFetched) {
+        data = { signedUrl: prefetchedUrlRef.current! };
+      } else {
+        data = await api.post<{ signedUrl: string; scenario?: any }>("/api/elevenlabs/conversation-token", {
+          scenarioId: scenarioIdRef.current,
+          agentSecretName: agentSecretNameRef.current,
+        });
       }
 
-      rawStreamRef.current = rawStream;
       prefetchedUrlRef.current = null; // Consumed
 
       if (!data?.signedUrl) {
@@ -255,24 +232,14 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
         dynamicVariables.advisor_context = memoryContextRef.current;
       }
 
-      console.log("Starting session with signed URL...");
+      // Let the SDK handle microphone access internally
       await conversation.startSession({
         signedUrl: data.signedUrl,
-        overrides: {
-          device: { stream: rawStream }, // Raw stream — no filter/compressor overhead
-          tts: {
-            speed: 1.1,
-            stability: 0.4,
-            similarityBoost: 0.7,
-          },
-        },
         dynamicVariables,
       });
 
       // Pre-fetch next URL for quick reconnect
       prefetchSignedUrl();
-
-      console.log("Session started successfully");
     } catch (error) {
       console.error("Failed to start conversation:", error);
       onErrorRef.current?.(error instanceof Error ? error.message : "Failed to connect");
@@ -294,12 +261,6 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
       console.error("Error ending session:", error);
     }
 
-    // Stop raw microphone stream
-    if (rawStreamRef.current) {
-      rawStreamRef.current.getTracks().forEach((track) => track.stop());
-      rawStreamRef.current = null;
-    }
-
     isConnectedRef.current = false;
     setSessionTime(0);
     setIsMuted(false);
@@ -313,9 +274,6 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
-      }
-      if (rawStreamRef.current) {
-        rawStreamRef.current.getTracks().forEach((track) => track.stop());
       }
     };
   }, []);

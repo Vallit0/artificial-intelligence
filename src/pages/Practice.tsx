@@ -286,6 +286,7 @@ const Practice = () => {
   }, [disconnect]);
 
   const handleStart = async (agent?: AgentSuggestion) => {
+    console.log("[TRACE] handleStart called, agent:", agent?.id, agent?.agentSecretName);
     if (agent) setSelectedAgent(agent);
 
     // Step 1: change orb color and grow
@@ -297,6 +298,7 @@ const Practice = () => {
 
     // Step 3: after wink completes, transition to connecting
     setTimeout(async () => {
+      console.log("[TRACE] setTimeout fired, calling connect()...");
       setSessionState("connecting");
       setConnectionStatus("Solicitando permisos de microfono...");
       setTranscriptMessages([]);
@@ -310,7 +312,9 @@ const Practice = () => {
       }
 
       playStartCall();
+      console.log("[TRACE] About to call connect()");
       connect();
+      console.log("[TRACE] connect() called");
       setOrbGrowing(false);
       setOrbWinking(false);
     }, 1200);

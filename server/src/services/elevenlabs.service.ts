@@ -47,8 +47,12 @@ function setCachedUrl(agentId: string, signedUrl: string): void {
 async function resolveAgentId(agentSecretName?: string | null): Promise<string> {
   if (agentSecretName) {
     // 1. Check DB first (admin-configured)
-    const dbAgentId = await agentConfigService.resolve(agentSecretName);
-    if (dbAgentId) return dbAgentId;
+    try {
+      const dbAgentId = await agentConfigService.resolve(agentSecretName);
+      if (dbAgentId) return dbAgentId;
+    } catch (error) {
+      console.warn(`Failed to resolve agent "${agentSecretName}" from DB, falling back to env var:`, error);
+    }
 
     // 2. Fallback to environment variable
     const envAgentId = process.env[agentSecretName];
