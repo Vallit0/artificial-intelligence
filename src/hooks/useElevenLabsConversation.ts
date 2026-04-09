@@ -37,6 +37,10 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
   const userNameRef = useRef(options.userName);
 
   useEffect(() => {
+    // Invalidate prefetched URL when agent or scenario changes
+    if (agentSecretNameRef.current !== options.agentSecretName || scenarioIdRef.current !== options.scenarioId) {
+      prefetchedUrlRef.current = null;
+    }
     onTranscriptRef.current = options.onTranscript;
     onEvaluationRef.current = options.onEvaluation;
     onErrorRef.current = options.onError;
@@ -152,7 +156,7 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     },
   });
 
-  // Pre-fetch signed URL and memory context on mount
+  // Pre-fetch signed URL and memory context when agent changes
   const prefetchSignedUrl = useCallback(async () => {
     try {
       const data = await api.post<{ signedUrl: string; scenario?: any }>("/api/elevenlabs/conversation-token", {
@@ -161,12 +165,12 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
       });
       if (data?.signedUrl) {
         prefetchedUrlRef.current = data.signedUrl;
-        console.log("Signed URL pre-fetched");
+        console.log("Signed URL pre-fetched for agent:", agentSecretNameRef.current);
       }
     } catch (error) {
       console.warn("Pre-fetch signed URL failed, will retry on connect:", error);
     }
-  }, []);
+  }, [options.agentSecretName, options.scenarioId]);
 
   const prefetchMemoryContext = useCallback(async () => {
     if (!userIdRef.current) return;
