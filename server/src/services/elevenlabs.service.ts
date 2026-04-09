@@ -69,7 +69,9 @@ async function resolveAgentId(agentSecretName?: string | null): Promise<string> 
 // ============================================
 
 export async function getConversationSignedUrl(agentSecretName?: string | null): Promise<string> {
-  if (!config.elevenlabs.apiKey) {
+  // Resolve API key from DB first, then env var
+  const apiKey = await agentConfigService.resolveApiKey();
+  if (!apiKey) {
     throw new InternalError('ElevenLabs API key not configured');
   }
 
@@ -86,7 +88,7 @@ export async function getConversationSignedUrl(agentSecretName?: string | null):
   const response = await fetch(tokenUrl, {
     method: 'GET',
     headers: {
-      'xi-api-key': config.elevenlabs.apiKey,
+      'xi-api-key': apiKey,
     },
   });
 
@@ -109,6 +111,7 @@ export async function getConversationSignedUrl(agentSecretName?: string | null):
 // Status Check
 // ============================================
 
-export function isConfigured(): boolean {
-  return !!(config.elevenlabs.apiKey && config.elevenlabs.agentId);
+export async function isConfigured(): Promise<boolean> {
+  const apiKey = await agentConfigService.resolveApiKey();
+  return !!(apiKey && config.elevenlabs.agentId);
 }

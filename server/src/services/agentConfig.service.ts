@@ -35,3 +35,12 @@ export async function resolve(secretName: string): Promise<string | null> {
   }
   return null;
 }
+
+/**
+ * Resolves the ElevenLabs API key from DB first, then env var fallback.
+ */
+export async function resolveApiKey(): Promise<string> {
+  const dbKey = await resolve('ELEVENLABS_API_KEY');
+  if (dbKey) return dbKey;
+  return process.env.ELEVENLABS_API_KEY || '';
+}
