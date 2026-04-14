@@ -13,6 +13,7 @@ import StudentList from "@/components/admin/StudentList";
 import CreateUserModal from "@/components/admin/CreateUserModal";
 import BulkUploadModal from "@/components/admin/BulkUploadModal";
 import AgentConfigPanel from "@/components/admin/AgentConfigPanel";
+import ProspectingScenariosPanel from "@/components/admin/ProspectingScenariosPanel";
 import LtiPlatformPanel from "@/components/admin/LtiPlatformPanel";
 import LeftSidebar from "@/components/scenarios/LeftSidebar";
 import MobileNavigation from "@/components/MobileNavigation";
@@ -91,6 +92,7 @@ export default function Admin() {
           <TabsList>
             <TabsTrigger value="students">Estudiantes</TabsTrigger>
             <TabsTrigger value="agents">Agentes IA</TabsTrigger>
+            <TabsTrigger value="prospecting">Prospección</TabsTrigger>
             <TabsTrigger value="lti">LTI / Moodle</TabsTrigger>
           </TabsList>
 
@@ -297,6 +299,10 @@ export default function Admin() {
 
           <TabsContent value="agents">
             <AgentConfigPanel />
+          </TabsContent>
+
+          <TabsContent value="prospecting">
+            <ProspectingScenariosPanel />
           </TabsContent>
 
           <TabsContent value="lti">

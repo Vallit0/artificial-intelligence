@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { LogIn, Users, Loader2 } from "lucide-react";
+import { LogIn, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
@@ -244,14 +244,6 @@ const Landing = () => {
                 className="w-full h-14 rounded-2xl text-base font-bold uppercase tracking-wider shadow-[0_4px_0_0_hsl(var(--primary)/0.4)] hover:shadow-[0_2px_0_0_hsl(var(--primary)/0.4)] hover:translate-y-[2px] transition-all"
               >
                 Empezar Ahora
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => navigate("/prospecting")}
-                className="w-full h-14 rounded-2xl text-base font-bold uppercase tracking-wider shadow-[0_4px_0_0_hsl(var(--secondary)/0.4)] hover:shadow-[0_2px_0_0_hsl(var(--secondary)/0.4)] hover:translate-y-[2px] transition-all gap-2"
-              >
-                <Users className="w-5 h-5" />
-                Escenarios de Prospección
               </Button>
               <Button
                 variant="outline"

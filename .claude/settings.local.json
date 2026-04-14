@@ -73,7 +73,27 @@
       "Bash(python3 -m json.tool)",
       "Bash(python3:*)",
       "Bash(echo \"EXIT: $?\")",
-      "Bash(ls -la /c/Users/estua/Documents/ai/senoriales-48152aa7/server/*.json)"
+      "Bash(ls -la /c/Users/estua/Documents/ai/senoriales-48152aa7/server/*.json)",
+      "Bash(grep -E \"^d|^-.*\\\\.\\(ts|js|json|tsx|jsx\\)$\")",
+      "Bash(ls C:/Users/estua/Documents/ai/senoriales-48152aa7/.env*)",
+      "Bash(ls:*)",
+      "Skill(update-config)",
+      "Bash(grep -rE \"API_URL|api.url|baseURL|VITE_API\" src/lib/api-client.ts .env*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /c/Users/estua/Documents/ai/senoriales-48152aa7 && docker compose down && docker compose up -d --build",
+            "timeout": 600,
+            "statusMessage": "Reiniciando Docker..."
+          }
+        ]
+      }
     ]
   }
 }

@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import ProspectingScenarioCard, { ProspectingScenario } from "./ProspectingScenarioCard";
 import ProspectingPreviewModal from "./ProspectingPreviewModal";
+import { useMyVisibleScenarios } from "@/hooks/useProspectingScenarios";
+import { useAdmin } from "@/hooks/useAdmin";
 import {
   Carousel,
   CarouselContent,
@@ -32,6 +34,16 @@ export const prospectingScenarios: (ProspectingScenario & { agentId?: string })[
     icon: "supermarket",
     videoUrl: "/videos/prospecting/scenario-2-frutas.mp4",
     agentId: "ELEVENLABS_AGENT_PROSPECTING_FRUTAS",
+  },
+  {
+    id: 7,
+    title: "Familia en Stand",
+    description: "Usted se encuentra en un Stand de la empresa dentro de un centro comercial, a cierta distancia observa que pasarán frente a usted una pequeña familia de 3 (esposa, esposo e hijo de 5 años).",
+    location: "Centro Comercial",
+    targetAge: "Familia joven",
+    icon: "mall",
+    videoUrl: "/videos/prospecting/scenario-7-familia-stand.mp4",
+    agentId: "ELEVENLABS_AGENT_PROSPECTING_FAMILIA_STAND",
   },
   {
     id: 3,
@@ -71,15 +83,7 @@ export const prospectingScenarios: (ProspectingScenario & { agentId?: string })[
     targetAge: "28 años",
     icon: "street",
     videoUrl: "/videos/prospecting/scenario-6-profesional-caminando.mp4",
-  },
-  {
-    id: 7,
-    title: "Familia en Stand",
-    description: "Usted se encuentra en un Stand de la empresa dentro de un centro comercial, a cierta distancia observa que pasarán frente a usted una pequeña familia de 3 (esposa, esposo e hijo de 5 años).",
-    location: "Centro Comercial",
-    targetAge: "Familia joven",
-    icon: "mall",
-    videoUrl: "/videos/prospecting/scenario-7-familia-stand.mp4",
+    agentId: "ELEVENLABS_AGENT_PROSPECTING_PROFESIONAL_CAMINANDO",
   },
   {
     id: 8,
@@ -89,6 +93,7 @@ export const prospectingScenarios: (ProspectingScenario & { agentId?: string })[
     targetAge: "40 años",
     icon: "mall",
     videoUrl: "/videos/prospecting/scenario-8-senora-compras.mp4",
+    agentId: "ELEVENLABS_AGENT_PROSPECTING_SENORA_COMPRAS_1",
   },
   {
     id: 9,
@@ -97,6 +102,7 @@ export const prospectingScenarios: (ProspectingScenario & { agentId?: string })[
     location: "Centro Comercial",
     targetAge: "40 años",
     icon: "mall",
+    agentId: "ELEVENLABS_AGENT_PROSPECTING_SENORA_COMPRAS_2",
   },
   {
     id: 10,
@@ -106,6 +112,7 @@ export const prospectingScenarios: (ProspectingScenario & { agentId?: string })[
     targetAge: "30 años",
     icon: "cemetery",
     videoUrl: "/videos/prospecting/scenario-10-cementerio.mp4",
+    agentId: "ELEVENLABS_AGENT_PROSPECTING_PAREJA_CEMENTERIO",
   },
 ];
 
@@ -114,6 +121,14 @@ interface ProspectingCarouselProps {
 }
 
 const ProspectingCarousel = ({ onStartPractice }: ProspectingCarouselProps) => {
+  const { visible } = useMyVisibleScenarios();
+  const { isAdmin } = useAdmin();
+  const scenarios = prospectingScenarios.filter((s) => {
+    if (isAdmin) return true;
+    if (!s.agentId) return true;
+    if (!visible) return true; // while loading
+    return visible.has(s.agentId);
+  });
   const [selectedScenario, setSelectedScenario] = useState<number | null>(null);
   const [previewScenario, setPreviewScenario] = useState<(ProspectingScenario & { agentId?: string }) | null>(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
@@ -147,7 +162,7 @@ const ProspectingCarousel = ({ onStartPractice }: ProspectingCarouselProps) => {
   // Open preview modal when clicking "Iniciar Práctica"
   const handleOpenPreview = () => {
     if (selectedScenario !== null) {
-      const scenario = prospectingScenarios.find(s => s.id === selectedScenario);
+      const scenario = scenarios.find(s => s.id === selectedScenario);
       if (scenario) {
         setPreviewScenario(scenario);
         setShowPreviewModal(true);
@@ -186,8 +201,8 @@ const ProspectingCarousel = ({ onStartPractice }: ProspectingCarouselProps) => {
           className="w-full"
         >
           <CarouselContent className="-ml-2 md:-ml-4">
-            {prospectingScenarios.map((scenario) => {
-              const isDisabled = scenario.id > 2; // Only scenarios 1 and 2 are enabled
+            {scenarios.map((scenario) => {
+              const isDisabled = !scenario.agentId;
               return (
                 <CarouselItem key={scenario.id} className="pl-2 md:pl-4 basis-[85%] sm:basis-[45%] lg:basis-[33%]">
                   <ProspectingScenarioCard
@@ -223,7 +238,7 @@ const ProspectingCarousel = ({ onStartPractice }: ProspectingCarouselProps) => {
 
       {/* Dots indicator */}
       <div className="flex justify-center gap-1.5 mt-4">
-        {prospectingScenarios.map((_, index) => (
+        {scenarios.map((_, index) => (
           <button
             key={index}
             onClick={() => api?.scrollTo(index)}
@@ -258,7 +273,7 @@ const ProspectingCarousel = ({ onStartPractice }: ProspectingCarouselProps) => {
         <div className="mt-4 text-center animate-fade-in">
           <p className="text-sm text-muted-foreground">
             Escenario seleccionado: <span className="font-semibold text-foreground">
-              {prospectingScenarios.find(s => s.id === selectedScenario)?.title}
+              {scenarios.find(s => s.id === selectedScenario)?.title}
             </span>
           </p>
         </div>

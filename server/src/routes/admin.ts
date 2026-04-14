@@ -8,6 +8,7 @@ import { AuthRequest } from '../types/index.js';
 import { handleError } from '../utils/errors.js';
 import * as adminService from '../services/admin.service.js';
 import * as agentConfigService from '../services/agentConfig.service.js';
+import * as prospectingScenariosService from '../services/prospectingScenarios.service.js';
 import prisma from '../db/index.js';
 
 export const adminRouter = Router();
@@ -150,6 +151,64 @@ adminRouter.put('/agent-configs', async (req: AuthRequest, res: Response, next: 
 adminRouter.delete('/agent-configs/:id', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     await agentConfigService.remove(req.params.id);
+    res.json({ success: true });
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
+// ============================================
+// Prospecting Scenarios: Prompts + Visibility
+// ============================================
+adminRouter.get('/prospecting-scenarios', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const configs = await prospectingScenariosService.getAllConfigs();
+    res.json(configs);
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
+adminRouter.put('/prospecting-scenarios', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { secretName, label, systemPrompt, firstMessage, isActiveGlobal } = req.body;
+    if (!secretName) {
+      res.status(400).json({ error: 'secretName required' });
+      return;
+    }
+    const config = await prospectingScenariosService.upsertConfig(secretName, {
+      label,
+      systemPrompt,
+      firstMessage,
+      isActiveGlobal,
+    });
+    res.json({ success: true, config });
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
+adminRouter.get('/user-scenario-access/:userId', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const access = await prospectingScenariosService.getUserAccess(req.params.userId);
+    res.json(access);
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
+adminRouter.put('/user-scenario-access/:userId', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { entries } = req.body as { entries: Array<{ secretName: string; enabled: boolean }> };
+    if (!Array.isArray(entries)) {
+      res.status(400).json({ error: 'entries array required' });
+      return;
+    }
+    await prospectingScenariosService.bulkSetUserAccess(req.params.userId, entries);
     res.json({ success: true });
   } catch (error) {
     const appError = handleError(error);

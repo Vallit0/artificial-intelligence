@@ -7,6 +7,8 @@ import { authMiddleware } from '../middleware/auth.js';
 import * as scenariosController from '../controllers/scenarios.controller.js';
 import * as sessionsController from '../controllers/sessions.controller.js';
 import * as progressController from '../controllers/progress.controller.js';
+import * as prospectingScenariosService from '../services/prospectingScenarios.service.js';
+import { AuthRequest } from '../types/index.js';
 import config from '../config/index.js';
 import { handleError, InternalError } from '../utils/errors.js';
 
@@ -144,3 +146,15 @@ apiRouter.post('/progress', progressController.updateProgress);
 
 // User Stats
 apiRouter.get('/stats', sessionsController.getStats);
+
+// Prospecting Scenarios visible to current user
+apiRouter.get('/prospecting-scenarios/me', async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const visible = await prospectingScenariosService.getVisibleSecretNamesForUser(userId);
+    res.json({ visible });
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});

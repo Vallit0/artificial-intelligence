@@ -6,6 +6,7 @@ import { Response, NextFunction } from 'express';
 import * as elevenlabsService from '../services/elevenlabs.service.js';
 import * as scenariosService from '../services/scenarios.service.js';
 import * as sessionsService from '../services/sessions.service.js';
+import * as prospectingScenariosService from '../services/prospectingScenarios.service.js';
 import { AuthRequest } from '../types/index.js';
 import { handleError, BadRequestError } from '../utils/errors.js';
 
@@ -18,7 +19,7 @@ export async function getConversationToken(req: AuthRequest, res: Response, next
 
     // Get signed URL (with optional custom agent)
     const signedUrl = await elevenlabsService.getConversationSignedUrl(agentSecretName);
-    
+
     // Fetch scenario details if provided
     let scenario = null;
     if (scenarioId) {
@@ -30,8 +31,20 @@ export async function getConversationToken(req: AuthRequest, res: Response, next
         };
       }
     }
-    
-    res.json({ signedUrl, scenario });
+
+    // Resolve admin-configured overrides for prospecting agents (if any)
+    let overrides: { prompt?: string; firstMessage?: string } | null = null;
+    if (agentSecretName) {
+      const cfg = await prospectingScenariosService.resolveConfig(agentSecretName);
+      if (cfg && (cfg.systemPrompt || cfg.firstMessage)) {
+        overrides = {
+          prompt: cfg.systemPrompt || undefined,
+          firstMessage: cfg.firstMessage || undefined,
+        };
+      }
+    }
+
+    res.json({ signedUrl, scenario, overrides });
   } catch (error) {
     const appError = handleError(error);
     res.status(appError.statusCode).json({ error: appError.message });

@@ -57,6 +57,7 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isConnectedRef = useRef(false);
   const prefetchedUrlRef = useRef<string | null>(null);
+  const prefetchedOverridesRef = useRef<{ prompt?: string; firstMessage?: string } | null>(null);
   const memoryContextRef = useRef<string | null>(null);
 
   const conversation = useConversation({
@@ -159,12 +160,13 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
   // Pre-fetch signed URL and memory context when agent changes
   const prefetchSignedUrl = useCallback(async () => {
     try {
-      const data = await api.post<{ signedUrl: string; scenario?: any }>("/api/elevenlabs/conversation-token", {
+      const data = await api.post<{ signedUrl: string; scenario?: any; overrides?: { prompt?: string; firstMessage?: string } | null }>("/api/elevenlabs/conversation-token", {
         scenarioId: scenarioIdRef.current,
         agentSecretName: agentSecretNameRef.current,
       });
       if (data?.signedUrl) {
         prefetchedUrlRef.current = data.signedUrl;
+        prefetchedOverridesRef.current = data.overrides ?? null;
         console.log("Signed URL pre-fetched for agent:", agentSecretNameRef.current);
       }
     } catch (error) {
@@ -207,18 +209,22 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
       // Use pre-fetched URL if available, otherwise fetch now
       const hasPreFetched = !!prefetchedUrlRef.current;
 
-      let data: { signedUrl: string; scenario?: any };
+      let data: { signedUrl: string; scenario?: any; overrides?: { prompt?: string; firstMessage?: string } | null };
 
       if (hasPreFetched) {
-        data = { signedUrl: prefetchedUrlRef.current! };
+        data = {
+          signedUrl: prefetchedUrlRef.current!,
+          overrides: prefetchedOverridesRef.current,
+        };
       } else {
-        data = await api.post<{ signedUrl: string; scenario?: any }>("/api/elevenlabs/conversation-token", {
+        data = await api.post<{ signedUrl: string; scenario?: any; overrides?: { prompt?: string; firstMessage?: string } | null }>("/api/elevenlabs/conversation-token", {
           scenarioId: scenarioIdRef.current,
           agentSecretName: agentSecretNameRef.current,
         });
       }
 
       prefetchedUrlRef.current = null; // Consumed
+      prefetchedOverridesRef.current = null;
 
       if (!data?.signedUrl) {
         throw new Error("No signed URL received from server");
@@ -229,17 +235,28 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
       if (userIdRef.current) {
         dynamicVariables.user_id = userIdRef.current;
       }
-      if (userNameRef.current) {
-        dynamicVariables.advisor_name = userNameRef.current;
-      }
+      dynamicVariables.advisor_name = userNameRef.current || "Visitante";
       if (memoryContextRef.current) {
         dynamicVariables.advisor_context = memoryContextRef.current;
+      }
+
+      // Admin-configured prompt/firstMessage overrides for prospecting agents
+      const sessionOverrides: any = {};
+      if (data.overrides?.prompt || data.overrides?.firstMessage) {
+        sessionOverrides.agent = {};
+        if (data.overrides.prompt) {
+          sessionOverrides.agent.prompt = { prompt: data.overrides.prompt };
+        }
+        if (data.overrides.firstMessage) {
+          sessionOverrides.agent.firstMessage = data.overrides.firstMessage;
+        }
       }
 
       // Let the SDK handle microphone access internally
       await conversation.startSession({
         signedUrl: data.signedUrl,
         dynamicVariables,
+        ...(Object.keys(sessionOverrides).length > 0 ? { overrides: sessionOverrides } : {}),
       });
 
       // Pre-fetch next URL for quick reconnect

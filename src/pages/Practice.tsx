@@ -34,6 +34,7 @@ import { useToast } from "@/hooks/use-toast";
 import LeftSidebar from "@/components/scenarios/LeftSidebar";
 import AICompanionOrb from "@/components/AICompanionOrb";
 import type { Scenario } from "@/hooks/useScenarios";
+import { prospectingScenarios } from "@/components/prospecting/ProspectingCarousel";
 
 type SessionState = "idle" | "connecting" | "active" | "evaluating" | "evaluated" | "timeup";
 
@@ -140,6 +141,7 @@ const Practice = () => {
 
   const scenarioId = searchParams.get("scenario");
   const agentParam = searchParams.get("agent");
+  const prospectingParam = searchParams.get("prospecting");
   const tier = searchParams.get("tier");
 
   const isFreeTier = tier === "free" && !user;
@@ -319,6 +321,28 @@ const Practice = () => {
       setOrbWinking(false);
     }, 1200);
   };
+
+  const autoStartedRef = useRef(false);
+  useEffect(() => {
+    if (autoStartedRef.current) return;
+    if (!prospectingParam || !agentParam) return;
+    if (sessionState !== "idle") return;
+    const scenario = prospectingScenarios.find(
+      (s) => s.id === parseInt(prospectingParam, 10)
+    );
+    autoStartedRef.current = true;
+    const prospectingAgent: AgentSuggestion = {
+      id: `prospecting-${prospectingParam}`,
+      label: scenario?.title || "Prospección",
+      description: scenario?.description || "",
+      icon: MapPin,
+      agentSecretName: agentParam,
+      color: "from-emerald-500/15 to-emerald-500/5 border-emerald-500/30",
+      orbGradient:
+        "linear-gradient(135deg, #059669 0%, #10b981 40%, #34d399 70%, #059669 100%)",
+    };
+    handleStart(prospectingAgent);
+  }, [prospectingParam, agentParam, sessionState]);
 
   const handleEndCall = async () => {
     playEndCall();

@@ -341,3 +341,33 @@ model AgentConfig {
 
   @@map("agent_configs")
 }
+
+// ============================================
+// Prospecting Scenarios Configuration
+// ============================================
+
+model ProspectingScenarioConfig {
+  id             String   @id @default(uuid())
+  secretName     String   @unique @map("secret_name")
+  label          String?
+  systemPrompt   String?  @map("system_prompt")
+  firstMessage   String?  @map("first_message")
+  isActiveGlobal Boolean  @default(true) @map("is_active_global")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("prospecting_scenario_configs")
+}
+
+model UserScenarioAccess {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  secretName String   @map("secret_name")
+  enabled    Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@unique([userId, secretName])
+  @@index([userId])
+  @@map("user_scenario_access")
+}
