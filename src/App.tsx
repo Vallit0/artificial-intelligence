@@ -20,7 +20,7 @@ const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
-
+  console.log("hola");
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
