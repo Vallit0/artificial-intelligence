@@ -103,7 +103,7 @@ const agentSuggestions: AgentSuggestion[] = [
   },
   {
     id: "prospeccion-fisica",
-    label: "Prospección Física",
+    label: "Escenarios de Prospección",
     description: "Entrena técnicas de prospección presencial y en campo",
     icon: MapPin,
     color: "from-emerald-500/15 to-emerald-500/5 border-emerald-500/30 hover:border-emerald-500/60",
@@ -306,8 +306,8 @@ const Practice = () => {
       setTranscriptMessages([]);
       setAgentEvaluation(null);
 
-      if (user && scenarioId) {
-        const sessionId = await savePracticeSession(0, undefined, scenarioId);
+      if (user) {
+        const sessionId = await savePracticeSession(0, undefined, scenarioId || undefined);
         setCurrentSessionId(sessionId);
       } else {
         setCurrentSessionId(null);
@@ -353,13 +353,14 @@ const Practice = () => {
       return;
     }
 
+    if (user && currentSessionId) {
+      await sessionsApi.update(currentSessionId, {
+        durationSeconds: sessionDurationRef.current,
+      });
+    }
+
     if (user && scenarioId) {
       setSessionState("evaluating");
-      if (currentSessionId) {
-        await sessionsApi.update(currentSessionId, {
-          durationSeconds: sessionDurationRef.current,
-        });
-      }
       setTimeout(() => {
         if (sessionState === "evaluating") {
           toast({
@@ -463,7 +464,7 @@ const Practice = () => {
 
         {/* ===== IDLE STATE: Suggestion Bubbles (Claude-style) ===== */}
         {sessionState === "idle" && !selectedAgent && (
-          <div className="flex flex-col items-center w-full max-w-2xl px-4 animate-fade-in">
+          <div className="flex flex-col items-center w-full max-w-2xl px-4 pb-24 lg:pb-0 animate-fade-in">
             {/* AI Companion Orb */}
             <div className="relative mb-4">
               {/* Poke speech bubble */}

@@ -74,7 +74,7 @@ const ProspectingPreviewModal = ({
               style={{ animationDelay: "0.3s" }}
             >
               <p className="text-xs sm:text-sm text-foreground leading-relaxed">
-                Acércate al prospecto de manera natural, establece rapport y consigue su interés en los servicios funerarios. 
+                Acércate al prospecto de manera natural, establece rapport y consigue su interés en agendar una cita para el Legado de Vida. 
                 Recuerda mantener una actitud empática y profesional.
               </p>
             </div>

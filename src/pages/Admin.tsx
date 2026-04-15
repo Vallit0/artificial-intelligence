@@ -74,7 +74,7 @@ export default function Admin() {
 
       <main className="lg:ml-60 min-h-screen animate-fade-in">
         <ScrollArea className="h-screen">
-          <div className="max-w-7xl mx-auto px-4 py-6">
+          <div className="max-w-7xl mx-auto px-4 py-6 pb-24 lg:pb-6">
             {/* Header */}
             <div className="mb-6 flex items-center justify-between">
               <div className="flex items-center gap-3">

@@ -195,7 +195,7 @@ const Progress = () => {
       {/* Main Content */}
       <main className="lg:ml-60 min-h-screen animate-fade-in">
         <ScrollArea className="h-screen">
-          <div className="max-w-4xl mx-auto px-4 py-8">
+          <div className="max-w-4xl mx-auto px-4 py-8 pb-24 lg:pb-8">
             {/* Header */}
             <div className="mb-8">
               <h1 className="text-3xl font-bold text-foreground mb-2">Mi Progreso</h1>

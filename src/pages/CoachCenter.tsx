@@ -109,7 +109,7 @@ export default function CoachCenter() {
 
       <main className="lg:ml-60 min-h-screen animate-fade-in">
         <ScrollArea className="h-screen">
-          <div className="max-w-7xl mx-auto px-4 py-6">
+          <div className="max-w-7xl mx-auto px-4 py-6 pb-24 lg:pb-6">
             {/* Header */}
             <div className="mb-4 flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
