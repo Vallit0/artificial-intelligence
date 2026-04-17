@@ -32,6 +32,12 @@ enum MemoryCategory {
   progreso
 }
 
+enum ExperimentStatus {
+  draft
+  active
+  completed
+}
+
 // ============================================
 // Users & Auth
 // ============================================
@@ -188,15 +194,34 @@ model PracticeSession {
   passed          Boolean  @default(false)
   rating          Int?
   aiFeedback      String?  @map("ai_feedback")
+  transcript      Json?
+  abVariantId     String?  @map("ab_variant_id")
   createdAt       DateTime @default(now()) @map("created_at")
 
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  scenario Scenario? @relation(fields: [scenarioId], references: [id], onDelete: SetNull)
-  sessionSummary SessionSummary?
+  user                User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scenario            Scenario?             @relation(fields: [scenarioId], references: [id], onDelete: SetNull)
+  sessionSummary      SessionSummary?
+  evaluationBreakdown EvaluationBreakdown?
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([scenarioId])
+  @@index([abVariantId])
   @@map("practice_sessions")
+}
+
+model EvaluationBreakdown {
+  id               String   @id @default(uuid())
+  sessionId        String   @unique @map("session_id")
+  apertura         Int      @default(0)
+  escuchaActiva    Int      @default(0) @map("escucha_activa")
+  manejoObjeciones Int      @default(0) @map("manejo_objeciones")
+  propuestaValor   Int      @default(0) @map("propuesta_valor")
+  cierre           Int      @default(0)
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  session PracticeSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("evaluation_breakdowns")
 }
 
 model UserScenarioProgress {
@@ -370,4 +395,54 @@ model UserScenarioAccess {
   @@unique([userId, secretName])
   @@index([userId])
   @@map("user_scenario_access")
+}
+
+// ============================================
+// A/B Testing
+// ============================================
+
+model AbExperiment {
+  id              String           @id @default(uuid())
+  name            String
+  description     String?
+  agentSecretName String           @map("agent_secret_name")
+  status          ExperimentStatus @default(draft)
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @default(now()) @updatedAt @map("updated_at")
+
+  variants    AbVariant[]
+  assignments AbAssignment[]
+
+  @@index([status])
+  @@map("ab_experiments")
+}
+
+model AbVariant {
+  id           String  @id @default(uuid())
+  experimentId String  @map("experiment_id")
+  name         String
+  systemPrompt String? @map("system_prompt")
+  firstMessage String? @map("first_message")
+  weight       Int     @default(1)
+
+  experiment  AbExperiment   @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  assignments AbAssignment[]
+
+  @@index([experimentId])
+  @@map("ab_variants")
+}
+
+model AbAssignment {
+  id           String   @id @default(uuid())
+  experimentId String   @map("experiment_id")
+  variantId    String   @map("variant_id")
+  userId       String   @map("user_id")
+  assignedAt   DateTime @default(now()) @map("assigned_at")
+
+  experiment AbExperiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  variant    AbVariant    @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@unique([experimentId, userId])
+  @@index([userId])
+  @@map("ab_assignments")
 }

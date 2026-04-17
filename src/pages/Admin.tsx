@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAuth } from "@/hooks/useAuth";
 import { useStudents } from "@/hooks/useStudents";
-import { Award, Clock, Loader2, Play, Plus, Search, Shield, Target, Timer, TrendingUp, Upload, Users } from "lucide-react";
+import { Award, BarChart3, Clock, FlaskConical, Loader2, Play, Plus, Search, Shield, Target, Timer, TrendingUp, Upload, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -15,8 +15,13 @@ import BulkUploadModal from "@/components/admin/BulkUploadModal";
 import AgentConfigPanel from "@/components/admin/AgentConfigPanel";
 import ProspectingScenariosPanel from "@/components/admin/ProspectingScenariosPanel";
 import LtiPlatformPanel from "@/components/admin/LtiPlatformPanel";
+import AbExperimentsPanel from "@/components/admin/AbExperimentsPanel";
 import LeftSidebar from "@/components/scenarios/LeftSidebar";
 import MobileNavigation from "@/components/MobileNavigation";
+import { useAdminAnalytics } from "@/hooks/useAdminAnalytics";
+import { CompetencyRadar } from "@/components/analytics/CompetencyRadar";
+import { GroupComparisonChart } from "@/components/analytics/GroupComparisonChart";
+import { ScoreLineChart } from "@/components/analytics/ScoreLineChart";
 
 export default function Admin() {
   const navigate = useNavigate();
@@ -24,6 +29,7 @@ export default function Admin() {
   const { isAdmin, isLoading: adminLoading } = useAdmin();
   const { students, isLoading: studentsLoading, assignGrade, toggleExamenFinal, refetch } = useStudents();
 
+  const { data: adminAnalytics, isLoading: analyticsLoading } = useAdminAnalytics();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -89,9 +95,17 @@ export default function Admin() {
             </div>
 
         <Tabs defaultValue="students" className="space-y-4">
-          <TabsList>
+          <TabsList className="flex-wrap h-auto">
             <TabsTrigger value="students">Estudiantes</TabsTrigger>
+            <TabsTrigger value="analytics" className="flex items-center gap-1">
+              <BarChart3 className="w-3.5 h-3.5" />
+              Analíticas
+            </TabsTrigger>
             <TabsTrigger value="agents">Agentes IA</TabsTrigger>
+            <TabsTrigger value="ab-tests" className="flex items-center gap-1">
+              <FlaskConical className="w-3.5 h-3.5" />
+              A/B Tests
+            </TabsTrigger>
             <TabsTrigger value="prospecting">Prospección</TabsTrigger>
             <TabsTrigger value="lti">LTI / Moodle</TabsTrigger>
           </TabsList>
@@ -297,8 +311,75 @@ export default function Admin() {
         </Card>
           </TabsContent>
 
+          <TabsContent value="analytics">
+            {analyticsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              </div>
+            ) : adminAnalytics ? (
+              <div className="space-y-6">
+                {/* Group Competency Radar */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Target className="w-5 h-5 text-primary" />
+                      Competencias Promedio del Grupo
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <CompetencyRadar
+                      latest={adminAnalytics.overallBreakdown}
+                      average={null}
+                    />
+                  </CardContent>
+                </Card>
+
+                {/* Student Comparison */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="w-5 h-5 text-secondary" />
+                      Ranking de Asesores por Puntaje
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <GroupComparisonChart students={adminAnalytics.studentStats} />
+                  </CardContent>
+                </Card>
+
+                {/* Activity Trend */}
+                {adminAnalytics.activityTrend.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <TrendingUp className="w-5 h-5 text-primary" />
+                        Tendencia de Actividad (30 días)
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ScoreLineChart
+                        data={adminAnalytics.activityTrend.map(d => ({
+                          date: d.date,
+                          score: d.count,
+                          scenarioName: `${d.count} sesiones`,
+                          breakdown: null,
+                        }))}
+                      />
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            ) : (
+              <p className="text-center text-muted-foreground py-8">No hay datos analíticos disponibles</p>
+            )}
+          </TabsContent>
+
           <TabsContent value="agents">
             <AgentConfigPanel />
+          </TabsContent>
+
+          <TabsContent value="ab-tests">
+            <AbExperimentsPanel />
           </TabsContent>
 
           <TabsContent value="prospecting">

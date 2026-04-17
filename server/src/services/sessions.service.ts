@@ -14,7 +14,10 @@ import { NotFoundError, InternalError } from '../utils/errors.js';
 export async function getUserSessions(userId: string, limit: number = 100): Promise<PracticeSession[]> {
   const sessions = await prisma.practiceSession.findMany({
     where: { userId },
-    include: { scenario: { select: { name: true } } },
+    include: {
+      scenario: { select: { name: true } },
+      evaluationBreakdown: true,
+    },
     orderBy: { createdAt: 'desc' },
     take: limit,
   });
@@ -32,6 +35,7 @@ export async function createSession(userId: string, input: CreateSessionInput): 
       passed: input.passed || false,
       rating: input.rating || null,
       aiFeedback: input.aiFeedback || null,
+      abVariantId: input.abVariantId || null,
     },
   });
 
@@ -83,12 +87,103 @@ export async function saveEvaluation(
     throw new NotFoundError('Session not found');
   }
 
+  // Persist evaluation breakdown to dedicated table
+  if (evaluation.breakdown) {
+    await prisma.evaluationBreakdown.upsert({
+      where: { sessionId },
+      create: {
+        sessionId,
+        apertura: evaluation.breakdown.apertura ?? 0,
+        escuchaActiva: evaluation.breakdown.escucha_activa ?? 0,
+        manejoObjeciones: evaluation.breakdown.manejo_objeciones ?? 0,
+        propuestaValor: evaluation.breakdown.propuesta_valor ?? 0,
+        cierre: evaluation.breakdown.cierre ?? 0,
+      },
+      update: {
+        apertura: evaluation.breakdown.apertura ?? 0,
+        escuchaActiva: evaluation.breakdown.escucha_activa ?? 0,
+        manejoObjeciones: evaluation.breakdown.manejo_objeciones ?? 0,
+        propuestaValor: evaluation.breakdown.propuesta_valor ?? 0,
+        cierre: evaluation.breakdown.cierre ?? 0,
+      },
+    });
+  }
+
   // Update scenario progress if passed
   if (evaluation.passed && session.scenarioId) {
     await updateProgressOnPass(userId, session.scenarioId, evaluation.score);
   }
 
   return mapToSession(session);
+}
+
+export async function saveTranscript(
+  sessionId: string,
+  userId: string,
+  transcript: Array<{ role: string; content: string; timestamp?: number }>
+): Promise<void> {
+  const existing = await prisma.practiceSession.findFirst({
+    where: { id: sessionId, userId },
+  });
+  if (!existing) {
+    throw new NotFoundError('Session not found');
+  }
+  await prisma.practiceSession.update({
+    where: { id: sessionId },
+    data: { transcript: transcript as any },
+  });
+}
+
+export async function getTranscript(sessionId: string, userId: string) {
+  const session = await prisma.practiceSession.findFirst({
+    where: { id: sessionId, userId },
+    include: {
+      evaluationBreakdown: true,
+      sessionSummary: true,
+      scenario: { select: { name: true } },
+    },
+  });
+  if (!session) {
+    throw new NotFoundError('Session not found');
+  }
+  return {
+    transcript: session.transcript as any[] | null,
+    score: session.score,
+    passed: session.passed,
+    aiFeedback: session.aiFeedback,
+    durationSeconds: session.durationSeconds,
+    createdAt: session.createdAt,
+    scenarioName: (session.scenario as any)?.name || null,
+    breakdown: session.evaluationBreakdown,
+    summary: session.sessionSummary,
+  };
+}
+
+export async function getTranscriptAdmin(sessionId: string) {
+  const session = await prisma.practiceSession.findFirst({
+    where: { id: sessionId },
+    include: {
+      evaluationBreakdown: true,
+      sessionSummary: true,
+      scenario: { select: { name: true } },
+      user: { select: { firstName: true, lastName: true, email: true } },
+    },
+  });
+  if (!session) {
+    throw new NotFoundError('Session not found');
+  }
+  return {
+    transcript: session.transcript as any[] | null,
+    score: session.score,
+    passed: session.passed,
+    aiFeedback: session.aiFeedback,
+    durationSeconds: session.durationSeconds,
+    createdAt: session.createdAt,
+    scenarioName: (session.scenario as any)?.name || null,
+    breakdown: session.evaluationBreakdown,
+    summary: session.sessionSummary,
+    user: session.user,
+  };
 }
 
 export async function evaluateSession(
@@ -308,6 +403,15 @@ function mapToSession(row: any): PracticeSession {
     passed: row.passed,
     rating: row.rating ?? undefined,
     aiFeedback: row.aiFeedback || undefined,
+    transcript: row.transcript || undefined,
+    abVariantId: row.abVariantId || undefined,
+    breakdown: row.evaluationBreakdown ? {
+      apertura: row.evaluationBreakdown.apertura,
+      escuchaActiva: row.evaluationBreakdown.escuchaActiva,
+      manejoObjeciones: row.evaluationBreakdown.manejoObjeciones,
+      propuestaValor: row.evaluationBreakdown.propuestaValor,
+      cierre: row.evaluationBreakdown.cierre,
+    } : undefined,
     createdAt: row.createdAt,
   };
 }

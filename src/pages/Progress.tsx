@@ -2,8 +2,9 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import PracticeTimer from "@/components/PracticeTimer";
 import CelebrationModal from "@/components/CelebrationModal";
-import { Award, Clock, TrendingUp, Flame, Calendar, Star, Trophy, Target, Zap, Phone, Crown, Sparkles, CheckCircle2, Lock } from "lucide-react";
+import { Award, Clock, TrendingUp, Flame, Calendar, Star, Trophy, Target, Zap, Phone, Crown, Sparkles, CheckCircle2, Lock, Play, BarChart3, LineChart as LineChartIcon } from "lucide-react";
 import { usePracticeSessions } from "@/hooks/usePracticeSessions";
+import { useAnalytics } from "@/hooks/useAnalytics";
 import { formatDistanceToNow, startOfWeek, endOfWeek, isWithinInterval, startOfDay, differenceInCalendarDays } from "date-fns";
 import { es } from "date-fns/locale";
 import LeftSidebar from "@/components/scenarios/LeftSidebar";
@@ -11,14 +12,22 @@ import MobileNavigation from "@/components/MobileNavigation";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress as ProgressBar } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CompetencyRadar } from "@/components/analytics/CompetencyRadar";
+import { ScoreLineChart } from "@/components/analytics/ScoreLineChart";
+import { CompetencyBarChart } from "@/components/analytics/CompetencyBarChart";
+import { ActivityHeatmap } from "@/components/analytics/ActivityHeatmap";
+import { SessionReplayModal } from "@/components/replay/SessionReplayModal";
 
 const TARGET_TIME = 1500; // 25 minutes in seconds
 
 const Progress = () => {
   const navigate = useNavigate();
   const { sessions, totalPracticeTime, isLoading } = usePracticeSessions();
+  const { data: analytics, isLoading: analyticsLoading } = useAnalytics();
   const [showCelebration, setShowCelebration] = useState(false);
   const [hasSeenCelebration, setHasSeenCelebration] = useState(false);
+  const [replaySessionId, setReplaySessionId] = useState<string | null>(null);
 
   // Check if user has reached the target
   useEffect(() => {
@@ -189,6 +198,12 @@ const Progress = () => {
         onClose={() => setShowCelebration(false)}
       />
 
+      <SessionReplayModal
+        sessionId={replaySessionId}
+        open={!!replaySessionId}
+        onOpenChange={(open) => { if (!open) setReplaySessionId(null); }}
+      />
+
       {/* Left Sidebar */}
       <LeftSidebar />
 
@@ -211,204 +226,322 @@ const Progress = () => {
                 ))}
               </div>
             ) : (
-              <>
-                {/* Main Stats Cards */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                  <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
-                    <CardContent className="p-4 text-center">
-                      <Clock className="w-8 h-8 text-primary mx-auto mb-2" />
-                      <p className="text-2xl font-bold text-foreground">
-                        {formatDuration(totalPracticeTime)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">Tiempo Total</p>
-                    </CardContent>
-                  </Card>
+              <Tabs defaultValue="resumen" className="space-y-6">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="resumen" className="flex items-center gap-1.5">
+                    <Award className="h-4 w-4" />
+                    Resumen
+                  </TabsTrigger>
+                  <TabsTrigger value="competencias" className="flex items-center gap-1.5">
+                    <BarChart3 className="h-4 w-4" />
+                    Competencias
+                  </TabsTrigger>
+                  <TabsTrigger value="historial" className="flex items-center gap-1.5">
+                    <LineChartIcon className="h-4 w-4" />
+                    Historial
+                  </TabsTrigger>
+                </TabsList>
 
-                  <Card className="bg-gradient-to-br from-secondary/10 to-secondary/5 border-secondary/20">
-                    <CardContent className="p-4 text-center">
-                      <TrendingUp className="w-8 h-8 text-secondary mx-auto mb-2" />
-                      <p className="text-2xl font-bold text-foreground">
-                        {sessions.length}
-                      </p>
-                      <p className="text-xs text-muted-foreground">Sesiones</p>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="bg-gradient-to-br from-orange-500/10 to-orange-500/5 border-orange-500/20">
-                    <CardContent className="p-4 text-center">
-                      <Flame className="w-8 h-8 text-orange-500 mx-auto mb-2" />
-                      <p className="text-2xl font-bold text-foreground">
-                        {streak}
-                      </p>
-                      <p className="text-xs text-muted-foreground">Días de racha</p>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="bg-gradient-to-br from-yellow-500/10 to-yellow-500/5 border-yellow-500/20">
-                    <CardContent className="p-4 text-center">
-                      <Star className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
-                      <p className="text-2xl font-bold text-foreground">
-                        {weekStats.avgRating > 0 ? weekStats.avgRating : "-"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">Prom. Estrellas</p>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Certification Progress */}
-                <Card className="mb-8">
-                  <CardHeader className="pb-4">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="flex items-center gap-2">
-                        <Award className="w-6 h-6 text-primary" />
-                        Progreso de Certificación
-                      </CardTitle>
-                      <span className="text-2xl font-bold text-primary">{progressPercent}%</span>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <PracticeTimer
-                      totalSeconds={totalPracticeTime}
-                      targetSeconds={TARGET_TIME}
-                      className="mb-4"
-                    />
-                    <p className="text-sm text-muted-foreground text-center">
-                      {totalPracticeTime >= TARGET_TIME 
-                        ? "🎉 ¡Felicidades! Has completado las 2 horas de práctica requeridas."
-                        : `Necesitas ${formatDuration(TARGET_TIME - totalPracticeTime)} más para obtener tu certificación.`
-                      }
-                    </p>
-                  </CardContent>
-                </Card>
-
-                {/* Mini Milestones */}
-                <Card className="mb-8">
-                  <CardHeader className="pb-4">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="flex items-center gap-2">
-                        <Trophy className="w-6 h-6 text-yellow-500" />
-                        Logros
-                      </CardTitle>
-                      <span className="text-sm font-bold text-muted-foreground">
-                        {unlockedCount}/{milestones.length}
-                      </span>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {milestones.map((milestone) => {
-                        const Icon = milestone.icon;
-                        return (
-                          <div
-                            key={milestone.id}
-                            className={`relative flex flex-col items-center text-center p-4 rounded-2xl border-2 transition-all duration-200 ${
-                              milestone.unlocked
-                                ? "bg-gradient-to-br from-card to-muted/30 border-border shadow-sm"
-                                : "bg-muted/20 border-transparent opacity-50"
-                            }`}
-                          >
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${
-                              milestone.unlocked ? "bg-muted" : "bg-muted/50"
-                            }`}>
-                              {milestone.unlocked ? (
-                                <Icon className={`w-5 h-5 ${milestone.color}`} />
-                              ) : (
-                                <Lock className="w-4 h-4 text-muted-foreground/50" />
-                              )}
-                            </div>
-                            <p className="text-xs font-bold text-foreground leading-tight">{milestone.title}</p>
-                            <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">{milestone.description}</p>
-                            {milestone.unlocked && (
-                              <CheckCircle2 className="absolute top-2 right-2 w-4 h-4 text-emerald-500" />
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* This Week Stats */}
-                <Card className="mb-8">
-                  <CardHeader className="pb-4">
-                    <CardTitle className="flex items-center gap-2">
-                      <Calendar className="w-5 h-5 text-secondary" />
-                      Esta Semana
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="text-center p-4 bg-muted/50 rounded-xl">
-                        <p className="text-2xl font-bold text-foreground">{weekStats.sessions}</p>
-                        <p className="text-xs text-muted-foreground">Sesiones</p>
-                      </div>
-                      <div className="text-center p-4 bg-muted/50 rounded-xl">
-                        <p className="text-2xl font-bold text-foreground">{formatDuration(weekStats.time)}</p>
-                        <p className="text-xs text-muted-foreground">Tiempo</p>
-                      </div>
-                      <div className="text-center p-4 bg-muted/50 rounded-xl">
+                {/* ============================================ */}
+                {/* Tab 1: Resumen (existing content) */}
+                {/* ============================================ */}
+                <TabsContent value="resumen" className="space-y-8">
+                  {/* Main Stats Cards */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
+                      <CardContent className="p-4 text-center">
+                        <Clock className="w-8 h-8 text-primary mx-auto mb-2" />
                         <p className="text-2xl font-bold text-foreground">
-                          {weekStats.avgRating > 0 ? `${weekStats.avgRating}⭐` : "-"}
+                          {formatDuration(totalPracticeTime)}
                         </p>
-                        <p className="text-xs text-muted-foreground">Promedio</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                        <p className="text-xs text-muted-foreground">Tiempo Total</p>
+                      </CardContent>
+                    </Card>
 
-                {/* Recent Sessions */}
-                <Card>
-                  <CardHeader className="pb-4">
-                    <CardTitle>Sesiones Recientes</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {recentSessions.length === 0 ? (
-                      <p className="text-muted-foreground text-center py-8">
-                        Aún no tienes sesiones de práctica. ¡Comienza tu primera sesión!
-                      </p>
-                    ) : (
-                      <div className="space-y-3">
-                        {recentSessions.map((session) => (
-                          <div
-                            key={session.id}
-                            className="flex items-center justify-between p-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors"
-                          >
-                            <div>
-                              <p className="font-medium text-foreground">
-                                {formatDistanceToNow(new Date(session.created_at), {
-                                  addSuffix: true,
-                                  locale: es,
-                                })}
-                              </p>
-                              <p className="text-sm text-muted-foreground">
-                                {session.score !== null
-                                  ? `Score: ${session.score}/100${session.passed ? " - Aprobado" : ""}`
-                                  : session.rating
-                                  ? `${"⭐".repeat(session.rating)}`
-                                  : "Sin calificación"}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {session.score !== null && (
-                                <span className={`text-sm font-bold px-2 py-1 rounded-full ${
-                                  session.score >= 50
-                                    ? "text-green-700 bg-green-100 dark:text-green-400 dark:bg-green-900/30"
-                                    : "text-red-700 bg-red-100 dark:text-red-400 dark:bg-red-900/30"
-                                }`}>
-                                  {session.score}%
-                                </span>
-                              )}
-                              <span className="text-sm font-semibold text-primary bg-primary/10 px-3 py-1 rounded-full">
-                                {formatDuration(session.duration_seconds)}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
+                    <Card className="bg-gradient-to-br from-secondary/10 to-secondary/5 border-secondary/20">
+                      <CardContent className="p-4 text-center">
+                        <TrendingUp className="w-8 h-8 text-secondary mx-auto mb-2" />
+                        <p className="text-2xl font-bold text-foreground">
+                          {sessions.length}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Sesiones</p>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-gradient-to-br from-orange-500/10 to-orange-500/5 border-orange-500/20">
+                      <CardContent className="p-4 text-center">
+                        <Flame className="w-8 h-8 text-orange-500 mx-auto mb-2" />
+                        <p className="text-2xl font-bold text-foreground">
+                          {streak}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Días de racha</p>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-gradient-to-br from-yellow-500/10 to-yellow-500/5 border-yellow-500/20">
+                      <CardContent className="p-4 text-center">
+                        <Star className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
+                        <p className="text-2xl font-bold text-foreground">
+                          {weekStats.avgRating > 0 ? weekStats.avgRating : "-"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Prom. Estrellas</p>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Certification Progress */}
+                  <Card>
+                    <CardHeader className="pb-4">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="flex items-center gap-2">
+                          <Award className="w-6 h-6 text-primary" />
+                          Progreso de Certificación
+                        </CardTitle>
+                        <span className="text-2xl font-bold text-primary">{progressPercent}%</span>
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </>
+                    </CardHeader>
+                    <CardContent>
+                      <PracticeTimer
+                        totalSeconds={totalPracticeTime}
+                        targetSeconds={TARGET_TIME}
+                        className="mb-4"
+                      />
+                      <p className="text-sm text-muted-foreground text-center">
+                        {totalPracticeTime >= TARGET_TIME
+                          ? "¡Felicidades! Has completado las 2 horas de práctica requeridas."
+                          : `Necesitas ${formatDuration(TARGET_TIME - totalPracticeTime)} más para obtener tu certificación.`
+                        }
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  {/* Mini Milestones */}
+                  <Card>
+                    <CardHeader className="pb-4">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="flex items-center gap-2">
+                          <Trophy className="w-6 h-6 text-yellow-500" />
+                          Logros
+                        </CardTitle>
+                        <span className="text-sm font-bold text-muted-foreground">
+                          {unlockedCount}/{milestones.length}
+                        </span>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        {milestones.map((milestone) => {
+                          const Icon = milestone.icon;
+                          return (
+                            <div
+                              key={milestone.id}
+                              className={`relative flex flex-col items-center text-center p-4 rounded-2xl border-2 transition-all duration-200 ${
+                                milestone.unlocked
+                                  ? "bg-gradient-to-br from-card to-muted/30 border-border shadow-sm"
+                                  : "bg-muted/20 border-transparent opacity-50"
+                              }`}
+                            >
+                              <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${
+                                milestone.unlocked ? "bg-muted" : "bg-muted/50"
+                              }`}>
+                                {milestone.unlocked ? (
+                                  <Icon className={`w-5 h-5 ${milestone.color}`} />
+                                ) : (
+                                  <Lock className="w-4 h-4 text-muted-foreground/50" />
+                                )}
+                              </div>
+                              <p className="text-xs font-bold text-foreground leading-tight">{milestone.title}</p>
+                              <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">{milestone.description}</p>
+                              {milestone.unlocked && (
+                                <CheckCircle2 className="absolute top-2 right-2 w-4 h-4 text-emerald-500" />
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* This Week Stats */}
+                  <Card>
+                    <CardHeader className="pb-4">
+                      <CardTitle className="flex items-center gap-2">
+                        <Calendar className="w-5 h-5 text-secondary" />
+                        Esta Semana
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="text-center p-4 bg-muted/50 rounded-xl">
+                          <p className="text-2xl font-bold text-foreground">{weekStats.sessions}</p>
+                          <p className="text-xs text-muted-foreground">Sesiones</p>
+                        </div>
+                        <div className="text-center p-4 bg-muted/50 rounded-xl">
+                          <p className="text-2xl font-bold text-foreground">{formatDuration(weekStats.time)}</p>
+                          <p className="text-xs text-muted-foreground">Tiempo</p>
+                        </div>
+                        <div className="text-center p-4 bg-muted/50 rounded-xl">
+                          <p className="text-2xl font-bold text-foreground">
+                            {weekStats.avgRating > 0 ? `${weekStats.avgRating}` : "-"}
+                          </p>
+                          <p className="text-xs text-muted-foreground">Promedio</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Recent Sessions */}
+                  <Card>
+                    <CardHeader className="pb-4">
+                      <CardTitle>Sesiones Recientes</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {recentSessions.length === 0 ? (
+                        <p className="text-muted-foreground text-center py-8">
+                          Aún no tienes sesiones de práctica. ¡Comienza tu primera sesión!
+                        </p>
+                      ) : (
+                        <div className="space-y-3">
+                          {recentSessions.map((session) => (
+                            <div
+                              key={session.id}
+                              onClick={() => setReplaySessionId(session.id)}
+                              className="flex items-center justify-between p-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer group"
+                            >
+                              <div className="flex items-center gap-3">
+                                <Play className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                                <div>
+                                  <p className="font-medium text-foreground">
+                                    {formatDistanceToNow(new Date(session.created_at), {
+                                      addSuffix: true,
+                                      locale: es,
+                                    })}
+                                  </p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {session.score !== null
+                                      ? `Score: ${session.score}/100${session.passed ? " - Aprobado" : ""}`
+                                      : session.rating
+                                      ? `${"⭐".repeat(session.rating)}`
+                                      : "Sin calificación"}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {session.score !== null && (
+                                  <span className={`text-sm font-bold px-2 py-1 rounded-full ${
+                                    session.score >= 50
+                                      ? "text-green-700 bg-green-100 dark:text-green-400 dark:bg-green-900/30"
+                                      : "text-red-700 bg-red-100 dark:text-red-400 dark:bg-red-900/30"
+                                  }`}>
+                                    {session.score}%
+                                  </span>
+                                )}
+                                <span className="text-sm font-semibold text-primary bg-primary/10 px-3 py-1 rounded-full">
+                                  {formatDuration(session.duration_seconds)}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                {/* ============================================ */}
+                {/* Tab 2: Competencias */}
+                {/* ============================================ */}
+                <TabsContent value="competencias" className="space-y-6">
+                  {analyticsLoading ? (
+                    <div className="space-y-6">
+                      {[1, 2].map((i) => (
+                        <div key={i} className="h-80 bg-muted rounded-2xl animate-pulse" />
+                      ))}
+                    </div>
+                  ) : (
+                    <>
+                      {/* Radar Chart */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <Target className="w-5 h-5 text-primary" />
+                            Perfil de Competencias
+                          </CardTitle>
+                          <p className="text-sm text-muted-foreground">
+                            Última sesión vs promedio histórico
+                          </p>
+                        </CardHeader>
+                        <CardContent>
+                          <CompetencyRadar
+                            latest={analytics?.latestBreakdown || null}
+                            average={analytics?.averageBreakdown || null}
+                          />
+                        </CardContent>
+                      </Card>
+
+                      {/* Bar Chart */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <BarChart3 className="w-5 h-5 text-secondary" />
+                            Promedio por Competencia
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <CompetencyBarChart breakdown={analytics?.averageBreakdown || null} />
+                        </CardContent>
+                      </Card>
+                    </>
+                  )}
+                </TabsContent>
+
+                {/* ============================================ */}
+                {/* Tab 3: Historial */}
+                {/* ============================================ */}
+                <TabsContent value="historial" className="space-y-6">
+                  {analyticsLoading ? (
+                    <div className="space-y-6">
+                      {[1, 2].map((i) => (
+                        <div key={i} className="h-80 bg-muted rounded-2xl animate-pulse" />
+                      ))}
+                    </div>
+                  ) : (
+                    <>
+                      {/* Score Line Chart */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <LineChartIcon className="w-5 h-5 text-primary" />
+                            Progresión de Puntaje
+                          </CardTitle>
+                          <p className="text-sm text-muted-foreground">
+                            Evolución de tu puntaje a lo largo del tiempo
+                          </p>
+                        </CardHeader>
+                        <CardContent>
+                          <ScoreLineChart data={analytics?.scoreHistory || []} />
+                        </CardContent>
+                      </Card>
+
+                      {/* Activity Heatmap */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <Calendar className="w-5 h-5 text-secondary" />
+                            Actividad de Práctica
+                          </CardTitle>
+                          <p className="text-sm text-muted-foreground">
+                            Últimos 90 días
+                          </p>
+                        </CardHeader>
+                        <CardContent>
+                          <ActivityHeatmap data={analytics?.activityHeatmap || []} />
+                        </CardContent>
+                      </Card>
+                    </>
+                  )}
+                </TabsContent>
+              </Tabs>
             )}
           </div>
         </ScrollArea>

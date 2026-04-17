@@ -79,6 +79,33 @@ export async function evaluate(req: AuthRequest, res: Response, next: NextFuncti
 }
 
 // ============================================
+// POST /api/sessions/:id/transcript
+// ============================================
+export async function saveTranscript(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { transcript } = req.body;
+    await sessionsService.saveTranscript(req.params.id, req.user!.id, transcript);
+    res.json({ success: true });
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+}
+
+// ============================================
+// GET /api/sessions/:id/transcript
+// ============================================
+export async function getTranscript(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const data = await sessionsService.getTranscript(req.params.id, req.user!.id);
+    res.json(data);
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+}
+
+// ============================================
 // GET /api/stats
 // ============================================
 export async function getStats(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {

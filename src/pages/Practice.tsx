@@ -16,6 +16,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useCallSounds } from "@/hooks/useCallSounds";
 import { scenariosApi, sessionsApi } from "@/lib/api";
+import { api } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
@@ -252,6 +253,7 @@ const Practice = () => {
     isSpeaking,
     isMuted,
     sessionTime,
+    variantId,
     connect,
     disconnect,
     toggleMute,
@@ -307,7 +309,7 @@ const Practice = () => {
       setAgentEvaluation(null);
 
       if (user) {
-        const sessionId = await savePracticeSession(0, undefined, scenarioId || undefined);
+        const sessionId = await savePracticeSession(0, undefined, scenarioId || undefined, variantId || undefined);
         setCurrentSessionId(sessionId);
       } else {
         setCurrentSessionId(null);
@@ -357,6 +359,17 @@ const Practice = () => {
       await sessionsApi.update(currentSessionId, {
         durationSeconds: sessionDurationRef.current,
       });
+
+      // Save transcript for replay
+      if (transcriptMessages.length > 0) {
+        api.post(`/api/sessions/${currentSessionId}/transcript`, {
+          transcript: transcriptMessages.map(m => ({
+            role: m.isUser ? 'user' : 'agent',
+            content: m.text,
+            timestamp: m.timestamp.getTime(),
+          })),
+        }).catch(err => console.error('Failed to save transcript:', err));
+      }
     }
 
     if (user && scenarioId) {

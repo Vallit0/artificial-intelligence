@@ -9,6 +9,9 @@ import { handleError } from '../utils/errors.js';
 import * as adminService from '../services/admin.service.js';
 import * as agentConfigService from '../services/agentConfig.service.js';
 import * as prospectingScenariosService from '../services/prospectingScenarios.service.js';
+import * as sessionsService from '../services/sessions.service.js';
+import * as analyticsController from '../controllers/analytics.controller.js';
+import * as abTestingController from '../controllers/abTesting.controller.js';
 import prisma from '../db/index.js';
 
 export const adminRouter = Router();
@@ -210,6 +213,34 @@ adminRouter.put('/user-scenario-access/:userId', async (req: AuthRequest, res: R
     }
     await prospectingScenariosService.bulkSetUserAccess(req.params.userId, entries);
     res.json({ success: true });
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
+// ============================================
+// Admin Analytics
+// ============================================
+adminRouter.get('/analytics', analyticsController.getAdminAnalytics);
+
+// ============================================
+// A/B Testing Experiments
+// ============================================
+adminRouter.get('/experiments', abTestingController.list);
+adminRouter.post('/experiments', abTestingController.create);
+adminRouter.get('/experiments/:id', abTestingController.getById);
+adminRouter.put('/experiments/:id', abTestingController.update);
+adminRouter.delete('/experiments/:id', abTestingController.remove);
+adminRouter.get('/experiments/:id/results', abTestingController.getResults);
+
+// ============================================
+// Admin Session Transcript (view any student's session)
+// ============================================
+adminRouter.get('/sessions/:id/transcript', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const data = await sessionsService.getTranscriptAdmin(req.params.id);
+    res.json(data);
   } catch (error) {
     const appError = handleError(error);
     res.status(appError.statusCode).json({ error: appError.message });

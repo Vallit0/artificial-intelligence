@@ -57,6 +57,20 @@ export interface Scenario {
 // Practice Session Types
 // ============================================
 
+export interface EvaluationBreakdown {
+  apertura: number;
+  escuchaActiva: number;
+  manejoObjeciones: number;
+  propuestaValor: number;
+  cierre: number;
+}
+
+export interface TranscriptMessage {
+  role: 'user' | 'agent';
+  content: string;
+  timestamp?: number;
+}
+
 export interface PracticeSession {
   id: string;
   userId: string;
@@ -66,6 +80,9 @@ export interface PracticeSession {
   passed: boolean;
   rating?: number;
   aiFeedback?: string;
+  transcript?: TranscriptMessage[];
+  abVariantId?: string;
+  breakdown?: EvaluationBreakdown;
   createdAt: Date;
 }
 
@@ -89,6 +106,7 @@ export interface CreateSessionInput {
   passed?: boolean;
   rating?: number;
   aiFeedback?: string;
+  abVariantId?: string;
 }
 
 export interface UpdateSessionInput {
@@ -213,4 +231,54 @@ export interface PaginatedResponse<T> extends ApiResponse<T[]> {
   total: number;
   page: number;
   limit: number;
+}
+
+// ============================================
+// A/B Testing Types
+// ============================================
+
+export type ExperimentStatus = 'draft' | 'active' | 'completed';
+
+export interface AbExperiment {
+  id: string;
+  name: string;
+  description?: string;
+  agentSecretName: string;
+  status: ExperimentStatus;
+  variants?: AbVariant[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface AbVariant {
+  id: string;
+  experimentId: string;
+  name: string;
+  systemPrompt?: string;
+  firstMessage?: string;
+  weight: number;
+}
+
+export interface AbAssignment {
+  id: string;
+  experimentId: string;
+  variantId: string;
+  userId: string;
+  assignedAt: Date;
+}
+
+export interface AbVariantResults {
+  variantId: string;
+  variantName: string;
+  sessionCount: number;
+  avgScore: number | null;
+  avgDuration: number | null;
+  passRate: number;
+  breakdownAvg: {
+    apertura: number | null;
+    escuchaActiva: number | null;
+    manejoObjeciones: number | null;
+    propuestaValor: number | null;
+    cierre: number | null;
+  };
 }

@@ -58,6 +58,8 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
   const isConnectedRef = useRef(false);
   const prefetchedUrlRef = useRef<string | null>(null);
   const prefetchedOverridesRef = useRef<{ prompt?: string; firstMessage?: string } | null>(null);
+  const prefetchedVariantIdRef = useRef<string | null>(null);
+  const [variantId, setVariantId] = useState<string | null>(null);
   const memoryContextRef = useRef<string | null>(null);
 
   const conversation = useConversation({
@@ -160,13 +162,14 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
   // Pre-fetch signed URL and memory context when agent changes
   const prefetchSignedUrl = useCallback(async () => {
     try {
-      const data = await api.post<{ signedUrl: string; scenario?: any; overrides?: { prompt?: string; firstMessage?: string } | null }>("/api/elevenlabs/conversation-token", {
+      const data = await api.post<{ signedUrl: string; scenario?: any; overrides?: { prompt?: string; firstMessage?: string } | null; variantId?: string }>("/api/elevenlabs/conversation-token", {
         scenarioId: scenarioIdRef.current,
         agentSecretName: agentSecretNameRef.current,
       });
       if (data?.signedUrl) {
         prefetchedUrlRef.current = data.signedUrl;
         prefetchedOverridesRef.current = data.overrides ?? null;
+        prefetchedVariantIdRef.current = data.variantId ?? null;
         console.log("Signed URL pre-fetched for agent:", agentSecretNameRef.current);
       }
     } catch (error) {
@@ -209,15 +212,16 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
       // Use pre-fetched URL if available, otherwise fetch now
       const hasPreFetched = !!prefetchedUrlRef.current;
 
-      let data: { signedUrl: string; scenario?: any; overrides?: { prompt?: string; firstMessage?: string } | null };
+      let data: { signedUrl: string; scenario?: any; overrides?: { prompt?: string; firstMessage?: string } | null; variantId?: string };
 
       if (hasPreFetched) {
         data = {
           signedUrl: prefetchedUrlRef.current!,
           overrides: prefetchedOverridesRef.current,
+          variantId: prefetchedVariantIdRef.current ?? undefined,
         };
       } else {
-        data = await api.post<{ signedUrl: string; scenario?: any; overrides?: { prompt?: string; firstMessage?: string } | null }>("/api/elevenlabs/conversation-token", {
+        data = await api.post<{ signedUrl: string; scenario?: any; overrides?: { prompt?: string; firstMessage?: string } | null; variantId?: string }>("/api/elevenlabs/conversation-token", {
           scenarioId: scenarioIdRef.current,
           agentSecretName: agentSecretNameRef.current,
         });
@@ -225,6 +229,10 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
 
       prefetchedUrlRef.current = null; // Consumed
       prefetchedOverridesRef.current = null;
+      prefetchedVariantIdRef.current = null;
+
+      // Expose variant ID for A/B testing
+      setVariantId(data.variantId ?? null);
 
       if (!data?.signedUrl) {
         throw new Error("No signed URL received from server");
@@ -305,6 +313,7 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     isSpeaking: conversation.isSpeaking,
     isMuted,
     sessionTime,
+    variantId,
     connect,
     disconnect,
     toggleMute,

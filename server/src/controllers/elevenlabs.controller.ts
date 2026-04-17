@@ -7,6 +7,7 @@ import * as elevenlabsService from '../services/elevenlabs.service.js';
 import * as scenariosService from '../services/scenarios.service.js';
 import * as sessionsService from '../services/sessions.service.js';
 import * as prospectingScenariosService from '../services/prospectingScenarios.service.js';
+import * as abTestingService from '../services/abTesting.service.js';
 import { AuthRequest } from '../types/index.js';
 import { handleError, BadRequestError } from '../utils/errors.js';
 
@@ -44,7 +45,28 @@ export async function getConversationToken(req: AuthRequest, res: Response, next
       }
     }
 
-    res.json({ signedUrl, scenario, overrides });
+    // Check for active A/B experiment
+    let variantId: string | undefined;
+    if (agentSecretName && req.user) {
+      try {
+        const experiment = await abTestingService.findActiveExperiment(agentSecretName);
+        if (experiment) {
+          const variant = await abTestingService.assignUserToVariant(experiment.id, req.user.id);
+          variantId = variant.id;
+          // A/B variant overrides take precedence
+          if (variant.systemPrompt || variant.firstMessage) {
+            overrides = {
+              prompt: variant.systemPrompt || overrides?.prompt,
+              firstMessage: variant.firstMessage || overrides?.firstMessage,
+            };
+          }
+        }
+      } catch (err) {
+        console.error('A/B assignment error (non-fatal):', err);
+      }
+    }
+
+    res.json({ signedUrl, scenario, overrides, variantId });
   } catch (error) {
     const appError = handleError(error);
     res.status(appError.statusCode).json({ error: appError.message });
