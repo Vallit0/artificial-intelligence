@@ -29,51 +29,56 @@ export async function getConversationToken(req: AuthRequest, res: Response, next
       }
     }
 
-    // Get signed URL (with optional custom agent)
-    const signedUrl = await elevenlabsService.getConversationSignedUrl(agentSecretName);
+    // Run the four independent lookups in parallel — the signed-URL fetch hits ElevenLabs
+    // while the DB queries hit Postgres, so total latency is now max() instead of sum().
+    const userId = req.user?.id;
+    const [signedUrl, scenarioData, prospectingCfg, abAssignment] = await Promise.all([
+      elevenlabsService.getConversationSignedUrl(agentSecretName),
+      scenarioId
+        ? scenariosService.getScenarioForConversation(scenarioId)
+        : Promise.resolve(null),
+      agentSecretName
+        ? prospectingScenariosService.resolveConfig(agentSecretName)
+        : Promise.resolve(null),
+      (agentSecretName && userId)
+        ? abTestingService
+            .findActiveExperiment(agentSecretName)
+            .then((experiment) =>
+              experiment
+                ? abTestingService
+                    .assignUserToVariant(experiment.id, userId)
+                    .then((variant) => ({ variant, variantId: variant.id }))
+                : null
+            )
+            .catch((err) => {
+              console.error('A/B assignment error (non-fatal):', err);
+              return null;
+            })
+        : Promise.resolve(null),
+    ]);
 
-    // Fetch scenario details if provided
-    let scenario = null;
-    if (scenarioId) {
-      const scenarioData = await scenariosService.getScenarioForConversation(scenarioId);
-      if (scenarioData) {
-        scenario = {
-          prompt: scenarioData.clientPersona,
-          firstMessage: scenarioData.firstMessage,
-        };
-      }
-    }
+    const scenario = scenarioData
+      ? { prompt: scenarioData.clientPersona, firstMessage: scenarioData.firstMessage }
+      : null;
 
-    // Resolve admin-configured overrides for prospecting agents (if any)
     let overrides: { prompt?: string; firstMessage?: string } | null = null;
-    if (agentSecretName) {
-      const cfg = await prospectingScenariosService.resolveConfig(agentSecretName);
-      if (cfg && (cfg.systemPrompt || cfg.firstMessage)) {
-        overrides = {
-          prompt: cfg.systemPrompt || undefined,
-          firstMessage: cfg.firstMessage || undefined,
-        };
-      }
+    if (prospectingCfg && (prospectingCfg.systemPrompt || prospectingCfg.firstMessage)) {
+      overrides = {
+        prompt: prospectingCfg.systemPrompt || undefined,
+        firstMessage: prospectingCfg.firstMessage || undefined,
+      };
     }
 
-    // Check for active A/B experiment
     let variantId: string | undefined;
-    if (agentSecretName && req.user) {
-      try {
-        const experiment = await abTestingService.findActiveExperiment(agentSecretName);
-        if (experiment) {
-          const variant = await abTestingService.assignUserToVariant(experiment.id, req.user.id);
-          variantId = variant.id;
-          // A/B variant overrides take precedence
-          if (variant.systemPrompt || variant.firstMessage) {
-            overrides = {
-              prompt: variant.systemPrompt || overrides?.prompt,
-              firstMessage: variant.firstMessage || overrides?.firstMessage,
-            };
-          }
-        }
-      } catch (err) {
-        console.error('A/B assignment error (non-fatal):', err);
+    if (abAssignment) {
+      variantId = abAssignment.variantId;
+      const { variant } = abAssignment;
+      // A/B variant overrides take precedence
+      if (variant.systemPrompt || variant.firstMessage) {
+        overrides = {
+          prompt: variant.systemPrompt || overrides?.prompt,
+          firstMessage: variant.firstMessage || overrides?.firstMessage,
+        };
       }
     }
 

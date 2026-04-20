@@ -73,18 +73,22 @@ async function resolveAgentId(agentSecretName?: string | null): Promise<string> 
 // ============================================
 
 export async function getConversationSignedUrl(agentSecretName?: string | null): Promise<string> {
-  // Resolve API key from DB first, then env var
-  const apiKey = await agentConfigService.resolveApiKey();
-  if (!apiKey) {
-    throw new InternalError('ElevenLabs API key not configured');
-  }
+  // Kick off both lookups in parallel — they hit different tables and don't depend on each other.
+  const agentIdPromise = resolveAgentId(agentSecretName);
+  const apiKeyPromise = agentConfigService.resolveApiKey();
 
-  const agentId = await resolveAgentId(agentSecretName);
+  const agentId = await agentIdPromise;
 
-  // Check cache first
+  // Cache is keyed by agentId, so check as soon as it resolves.
+  // On a hit we skip the external fetch and the apiKey promise becomes a harmless no-op.
   const cached = getCachedUrl(agentId);
   if (cached) {
     return cached;
+  }
+
+  const apiKey = await apiKeyPromise;
+  if (!apiKey) {
+    throw new InternalError('ElevenLabs API key not configured');
   }
 
   const tokenUrl = `${config.elevenlabs.conversationUrl}?agent_id=${agentId}`;
