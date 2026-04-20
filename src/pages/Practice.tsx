@@ -15,7 +15,6 @@ import { usePracticeSessions } from "@/hooks/usePracticeSessions";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useCallSounds } from "@/hooks/useCallSounds";
-import { scenariosApi, sessionsApi } from "@/lib/api";
 import { api } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import {
@@ -217,8 +216,8 @@ const Practice = () => {
   // Fetch scenario details
   useEffect(() => {
     if (scenarioId) {
-      scenariosApi
-        .getById(scenarioId)
+      api
+        .get<Scenario>(`/api/scenarios/${scenarioId}`)
         .then((data) => {
           if (data) setScenario(data);
         })
@@ -356,9 +355,13 @@ const Practice = () => {
     }
 
     if (user && currentSessionId) {
-      await sessionsApi.update(currentSessionId, {
-        durationSeconds: sessionDurationRef.current,
-      });
+      try {
+        await api.patch(`/api/sessions/${currentSessionId}`, {
+          durationSeconds: sessionDurationRef.current,
+        });
+      } catch (err) {
+        console.error('Failed to update session duration:', err);
+      }
 
       // Save transcript for replay
       if (transcriptMessages.length > 0) {
