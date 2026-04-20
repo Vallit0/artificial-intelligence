@@ -16,6 +16,7 @@ import AgentConfigPanel from "@/components/admin/AgentConfigPanel";
 import ProspectingScenariosPanel from "@/components/admin/ProspectingScenariosPanel";
 import LtiPlatformPanel from "@/components/admin/LtiPlatformPanel";
 import AbExperimentsPanel from "@/components/admin/AbExperimentsPanel";
+import AiAccessPanel from "@/components/admin/AiAccessPanel";
 import LeftSidebar from "@/components/scenarios/LeftSidebar";
 import MobileNavigation from "@/components/MobileNavigation";
 import { useAdminAnalytics } from "@/hooks/useAdminAnalytics";
@@ -92,6 +93,10 @@ export default function Admin() {
                   <p className="text-sm text-muted-foreground">Gestión de estudiantes y certificados</p>
                 </div>
               </div>
+            </div>
+
+            <div className="mb-6">
+              <AiAccessPanel />
             </div>
 
         <Tabs defaultValue="students" className="space-y-4">

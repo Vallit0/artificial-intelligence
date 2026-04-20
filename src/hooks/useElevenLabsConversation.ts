@@ -24,12 +24,15 @@ interface UseElevenLabsConversationOptions {
   onTranscript?: (text: string, isUser: boolean) => void;
   onEvaluation?: (evaluation: EvaluationResult) => void;
   onError?: (error: string) => void;
+  onAgentDisconnected?: (reason?: string) => void;
 }
 
 export const useElevenLabsConversation = (options: UseElevenLabsConversationOptions = {}) => {
   const onTranscriptRef = useRef(options.onTranscript);
   const onEvaluationRef = useRef(options.onEvaluation);
   const onErrorRef = useRef(options.onError);
+  const onAgentDisconnectedRef = useRef(options.onAgentDisconnected);
+  const userInitiatedDisconnectRef = useRef(false);
   const scenarioIdRef = useRef(options.scenarioId);
   const sessionIdRef = useRef(options.sessionId);
   const agentSecretNameRef = useRef(options.agentSecretName);
@@ -44,12 +47,13 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     onTranscriptRef.current = options.onTranscript;
     onEvaluationRef.current = options.onEvaluation;
     onErrorRef.current = options.onError;
+    onAgentDisconnectedRef.current = options.onAgentDisconnected;
     scenarioIdRef.current = options.scenarioId;
     sessionIdRef.current = options.sessionId;
     agentSecretNameRef.current = options.agentSecretName;
     userIdRef.current = options.userId;
     userNameRef.current = options.userName;
-  }, [options.onTranscript, options.onEvaluation, options.onError, options.scenarioId, options.sessionId, options.agentSecretName, options.userId, options.userName]);
+  }, [options.onTranscript, options.onEvaluation, options.onError, options.onAgentDisconnected, options.scenarioId, options.sessionId, options.agentSecretName, options.userId, options.userName]);
 
   const [isConnecting, setIsConnecting] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -74,12 +78,21 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     },
     onDisconnect: (details: unknown) => {
       console.log("Disconnected from ElevenLabs agent, details:", JSON.stringify(details));
+      const wasConnected = isConnectedRef.current;
       isConnectedRef.current = false;
       setIsMuted(false);
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
+
+      // If we were connected and the user did NOT trigger this disconnect,
+      // the agent ended the call — notify the consumer so it can clean up.
+      const reason = (details as { reason?: string } | undefined)?.reason;
+      if (wasConnected && !userInitiatedDisconnectRef.current) {
+        onAgentDisconnectedRef.current?.(reason);
+      }
+      userInitiatedDisconnectRef.current = false;
     },
     onStatusChange: ({ status }: { status: string }) => {
       console.log("[DEBUG] Status changed:", status);
@@ -278,6 +291,7 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
 
   const disconnect = useCallback(async () => {
     console.log("Disconnect called");
+    userInitiatedDisconnectRef.current = true;
 
     if (timerRef.current) {
       clearInterval(timerRef.current);

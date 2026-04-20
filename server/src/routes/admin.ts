@@ -12,6 +12,7 @@ import * as prospectingScenariosService from '../services/prospectingScenarios.s
 import * as sessionsService from '../services/sessions.service.js';
 import * as analyticsController from '../controllers/analytics.controller.js';
 import * as abTestingController from '../controllers/abTesting.controller.js';
+import * as aiAccessService from '../services/aiAccess.service.js';
 import prisma from '../db/index.js';
 
 export const adminRouter = Router();
@@ -217,6 +218,19 @@ adminRouter.put('/user-scenario-access/:userId', async (req: AuthRequest, res: R
     const appError = handleError(error);
     res.status(appError.statusCode).json({ error: appError.message });
   }
+});
+
+// ============================================
+// AI Access Kill-Switch (global)
+// ============================================
+adminRouter.get('/ai-access', (_req: AuthRequest, res: Response) => {
+  res.json(aiAccessService.getLockStatus());
+});
+
+adminRouter.put('/ai-access', (req: AuthRequest, res: Response) => {
+  const { locked, reason } = req.body as { locked?: boolean; reason?: string };
+  aiAccessService.setAiLocked(!!locked, reason ?? null);
+  res.json({ success: true, ...aiAccessService.getLockStatus() });
 });
 
 // ============================================

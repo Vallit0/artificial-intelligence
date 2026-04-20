@@ -61,6 +61,7 @@ export default function ExamenFinal() {
     agentSecretName: "ELEVENLABS_AGENT_EXAMEN_FINAL",
     onTranscript: handleTranscript,
     onError: handleError,
+    onAgentDisconnected: () => setHasStarted(false),
   });
 
   const handleStartExam = async () => {

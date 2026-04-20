@@ -8,8 +8,10 @@ import * as scenariosService from '../services/scenarios.service.js';
 import * as sessionsService from '../services/sessions.service.js';
 import * as prospectingScenariosService from '../services/prospectingScenarios.service.js';
 import * as abTestingService from '../services/abTesting.service.js';
+import * as aiAccessService from '../services/aiAccess.service.js';
+import * as authService from '../services/auth.service.js';
 import { AuthRequest } from '../types/index.js';
-import { handleError, BadRequestError } from '../utils/errors.js';
+import { handleError, BadRequestError, ForbiddenError } from '../utils/errors.js';
 
 // ============================================
 // POST /api/elevenlabs/conversation-token
@@ -17,6 +19,15 @@ import { handleError, BadRequestError } from '../utils/errors.js';
 export async function getConversationToken(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const { scenarioId, agentSecretName } = req.body;
+
+    // Global AI kill-switch: block everyone except admins while enabled.
+    if (aiAccessService.isAiLocked()) {
+      const isAdmin = req.user ? await authService.hasRole(req.user.id, 'admin') : false;
+      if (!isAdmin) {
+        const { reason } = aiAccessService.getLockStatus();
+        throw new ForbiddenError(reason || 'La practica con IA esta temporalmente deshabilitada.');
+      }
+    }
 
     // Get signed URL (with optional custom agent)
     const signedUrl = await elevenlabsService.getConversationSignedUrl(agentSecretName);

@@ -246,6 +246,13 @@ const Practice = () => {
     setSessionState("evaluated");
   }, []);
 
+  const handleEndCallRef = useRef<() => void>(() => {});
+
+  const handleAgentDisconnected = useCallback((reason?: string) => {
+    console.log("[TRACE] Agent ended the call, reason:", reason);
+    handleEndCallRef.current();
+  }, []);
+
   const {
     isConnected,
     isConnecting,
@@ -265,6 +272,7 @@ const Practice = () => {
     onTranscript: handleTranscript,
     onEvaluation: handleEvaluation,
     onError: handleError,
+    onAgentDisconnected: handleAgentDisconnected,
   });
 
   sessionDurationRef.current = sessionTime;
@@ -392,6 +400,10 @@ const Practice = () => {
       setSelectedAgent(null);
     }
   };
+
+  useEffect(() => {
+    handleEndCallRef.current = handleEndCall;
+  });
 
   const handleContinue = () => {
     setSessionState("idle");
