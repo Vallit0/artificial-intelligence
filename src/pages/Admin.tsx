@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAuth } from "@/hooks/useAuth";
 import { useStudents } from "@/hooks/useStudents";
-import { Award, BarChart3, Clock, FlaskConical, Loader2, Play, Plus, Search, Shield, Target, Timer, TrendingUp, Upload, Users } from "lucide-react";
+import { Activity, Award, BarChart3, Clock, FlaskConical, Loader2, Play, Plus, Search, Shield, Target, Timer, TrendingUp, Upload, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -17,6 +17,7 @@ import ProspectingScenariosPanel from "@/components/admin/ProspectingScenariosPa
 import LtiPlatformPanel from "@/components/admin/LtiPlatformPanel";
 import AbExperimentsPanel from "@/components/admin/AbExperimentsPanel";
 import AiAccessPanel from "@/components/admin/AiAccessPanel";
+import LatencyTesterPanel from "@/components/admin/LatencyTesterPanel";
 import LeftSidebar from "@/components/scenarios/LeftSidebar";
 import MobileNavigation from "@/components/MobileNavigation";
 import { useAdminAnalytics } from "@/hooks/useAdminAnalytics";
@@ -113,6 +114,10 @@ export default function Admin() {
             </TabsTrigger>
             <TabsTrigger value="prospecting">Prospección</TabsTrigger>
             <TabsTrigger value="lti">LTI / Moodle</TabsTrigger>
+            <TabsTrigger value="latency" className="flex items-center gap-1">
+              <Activity className="w-3.5 h-3.5" />
+              Latencia
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="students">
@@ -393,6 +398,10 @@ export default function Admin() {
 
           <TabsContent value="lti">
             <LtiPlatformPanel />
+          </TabsContent>
+
+          <TabsContent value="latency">
+            <LatencyTesterPanel />
           </TabsContent>
         </Tabs>
           </div>

@@ -16,7 +16,6 @@ import { elevenlabsRouter } from './routes/elevenlabs.js';
 import { adminRouter } from './routes/admin.js';
 import { memoryRouter } from './routes/memory.js';
 import { citasRouter } from './routes/citas.js';
-import { whatsappRouter } from './routes/whatsapp.js';
 import prisma from './db/index.js';
 import { AppError } from './utils/errors.js';
 
@@ -51,7 +50,6 @@ app.use(cors({
 }));
 
 app.use(express.json());
-app.use(express.text({ type: ['application/sdp', 'text/plain'] }));
 app.use(express.urlencoded({ extended: true }));
 
 // ============================================
@@ -65,7 +63,6 @@ app.use('/api/elevenlabs', elevenlabsRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/memory', memoryRouter);
 app.use('/api/citas', citasRouter);
-app.use('/api/whatsapp', whatsappRouter);
 app.use('/api', apiRouter);
 
 // Health check
@@ -152,8 +149,9 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 // Start Server
 // ============================================
 
-app.listen(config.port, () => {
-  console.log(`
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(config.port, () => {
+    console.log(`
 ╔════════════════════════════════════════════╗
 ║     Señoriales - Sales Training Platform    ║
 ╠════════════════════════════════════════════╣
@@ -162,6 +160,7 @@ app.listen(config.port, () => {
 ║  🔗 URL: ${config.appUrl.padEnd(29)}║
 ╚════════════════════════════════════════════╝
   `);
-});
+  });
+}
 
 export default app;

@@ -79,7 +79,12 @@
       "Bash(ls:*)",
       "Skill(update-config)",
       "Bash(grep -rE \"API_URL|api.url|baseURL|VITE_API\" src/lib/api-client.ts .env*)",
-      "Bash(grep -E \"\\\\.\\(tsx?|jsx?\\)$\")"
+      "Bash(grep -E \"\\\\.\\(tsx?|jsx?\\)$\")",
+      "Bash(docker --version)",
+      "Bash(npm test *)",
+      "Bash(echo \"frontend-exit=$?\")",
+      "Bash(echo \"backend-exit=$?\")",
+      "Bash(npx vitest *)"
     ]
   },
   "hooks": {

@@ -2,7 +2,7 @@
 // Admin Routes
 // ============================================
 
-import { Router, Response, NextFunction } from 'express';
+import { Router, Response, NextFunction, raw } from 'express';
 import { authMiddleware, requireRole } from '../middleware/auth.js';
 import { AuthRequest } from '../types/index.js';
 import { handleError } from '../utils/errors.js';
@@ -13,6 +13,7 @@ import * as sessionsService from '../services/sessions.service.js';
 import * as analyticsController from '../controllers/analytics.controller.js';
 import * as abTestingController from '../controllers/abTesting.controller.js';
 import * as aiAccessService from '../services/aiAccess.service.js';
+import * as latencyProbeService from '../services/latencyProbe.service.js';
 import prisma from '../db/index.js';
 
 export const adminRouter = Router();
@@ -260,6 +261,59 @@ adminRouter.get('/sessions/:id/transcript', async (req: AuthRequest, res: Respon
     res.status(appError.statusCode).json({ error: appError.message });
   }
 });
+
+// ============================================
+// Latency Probe (admin diagnostics)
+// ============================================
+// Un run "tipo Speedtest" se arma con:
+//   - GET /latency-probe          → probes server-side (DB, ElevenLabs voz)
+//   - GET /latency-probe/ping     → round-trip puro navegador↔servidor
+//   - GET /latency-probe/download → descarga N bytes para medir ancho de banda de bajada
+//   - POST /latency-probe/upload  → recibe bytes crudos para medir subida
+// ============================================
+
+adminRouter.get('/latency-probe', async (_req: AuthRequest, res: Response) => {
+  try {
+    const report = await latencyProbeService.runAllProbes();
+    res.json(report);
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
+// Ping ligero: el cliente mide el RTT, el servidor solo responde con su timestamp.
+adminRouter.get('/latency-probe/ping', (_req: AuthRequest, res: Response) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ t: Date.now() });
+});
+
+// Descarga un payload de tamano conocido. Sirve para estimar el ancho de banda de bajada.
+// Se capa a 5MB para evitar abusos.
+const DOWNLOAD_MAX_BYTES = 5 * 1024 * 1024;
+adminRouter.get('/latency-probe/download', (req: AuthRequest, res: Response) => {
+  const requested = parseInt(String(req.query.bytes ?? ''), 10);
+  const bytes = Number.isFinite(requested) && requested > 0
+    ? Math.min(requested, DOWNLOAD_MAX_BYTES)
+    : 1024 * 1024;
+  res.setHeader('Content-Type', 'application/octet-stream');
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Content-Length', String(bytes));
+  // Buffer lleno de ceros — no nos importa el contenido, solo el tamano.
+  res.end(Buffer.alloc(bytes));
+});
+
+// Recibe un payload crudo y responde con el conteo. El cliente mide cuanto tardo el POST.
+adminRouter.post(
+  '/latency-probe/upload',
+  raw({ type: '*/*', limit: '10mb' }),
+  (req: AuthRequest, res: Response) => {
+    const body = req.body as Buffer | undefined;
+    const received = body && Buffer.isBuffer(body) ? body.length : 0;
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ received });
+  }
+);
 
 // ============================================
 // LTI Platform CRUD

@@ -3,9 +3,8 @@
 // ============================================
 
 import prisma from '../db/index.js';
-import config from '../config/index.js';
 import { PracticeSession, CreateSessionInput, UpdateSessionInput, SessionEvaluation, UserStats } from '../types/index.js';
-import { NotFoundError, InternalError } from '../utils/errors.js';
+import { NotFoundError } from '../utils/errors.js';
 
 // ============================================
 // Session Operations
@@ -187,96 +186,9 @@ export async function getTranscriptAdmin(sessionId: string) {
 }
 
 export async function evaluateSession(
-  transcript: Array<{ role: string; content: string }>,
-  scenarioId?: string
+  _transcript: Array<{ role: string; content: string }>,
+  _scenarioId?: string
 ): Promise<SessionEvaluation> {
-  // Get scenario context if provided
-  let scenarioContext = '';
-  if (scenarioId) {
-    const scenario = await prisma.scenario.findUnique({
-      where: { id: scenarioId },
-      select: { name: true, objection: true, description: true },
-    });
-    if (scenario) {
-      scenarioContext = `Escenario: ${scenario.name}\nObjeción del cliente: ${scenario.objection}\nDescripción: ${scenario.description || ''}`;
-    }
-  }
-
-  // Format transcript
-  const transcriptText = transcript
-    .map(m => `${m.role === 'user' ? 'Vendedor' : 'Cliente'}: ${m.content}`)
-    .join('\n');
-
-  const systemPrompt = `Eres un evaluador experto de técnicas de ventas para Corporación Señoriales, empresa mexicana de servicios funerarios.
-
-Evalúa la siguiente conversación de práctica de ventas en una escala de 0 a 100 puntos, distribuidos en 5 criterios de 20 puntos cada uno:
-
-1. APERTURA (20 pts): Presentación profesional, tono adecuado, generación de rapport
-2. ESCUCHA ACTIVA (20 pts): Demuestra comprensión, parafrasea, hace preguntas relevantes
-3. MANEJO DE OBJECIONES (20 pts): Usa declaraciones neutralizantes, no confronta, redirige
-4. PROPUESTA DE VALOR (20 pts): Comunica beneficios claros, personaliza la propuesta
-5. CIERRE (20 pts): Busca compromiso, propone siguiente paso, agradece
-
-${scenarioContext}
-
-Responde EXCLUSIVAMENTE en formato JSON válido con esta estructura:
-{
-  "score": <número 0-100>,
-  "passed": <true si score >= 50>,
-  "feedback": "<retroalimentación constructiva en español, 2-3 oraciones>",
-  "breakdown": {
-    "apertura": <0-20>,
-    "escucha_activa": <0-20>,
-    "manejo_objeciones": <0-20>,
-    "propuesta_valor": <0-20>,
-    "cierre": <0-20>
-  }
-}`;
-
-  // Try OpenAI API
-  if (config.openai.apiKey) {
-    try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${config.openai.apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: config.openai.model,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: `Transcripción de la llamada:\n\n${transcriptText}` },
-          ],
-          temperature: 0.3,
-          response_format: { type: 'json_object' },
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('OpenAI API error:', response.status, errorText);
-        throw new Error('OpenAI API error');
-      }
-
-      const data = await response.json() as any;
-      const content = data.choices?.[0]?.message?.content;
-      if (!content) throw new Error('No response content');
-
-      const result = JSON.parse(content);
-      return {
-        score: result.score,
-        passed: result.passed ?? result.score >= 50,
-        feedback: result.feedback,
-        breakdown: result.breakdown,
-      };
-    } catch (error) {
-      console.error('Evaluation error:', error);
-      throw new InternalError('Failed to evaluate session');
-    }
-  }
-
-  // Fallback if no API key configured
   return {
     score: 75,
     passed: true,

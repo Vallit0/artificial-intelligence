@@ -1,0 +1,20 @@
+# Postgres efímero solo para la suite de tests.
+# Puerto 5433 para no colisionar con el dev db (5432).
+# Usar: npm run test:db:up / test:db:down.
+
+services:
+  db-test:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=senoriales_test
+      - POSTGRES_PASSWORD=senoriales_test
+      - POSTGRES_DB=senoriales_test
+    ports:
+      - "5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U senoriales_test -d senoriales_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 20

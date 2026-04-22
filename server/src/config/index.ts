@@ -42,18 +42,6 @@ export const config = {
     conversationUrl: 'https://api.elevenlabs.io/v1/convai/conversation/get-signed-url',
   },
   
-  // OpenAI (optional, for session evaluation)
-  openai: {
-    apiKey: process.env.OPENAI_API_KEY || '',
-    model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-  },
-
-  // WHAPI (WhatsApp)
-  whapi: {
-    apiUrl: process.env.WHAPI_API_URL || 'https://gate.whapi.cloud',
-    token: process.env.WHAPI_TOKEN || '3IvtbOMYP5PDhA6OLTLw4JUj2wXKaLq7',
-  },
-
   // Resend (email service)
   resendApiKey: process.env.RESEND_API_KEY || '',
   resendFromEmail: process.env.RESEND_FROM_EMAIL || 'Señoriales <onboarding@resend.dev>',
@@ -85,10 +73,6 @@ export function validateConfig(): void {
 
   if (!config.elevenlabs.apiKey) {
     console.warn('⚠️ ELEVENLABS_API_KEY not set - voice features disabled');
-  }
-
-  if (!config.whapi.token) {
-    console.warn('⚠️ WHAPI_TOKEN not set - WhatsApp features disabled');
   }
 }
 

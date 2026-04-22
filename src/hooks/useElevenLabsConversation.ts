@@ -15,6 +15,21 @@ interface EvaluationResult {
   };
 }
 
+export type LatencyEventType = "connect" | "ttfa";
+
+export interface LatencyEvent {
+  type: LatencyEventType;
+  ms: number;
+  at: number;
+}
+
+export interface LatencyStats {
+  connectMs: number | null;
+  lastTtfaMs: number | null;
+  avgTtfaMs: number | null;
+  ttfaSamples: number;
+}
+
 interface UseElevenLabsConversationOptions {
   scenarioId?: string | null;
   sessionId?: string | null;
@@ -25,6 +40,7 @@ interface UseElevenLabsConversationOptions {
   onEvaluation?: (evaluation: EvaluationResult) => void;
   onError?: (error: string) => void;
   onAgentDisconnected?: (reason?: string) => void;
+  onLatency?: (event: LatencyEvent) => void;
 }
 
 export const useElevenLabsConversation = (options: UseElevenLabsConversationOptions = {}) => {
@@ -32,6 +48,7 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
   const onEvaluationRef = useRef(options.onEvaluation);
   const onErrorRef = useRef(options.onError);
   const onAgentDisconnectedRef = useRef(options.onAgentDisconnected);
+  const onLatencyRef = useRef(options.onLatency);
   const userInitiatedDisconnectRef = useRef(false);
   const scenarioIdRef = useRef(options.scenarioId);
   const sessionIdRef = useRef(options.sessionId);
@@ -48,12 +65,13 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     onEvaluationRef.current = options.onEvaluation;
     onErrorRef.current = options.onError;
     onAgentDisconnectedRef.current = options.onAgentDisconnected;
+    onLatencyRef.current = options.onLatency;
     scenarioIdRef.current = options.scenarioId;
     sessionIdRef.current = options.sessionId;
     agentSecretNameRef.current = options.agentSecretName;
     userIdRef.current = options.userId;
     userNameRef.current = options.userName;
-  }, [options.onTranscript, options.onEvaluation, options.onError, options.onAgentDisconnected, options.scenarioId, options.sessionId, options.agentSecretName, options.userId, options.userName]);
+  }, [options.onTranscript, options.onEvaluation, options.onError, options.onAgentDisconnected, options.onLatency, options.scenarioId, options.sessionId, options.agentSecretName, options.userId, options.userName]);
 
   const [isConnecting, setIsConnecting] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -66,10 +84,44 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
   const [variantId, setVariantId] = useState<string | null>(null);
   const memoryContextRef = useRef<string | null>(null);
 
+  // Latency instrumentation
+  const connectStartRef = useRef<number | null>(null);
+  const userSpeechEndRef = useRef<number | null>(null);
+  const [latencyStats, setLatencyStats] = useState<LatencyStats>({
+    connectMs: null,
+    lastTtfaMs: null,
+    avgTtfaMs: null,
+    ttfaSamples: 0,
+  });
+
+  const emitLatency = useCallback((type: LatencyEventType, ms: number) => {
+    const rounded = Math.round(ms);
+    const event: LatencyEvent = { type, ms: rounded, at: Date.now() };
+    console.log(`[LATENCY] ${type}=${rounded}ms`);
+    onLatencyRef.current?.(event);
+    setLatencyStats((prev) => {
+      if (type === "connect") {
+        return { ...prev, connectMs: rounded };
+      }
+      const samples = prev.ttfaSamples + 1;
+      const total = (prev.avgTtfaMs ?? 0) * prev.ttfaSamples + rounded;
+      return {
+        ...prev,
+        lastTtfaMs: rounded,
+        avgTtfaMs: Math.round(total / samples),
+        ttfaSamples: samples,
+      };
+    });
+  }, []);
+
   const conversation = useConversation({
     micMuted: isMuted,
     onConnect: () => {
       console.log("Connected to ElevenLabs agent");
+      if (connectStartRef.current !== null) {
+        emitLatency("connect", performance.now() - connectStartRef.current);
+        connectStartRef.current = null;
+      }
       isConnectedRef.current = true;
       setIsConnecting(false);
       timerRef.current = setInterval(() => {
@@ -111,8 +163,11 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
         };
       };
 
-      if (msg.user_transcription_event?.user_transcript && onTranscriptRef.current) {
-        onTranscriptRef.current(msg.user_transcription_event.user_transcript, true);
+      if (msg.user_transcription_event?.user_transcript) {
+        userSpeechEndRef.current = performance.now();
+        if (onTranscriptRef.current) {
+          onTranscriptRef.current(msg.user_transcription_event.user_transcript, true);
+        }
       }
 
       if (msg.agent_response_event?.agent_response && onTranscriptRef.current) {
@@ -220,6 +275,9 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     setIsConnecting(true);
     setSessionTime(0);
     setIsMuted(false);
+    connectStartRef.current = performance.now();
+    userSpeechEndRef.current = null;
+    setLatencyStats({ connectMs: null, lastTtfaMs: null, avgTtfaMs: null, ttfaSamples: 0 });
 
     try {
       // Use pre-fetched URL if available, otherwise fetch now
@@ -321,6 +379,14 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     };
   }, []);
 
+  // TTFA: measure from last user-transcript event to the moment the agent starts speaking
+  useEffect(() => {
+    if (conversation.isSpeaking && userSpeechEndRef.current !== null) {
+      emitLatency("ttfa", performance.now() - userSpeechEndRef.current);
+      userSpeechEndRef.current = null;
+    }
+  }, [conversation.isSpeaking, emitLatency]);
+
   return {
     isConnected: conversation.status === "connected",
     isConnecting,
@@ -328,6 +394,7 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     isMuted,
     sessionTime,
     variantId,
+    latencyStats,
     connect,
     disconnect,
     toggleMute,
