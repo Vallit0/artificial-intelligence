@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import prisma from '../db/index.js';
 import { generateAccessToken, generateRefreshToken } from '../services/auth.service.js';
 import config from '../config/index.js';
+import { getLogger } from '../utils/logger.js';
 
 export const ltiRouter = Router();
 
@@ -35,7 +36,7 @@ async function getPublicKey(jwksUrl: string, kid: string): Promise<crypto.KeyObj
 
     return crypto.createPublicKey({ key, format: 'jwk' });
   } catch (error) {
-    console.error('Error fetching JWKS:', error);
+    getLogger({ component: 'lti', op: 'fetch-jwks' }).error({ err: error }, 'Error fetching JWKS');
     return null;
   }
 }
@@ -135,7 +136,7 @@ ltiRouter.post('/initiate', async (req: Request, res: Response) => {
     const authUrl = `${platform.authEndpoint}?${authParams.toString()}`;
     res.redirect(302, authUrl);
   } catch (error) {
-    console.error('LTI initiate error:', error);
+    getLogger({ component: 'lti', op: 'initiate' }).error({ err: error }, 'LTI initiate error');
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -284,7 +285,7 @@ ltiRouter.post('/launch', async (req: Request, res: Response) => {
 
     res.redirect(302, redirectUrl.toString());
   } catch (error) {
-    console.error('LTI launch error:', error);
+    getLogger({ component: 'lti', op: 'launch' }).error({ err: error }, 'LTI launch error');
     res.status(500).json({ error: 'Internal server error' });
   }
 });

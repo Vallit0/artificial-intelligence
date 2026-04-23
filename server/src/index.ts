@@ -18,6 +18,8 @@ import { memoryRouter } from './routes/memory.js';
 import { citasRouter } from './routes/citas.js';
 import prisma from './db/index.js';
 import { AppError } from './utils/errors.js';
+import { rootLogger, getLogger } from './utils/logger.js';
+import { requestContextMiddleware, httpLogger } from './middleware/requestContext.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,6 +32,11 @@ const app = express();
 // ============================================
 // Middleware
 // ============================================
+
+// Must run first so every downstream handler (including error handler) can
+// emit logs correlated by requestId.
+app.use(requestContextMiddleware);
+app.use(httpLogger);
 
 app.use(helmet({
   contentSecurityPolicy: false, // Disable for SPA
@@ -135,12 +142,18 @@ if (config.isProduction) {
 // Error Handler
 // ============================================
 
-app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Error:', err.message);
-  
+app.use((err: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  const log = getLogger({ path: req.path, method: req.method });
+
   if (err instanceof AppError) {
+    if (err.statusCode >= 500) {
+      log.error({ err, statusCode: err.statusCode }, 'AppError (server)');
+    } else {
+      log.warn({ err: { message: err.message }, statusCode: err.statusCode }, 'AppError (client)');
+    }
     res.status(err.statusCode).json({ error: err.message });
   } else {
+    log.error({ err }, 'Unhandled error');
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -151,15 +164,10 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 
 if (process.env.NODE_ENV !== 'test') {
   app.listen(config.port, () => {
-    console.log(`
-╔════════════════════════════════════════════╗
-║     Señoriales - Sales Training Platform    ║
-╠════════════════════════════════════════════╣
-║  🚀 Server running on port ${config.port}             ║
-║  📊 Environment: ${config.nodeEnv.padEnd(21)}║
-║  🔗 URL: ${config.appUrl.padEnd(29)}║
-╚════════════════════════════════════════════╝
-  `);
+    rootLogger.info(
+      { port: config.port, environment: config.nodeEnv, appUrl: config.appUrl },
+      'Señoriales server started',
+    );
   });
 }
 

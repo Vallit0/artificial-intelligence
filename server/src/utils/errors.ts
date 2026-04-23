@@ -2,6 +2,8 @@
 // Custom Error Classes
 // ============================================
 
+import { getLogger } from './logger.js';
+
 export class AppError extends Error {
   public readonly statusCode: number;
   public readonly isOperational: boolean;
@@ -56,11 +58,12 @@ export function handleError(error: unknown): AppError {
   if (error instanceof AppError) {
     return error;
   }
-  
+
   if (error instanceof Error) {
-    console.error('Unhandled error:', error.message, error.stack);
+    getLogger().error({ err: error }, 'Unhandled error surfaced to handleError');
     return new InternalError(error.message);
   }
-  
+
+  getLogger().error({ err: error }, 'Unknown error surfaced to handleError');
   return new InternalError('An unknown error occurred');
 }

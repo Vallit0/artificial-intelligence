@@ -11,6 +11,7 @@ import { handleError, BadRequestError, NotFoundError, InternalError } from '../u
 import prisma from '../db/index.js';
 import config from '../config/index.js';
 import { sendPasswordResetEmail } from '../services/email.service.js';
+import { getLogger } from '../utils/logger.js';
 
 export const authRouter = Router();
 
@@ -60,7 +61,10 @@ authRouter.post('/forgot-password', async (req: Request, res: Response) => {
       try {
         await sendPasswordResetEmail(cleanEmail, resetUrl);
       } catch (err) {
-        console.error('Failed to send reset email:', err);
+        getLogger({ component: 'auth', op: 'password-reset-email' }).error(
+          { err, email: cleanEmail },
+          'Failed to send reset email',
+        );
       }
     }
 

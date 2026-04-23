@@ -12,6 +12,7 @@ import * as aiAccessService from '../services/aiAccess.service.js';
 import * as authService from '../services/auth.service.js';
 import { AuthRequest } from '../types/index.js';
 import { handleError, BadRequestError, ForbiddenError } from '../utils/errors.js';
+import { getLogger } from '../utils/logger.js';
 
 // ============================================
 // POST /api/elevenlabs/conversation-token
@@ -51,7 +52,10 @@ export async function getConversationToken(req: AuthRequest, res: Response, next
                 : null
             )
             .catch((err) => {
-              console.error('A/B assignment error (non-fatal):', err);
+              getLogger({ component: 'elevenlabs', op: 'ab-assignment' }).warn(
+                { err },
+                'A/B assignment error (non-fatal)',
+              );
               return null;
             })
         : Promise.resolve(null),

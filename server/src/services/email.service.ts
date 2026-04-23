@@ -4,6 +4,7 @@
 
 import config from '../config/index.js';
 import { InternalError } from '../utils/errors.js';
+import { getLogger } from '../utils/logger.js';
 
 export async function sendPasswordResetEmail(to: string, resetUrl: string): Promise<void> {
   if (!config.resendApiKey) {
@@ -56,7 +57,10 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string): Prom
 
   if (!response.ok) {
     const errorData = await response.json();
-    console.error('Resend API error:', errorData);
+    getLogger({ component: 'email', op: 'send-password-reset' }).error(
+      { statusCode: response.status, errorData },
+      'Resend API error',
+    );
     throw new InternalError('Failed to send email');
   }
 }

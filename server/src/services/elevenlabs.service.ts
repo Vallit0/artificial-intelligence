@@ -5,6 +5,7 @@
 import config from '../config/index.js';
 import { InternalError, BadRequestError } from '../utils/errors.js';
 import * as agentConfigService from './agentConfig.service.js';
+import { getLogger } from '../utils/logger.js';
 
 // ============================================
 // Signed URL Cache (per agentId, TTL-based)
@@ -51,14 +52,20 @@ async function resolveAgentId(agentSecretName?: string | null): Promise<string> 
       const dbAgentId = await agentConfigService.resolve(agentSecretName);
       if (dbAgentId) return dbAgentId;
     } catch (error) {
-      console.warn(`Failed to resolve agent "${agentSecretName}" from DB, falling back to env var:`, error);
+      getLogger({ component: 'elevenlabs', op: 'resolve-agent' }).warn(
+        { err: error, agentSecretName },
+        'Failed to resolve agent from DB, falling back to env var',
+      );
     }
 
     // 2. Fallback to environment variable
     const envAgentId = process.env[agentSecretName];
     if (envAgentId) return envAgentId;
 
-    console.warn(`Agent "${agentSecretName}" not found in DB or env, falling back to default`);
+    getLogger({ component: 'elevenlabs', op: 'resolve-agent' }).warn(
+      { agentSecretName },
+      'Agent not found in DB or env, falling back to default',
+    );
   }
 
   if (!config.elevenlabs.agentId) {
@@ -102,7 +109,10 @@ export async function getConversationSignedUrl(agentSecretName?: string | null):
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('ElevenLabs API error:', response.status, errorText);
+    getLogger({ component: 'elevenlabs', op: 'signed-url' }).error(
+      { statusCode: response.status, errorText },
+      'ElevenLabs API error',
+    );
     throw new InternalError('Failed to get conversation token');
   }
 

@@ -4,6 +4,7 @@
 
 import prisma from '../db/index.js';
 import { NotFoundError } from '../utils/errors.js';
+import { getLogger } from '../utils/logger.js';
 
 export async function getAll() {
   return prisma.agentConfig.findMany({
@@ -44,7 +45,10 @@ export async function resolveApiKey(): Promise<string> {
     const dbKey = await resolve('ELEVENLABS_API_KEY');
     if (dbKey) return dbKey;
   } catch (error) {
-    console.warn('Failed to resolve API key from DB, falling back to env var:', error);
+    getLogger({ component: 'agentConfig', op: 'resolve-api-key' }).warn(
+      { err: error },
+      'Failed to resolve API key from DB, falling back to env var',
+    );
   }
   return process.env.ELEVENLABS_API_KEY || '';
 }

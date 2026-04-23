@@ -11,6 +11,7 @@
 import config from '../config/index.js';
 import prisma from '../db/index.js';
 import * as agentConfigService from './agentConfig.service.js';
+import { getLogger } from '../utils/logger.js';
 
 export type ProbeService = 'database' | 'elevenlabs';
 
@@ -82,7 +83,10 @@ async function resolveVoiceAgent(): Promise<{ agentId: string; label: string } |
       return { agentId: active.agentId, label: active.label || active.secretName };
     }
   } catch (error) {
-    console.warn('Latency probe: could not read AgentConfig, falling back to env:', error);
+    getLogger({ component: 'latencyProbe' }).warn(
+      { err: error },
+      'Could not read AgentConfig, falling back to env',
+    );
   }
   if (config.elevenlabs.agentId) {
     return { agentId: config.elevenlabs.agentId, label: 'ELEVENLABS_AGENT_ID (env)' };

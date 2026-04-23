@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { rootLogger } from '../utils/logger.js';
 
 export const prisma = new PrismaClient({
   log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
@@ -6,7 +7,7 @@ export const prisma = new PrismaClient({
 
 // Test connection on startup
 prisma.$connect()
-  .then(() => console.log('✅ Database connected'))
-  .catch((err: Error) => console.error('❌ Database connection failed:', err.message));
+  .then(() => rootLogger.info('Database connected'))
+  .catch((err: Error) => rootLogger.error({ err }, 'Database connection failed'));
 
 export default prisma;
