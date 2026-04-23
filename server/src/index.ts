@@ -2,6 +2,10 @@
 // Main Server Entry Point
 // ============================================
 
+// Sentry MUST be imported before anything else so its instrumentation hooks
+// can wrap Express/Prisma/fetch as they load.
+import { Sentry } from './instrument.js';
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -37,6 +41,16 @@ const app = express();
 // emit logs correlated by requestId.
 app.use(requestContextMiddleware);
 app.use(httpLogger);
+
+// Tag Sentry scope with requestId so exceptions and breadcrumbs correlate
+// one-to-one with the structured log stream.
+app.use((req, _res, next) => {
+  const requestId = (req as express.Request & { requestId?: string }).requestId;
+  if (requestId) {
+    Sentry.getCurrentScope().setTag('request_id', requestId);
+  }
+  next();
+});
 
 app.use(helmet({
   contentSecurityPolicy: false, // Disable for SPA
@@ -141,6 +155,11 @@ if (config.isProduction) {
 // ============================================
 // Error Handler
 // ============================================
+
+// Sentry's Express error handler must be registered AFTER all routes but
+// BEFORE any user-defined error middleware. It reports exceptions with the
+// full request context and then hands off to our handler for the response.
+Sentry.setupExpressErrorHandler(app);
 
 app.use((err: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
   const log = getLogger({ path: req.path, method: req.method });
