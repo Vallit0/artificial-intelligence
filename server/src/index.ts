@@ -24,6 +24,7 @@ import prisma from './db/index.js';
 import { AppError } from './utils/errors.js';
 import { rootLogger, getLogger } from './utils/logger.js';
 import { requestContextMiddleware, httpLogger } from './middleware/requestContext.js';
+import { getReadinessReport } from './services/health.service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -86,31 +87,28 @@ app.use('/api/memory', memoryRouter);
 app.use('/api/citas', citasRouter);
 app.use('/api', apiRouter);
 
-// Health check
-app.get('/health', async (req, res) => {
-  try {
-    // Check database connection
-    await prisma.$queryRaw`SELECT 1`;
-    
-    res.json({
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      version: process.env.npm_package_version || '1.0.0',
-      environment: config.nodeEnv,
-      services: {
-        database: 'connected',
-        elevenlabs: config.elevenlabs.apiKey ? 'configured' : 'not configured',
-      },
-    });
-  } catch (error) {
-    res.status(503).json({
-      status: 'error',
-      timestamp: new Date().toISOString(),
-      services: {
-        database: 'disconnected',
-      },
-    });
-  }
+// ============================================
+// Health checks
+// ============================================
+// /health/live — process is alive (used by orchestrators to decide restarts).
+// /health/ready — dependencies are reachable (used by load balancers to
+//   decide traffic routing). Returns 503 if any *configured* dependency is
+//   down; dependencies that are not configured are reported as `skipped` and
+//   do not fail the check.
+// /health — kept as alias of /health/ready for the Dockerfile HEALTHCHECK.
+
+app.get('/health/live', (_req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+app.get('/health/ready', async (_req, res) => {
+  const report = await getReadinessReport();
+  res.status(report.status === 'ok' ? 200 : 503).json(report);
+});
+
+app.get('/health', async (_req, res) => {
+  const report = await getReadinessReport();
+  res.status(report.status === 'ok' ? 200 : 503).json(report);
 });
 
 // ============================================
