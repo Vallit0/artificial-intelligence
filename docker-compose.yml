@@ -79,8 +79,28 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  # ============================================
+  # Promtail — ships container logs to Loki at 10.4.6.16:3100
+  # ============================================
+  promtail:
+    image: grafana/promtail:3.3.0
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./promtail/promtail-config.yml:/etc/promtail/config.yml:ro
+      - promtail_positions:/tmp
+    restart: unless-stopped
+    networks:
+      - senoriales-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 volumes:
   postgres_data:
+  promtail_positions:
 
 networks:
   senoriales-network:
