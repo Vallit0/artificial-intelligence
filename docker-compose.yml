@@ -23,6 +23,11 @@ services:
     restart: unless-stopped
     networks:
       - senoriales-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # ============================================
   # Base de Datos PostgreSQL
@@ -45,6 +50,11 @@ services:
     restart: unless-stopped
     networks:
       - senoriales-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # ============================================
   # Nginx Reverse Proxy
@@ -63,6 +73,11 @@ services:
     restart: unless-stopped
     networks:
       - senoriales-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   postgres_data:
