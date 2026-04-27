@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { LevelModeProvider } from "@/hooks/useLevelMode";
 import Landing from "./pages/Landing";
 import Scenarios from "./pages/Scenarios";
 import Practice from "./pages/Practice";
@@ -61,6 +62,10 @@ const AppRoutes = () => (
     
     {/* Practice can be accessed by anyone (free tier) or authenticated users */}
     <Route path="/practice" element={<Practice />} />
+
+    {/* Legacy /objeciones URL — redirect to /practice. The level is now
+        stored in context, not the URL. */}
+    <Route path="/objeciones" element={<Navigate to="/practice" replace />} />
     
     {/* Prospecting scenarios - requires authentication */}
     <Route
@@ -146,7 +151,9 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <AppRoutes />
+          <LevelModeProvider>
+            <AppRoutes />
+          </LevelModeProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

@@ -18,13 +18,27 @@ import prisma from '../db/index.js';
 
 export const adminRouter = Router();
 
+/**
+ * @openapi
+ * tags:
+ *   - name: Admin
+ *     description: Todas las rutas bajo /api/admin requieren rol admin (bearer token + role admin).
+ */
+
 // All admin routes require authentication + admin role
 adminRouter.use(authMiddleware);
 adminRouter.use(requireRole('admin'));
 
-// ============================================
-// GET /api/admin/students
-// ============================================
+/**
+ * @openapi
+ * /api/admin/students:
+ *   get:
+ *     tags: [Admin]
+ *     summary: Lista todos los estudiantes con métricas agregadas
+ *     responses:
+ *       200: { description: Estudiantes }
+ *       403: { description: No es admin }
+ */
 adminRouter.get('/students', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const students = await adminService.getAllStudents();
@@ -101,13 +115,65 @@ adminRouter.patch('/users/:id/name', async (req: AuthRequest, res: Response, nex
   }
 });
 
-// ============================================
-// PATCH /api/admin/users/:id/examen-final
-// ============================================
+/**
+ * @openapi
+ * /api/admin/users/{id}/examen-final:
+ *   patch:
+ *     tags: [Admin]
+ *     summary: Habilita o deshabilita el examen final para un estudiante
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               enabled: { type: boolean }
+ *     responses:
+ *       200: { description: Estado actualizado }
+ */
 adminRouter.patch('/users/:id/examen-final', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { enabled } = req.body;
     const result = await adminService.toggleExamenFinal(req.params.id, !!enabled);
+    res.json({ success: true, ...result });
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
+/**
+ * @openapi
+ * /api/admin/users/{id}/level2-unlock:
+ *   patch:
+ *     tags: [Admin]
+ *     summary: Activa o desactiva manualmente el Nivel 2 para un estudiante
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               unlocked: { type: boolean }
+ *     responses:
+ *       200: { description: Estado actualizado }
+ */
+adminRouter.patch('/users/:id/level2-unlock', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { unlocked } = req.body;
+    const result = await adminService.toggleLevel2(req.params.id, !!unlocked);
     res.json({ success: true, ...result });
   } catch (error) {
     const appError = handleError(error);
@@ -256,6 +322,109 @@ adminRouter.get('/sessions/:id/transcript', async (req: AuthRequest, res: Respon
   try {
     const data = await sessionsService.getTranscriptAdmin(req.params.id);
     res.json(data);
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
+/**
+ * @openapi
+ * /api/admin/agent-latency:
+ *   get:
+ *     tags: [Admin]
+ *     summary: Métricas agregadas de latencia (TTFA y connect) sobre sesiones reales
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, minimum: 1, maximum: 500, default: 50 }
+ *     responses:
+ *       200:
+ *         description: Agregados + sesiones recientes
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ttfa: { $ref: '#/components/schemas/AgentLatencyAggregate' }
+ *                 connect: { $ref: '#/components/schemas/AgentLatencyAggregate' }
+ *                 sessionCount: { type: integer }
+ *                 recent:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id: { type: string, format: uuid }
+ *                       createdAt: { type: string, format: date-time }
+ *                       durationSeconds: { type: integer }
+ *                       connectMs: { type: integer, nullable: true }
+ *                       ttfaSamplesCount: { type: integer }
+ *                       ttfaAvgMs: { type: integer, nullable: true }
+ *                       ttfaP95Ms: { type: integer, nullable: true }
+ *                       userName: { type: string }
+ *                       scenarioName: { type: string, nullable: true }
+ */
+// ============================================
+// Agent Latency (real-session metrics)
+// ============================================
+// Aggregated TTFA + connect latency across all PracticeSessions.
+// Used by the admin "Performance del Agente" tab.
+// ============================================
+adminRouter.get('/agent-latency', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const limit = Math.min(parseInt(String(req.query.limit ?? '50'), 10) || 50, 500);
+    const sessions = await prisma.practiceSession.findMany({
+      where: {
+        OR: [
+          { connectMs: { not: null } },
+          { ttfaSamplesMs: { isEmpty: false } },
+        ],
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      include: {
+        user: { select: { firstName: true, lastName: true, email: true } },
+        scenario: { select: { name: true } },
+      },
+    });
+
+    const allTtfa: number[] = [];
+    const allConnect: number[] = [];
+    const recent = sessions.map((s) => {
+      const samples = s.ttfaSamplesMs ?? [];
+      allTtfa.push(...samples);
+      if (s.connectMs !== null && s.connectMs !== undefined) allConnect.push(s.connectMs);
+      const sorted = [...samples].sort((a, b) => a - b);
+      const avg = samples.length > 0 ? Math.round(samples.reduce((a, b) => a + b, 0) / samples.length) : null;
+      const p95 = sorted.length > 0 ? sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))] : null;
+      return {
+        id: s.id,
+        createdAt: s.createdAt,
+        durationSeconds: s.durationSeconds,
+        connectMs: s.connectMs,
+        ttfaSamplesCount: samples.length,
+        ttfaAvgMs: avg,
+        ttfaP95Ms: p95,
+        userName: `${s.user.firstName ?? ''} ${s.user.lastName ?? ''}`.trim() || s.user.email,
+        scenarioName: s.scenario?.name ?? null,
+      };
+    });
+
+    const aggregate = (values: number[]) => {
+      if (values.length === 0) return { avg: null, p50: null, p95: null, count: 0 };
+      const sorted = [...values].sort((a, b) => a - b);
+      const avg = Math.round(sorted.reduce((a, b) => a + b, 0) / sorted.length);
+      const p50 = sorted[Math.floor(sorted.length * 0.5)];
+      const p95 = sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))];
+      return { avg, p50, p95, count: sorted.length };
+    };
+
+    res.json({
+      ttfa: aggregate(allTtfa),
+      connect: aggregate(allConnect),
+      sessionCount: sessions.length,
+      recent,
+    });
   } catch (error) {
     const appError = handleError(error);
     res.status(appError.statusCode).json({ error: appError.message });

@@ -26,6 +26,7 @@ interface EvaluationScreenProps {
   sessionDuration: number;
   onContinue: () => void;
   onRetry: () => void;
+  continueLabel?: string;
 }
 
 const EvaluationScreen = ({
@@ -35,6 +36,7 @@ const EvaluationScreen = ({
   sessionDuration,
   onContinue,
   onRetry,
+  continueLabel,
 }: EvaluationScreenProps) => {
   const navigate = useNavigate();
   const [showDetails, setShowDetails] = useState(false);
@@ -238,12 +240,12 @@ const EvaluationScreen = ({
         {/* Action buttons */}
         <div className="flex flex-col gap-3">
           {evaluation.passed ? (
-            <Button 
-              onClick={onContinue} 
+            <Button
+              onClick={onContinue}
               className="w-full rounded-xl font-bold uppercase tracking-wider h-12"
             >
               <CheckCircle2 className="w-5 h-5 mr-2" />
-              Continuar
+              {continueLabel ?? "Continuar"}
             </Button>
           ) : (
             <>

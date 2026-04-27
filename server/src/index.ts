@@ -25,6 +25,7 @@ import { AppError } from './utils/errors.js';
 import { rootLogger, getLogger } from './utils/logger.js';
 import { requestContextMiddleware, httpLogger } from './middleware/requestContext.js';
 import { getReadinessReport } from './services/health.service.js';
+import { mountSwagger } from './swagger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -73,6 +74,11 @@ app.use(cors({
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// ============================================
+// API Docs (Swagger UI at /api/docs, raw spec at /api/docs.json)
+// ============================================
+mountSwagger(app);
 
 // ============================================
 // Routes

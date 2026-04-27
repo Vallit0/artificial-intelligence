@@ -18,6 +18,7 @@ import LtiPlatformPanel from "@/components/admin/LtiPlatformPanel";
 import AbExperimentsPanel from "@/components/admin/AbExperimentsPanel";
 import AiAccessPanel from "@/components/admin/AiAccessPanel";
 import LatencyTesterPanel from "@/components/admin/LatencyTesterPanel";
+import AgentLatencyPanel from "@/components/admin/AgentLatencyPanel";
 import LeftSidebar from "@/components/scenarios/LeftSidebar";
 import MobileNavigation from "@/components/MobileNavigation";
 import { useAdminAnalytics } from "@/hooks/useAdminAnalytics";
@@ -29,7 +30,7 @@ export default function Admin() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { isAdmin, isLoading: adminLoading } = useAdmin();
-  const { students, isLoading: studentsLoading, assignGrade, toggleExamenFinal, refetch } = useStudents();
+  const { students, isLoading: studentsLoading, assignGrade, toggleExamenFinal, toggleLevel2, refetch } = useStudents();
 
   const { data: adminAnalytics, isLoading: analyticsLoading } = useAdminAnalytics();
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -117,6 +118,10 @@ export default function Admin() {
             <TabsTrigger value="latency" className="flex items-center gap-1">
               <Activity className="w-3.5 h-3.5" />
               Latencia
+            </TabsTrigger>
+            <TabsTrigger value="agent-perf" className="flex items-center gap-1">
+              <Timer className="w-3.5 h-3.5" />
+              Performance Voz
             </TabsTrigger>
           </TabsList>
 
@@ -313,6 +318,7 @@ export default function Admin() {
                   })}
                   onAssignGrade={assignGrade}
                   onToggleExamenFinal={toggleExamenFinal}
+                  onToggleLevel2={toggleLevel2}
                   onRefetch={refetch}
                 />
               )}
@@ -402,6 +408,10 @@ export default function Admin() {
 
           <TabsContent value="latency">
             <LatencyTesterPanel />
+          </TabsContent>
+
+          <TabsContent value="agent-perf">
+            <AgentLatencyPanel />
           </TabsContent>
         </Tabs>
           </div>

@@ -87,6 +87,8 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
   // Latency instrumentation
   const connectStartRef = useRef<number | null>(null);
   const userSpeechEndRef = useRef<number | null>(null);
+  const ttfaSamplesRef = useRef<number[]>([]);
+  const connectMsRef = useRef<number | null>(null);
   const [latencyStats, setLatencyStats] = useState<LatencyStats>({
     connectMs: null,
     lastTtfaMs: null,
@@ -99,6 +101,11 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     const event: LatencyEvent = { type, ms: rounded, at: Date.now() };
     console.log(`[LATENCY] ${type}=${rounded}ms`);
     onLatencyRef.current?.(event);
+    if (type === "connect") {
+      connectMsRef.current = rounded;
+    } else {
+      ttfaSamplesRef.current.push(rounded);
+    }
     setLatencyStats((prev) => {
       if (type === "connect") {
         return { ...prev, connectMs: rounded };
@@ -112,6 +119,17 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
         ttfaSamples: samples,
       };
     });
+  }, []);
+
+  const getLatencyReport = useCallback(() => ({
+    connectMs: connectMsRef.current,
+    ttfaSamplesMs: [...ttfaSamplesRef.current],
+  }), []);
+
+  const resetLatency = useCallback(() => {
+    connectMsRef.current = null;
+    ttfaSamplesRef.current = [];
+    setLatencyStats({ connectMs: null, lastTtfaMs: null, avgTtfaMs: null, ttfaSamples: 0 });
   }, []);
 
   const conversation = useConversation({
@@ -277,6 +295,8 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     setIsMuted(false);
     connectStartRef.current = performance.now();
     userSpeechEndRef.current = null;
+    connectMsRef.current = null;
+    ttfaSamplesRef.current = [];
     setLatencyStats({ connectMs: null, lastTtfaMs: null, avgTtfaMs: null, ttfaSamples: 0 });
 
     try {
@@ -395,6 +415,8 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     sessionTime,
     variantId,
     latencyStats,
+    getLatencyReport,
+    resetLatency,
     connect,
     disconnect,
     toggleMute,

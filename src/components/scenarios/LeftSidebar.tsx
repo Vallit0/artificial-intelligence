@@ -1,8 +1,19 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Target, Phone, LogOut, TrendingUp, Users, Settings, BookOpen, CalendarDays, Lock } from "lucide-react";
+import {
+  Phone,
+  LogOut,
+  TrendingUp,
+  Users,
+  Settings,
+  BookOpen,
+  CalendarDays,
+  Lock,
+  ArrowRightLeft,
+} from "lucide-react";
 import logoSenoriales from "@/assets/logo-senoriales.png";
 import { useAuth } from "@/hooks/useAuth";
+import { useLevelMode, useDidLevelJustChange } from "@/hooks/useLevelMode";
 
 interface NavItem {
   icon: React.ElementType;
@@ -15,18 +26,41 @@ const LeftSidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, isAdmin } = useAuth();
+  const { currentLevel, toggle } = useLevelMode();
+  const animateLevelChange = useDidLevelJustChange();
 
-  const navItems: NavItem[] = [
+  const isLevel2 = currentLevel === 2;
+
+  const level1Items: NavItem[] = [
     { icon: Users, label: "Prospeccion", href: "/prospecting" },
     { icon: Phone, label: "Llamada", href: "/practice" },
     { icon: BookOpen, label: "Legado de Vida", href: "/legado" },
     { icon: Lock, label: "Examen Final", href: "/quests" },
     { icon: TrendingUp, label: "Mi Progreso", href: "/progress" },
-    ...(isAdmin ? [
-      { icon: CalendarDays, label: "Coach Center", href: "/coach-center" },
-      { icon: Settings, label: "Admin", href: "/admin" },
-    ] : []),
   ];
+
+  const level2Items: NavItem[] = [
+    { icon: Phone, label: "Llamada", href: "/practice" },
+    { icon: Lock, label: "Examen Final", href: "/quests" },
+    { icon: TrendingUp, label: "Mi Progreso", href: "/progress" },
+  ];
+
+  const baseItems = isLevel2 ? level2Items : level1Items;
+  const navItems: NavItem[] = [
+    ...baseItems,
+    ...(isAdmin
+      ? [
+          { icon: CalendarDays, label: "Coach Center", href: "/coach-center" },
+          { icon: Settings, label: "Admin", href: "/admin" },
+        ]
+      : []),
+  ];
+
+  // Theme tokens — Level 2 uses a violet/pink accent palette while keeping
+  // the same overall structure so the user can tell they're in a new "world".
+  const accentBg = isLevel2
+    ? "linear-gradient(135deg, #a855f7, #ec4899)"
+    : "linear-gradient(135deg, hsl(var(--sidebar-primary)), hsl(var(--sidebar-accent)))";
 
   const handleLogout = async () => {
     await signOut();
@@ -54,20 +88,65 @@ const LeftSidebar = () => {
             Señoriales
           </span>
         </Link>
+        <div
+          key={`level-badge-${currentLevel}`}
+          className="mt-3 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest text-center"
+          style={{
+            background: accentBg,
+            color: "white",
+            animation: animateLevelChange
+              ? "navItemPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1)"
+              : undefined,
+          }}
+        >
+          Nivel {currentLevel} · {currentLevel === 1 ? "Álvaro" : "Nelson"}
+        </div>
       </div>
 
+      {/* Admin level toggle */}
+      {isAdmin && (
+        <div className="px-3 pt-3">
+          <button
+            onClick={toggle}
+            className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-200 hover:bg-white/[0.06]"
+            style={{
+              color: "hsl(var(--sidebar-foreground) / 0.7)",
+              border: "1px dashed hsl(var(--sidebar-border))",
+            }}
+            title="Cambiar entre Nivel 1 y Nivel 2 (admin)"
+          >
+            <span className="flex items-center gap-2">
+              <ArrowRightLeft className="w-3.5 h-3.5" />
+              Cambiar a Nivel {currentLevel === 1 ? 2 : 1}
+            </span>
+            <span
+              className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase"
+              style={{ background: accentBg, color: "white" }}
+            >
+              N{currentLevel}
+            </span>
+          </button>
+        </div>
+      )}
+
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
-        {navItems.map((item) => {
+      <nav key={`nav-items-${currentLevel}`} className="flex-1 px-3 py-4 space-y-1">
+        {navItems.map((item, i) => {
           const isActive = location.pathname === item.href;
           const Icon = item.icon;
+          const itemAnim = animateLevelChange
+            ? `navItemPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) ${i * 0.05}s both`
+            : undefined;
 
           if (item.disabled) {
             return (
               <div
                 key={item.href}
                 className="flex items-center gap-3 px-4 py-3 rounded-2xl text-sm cursor-not-allowed opacity-40"
-                style={{ color: "hsl(var(--sidebar-foreground))" }}
+                style={{
+                  color: "hsl(var(--sidebar-foreground))",
+                  animation: itemAnim,
+                }}
               >
                 <Icon className="w-5 h-5" />
                 <span className="font-medium">{item.label}</span>
@@ -81,20 +160,14 @@ const LeftSidebar = () => {
               to={item.href}
               className={cn(
                 "flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all duration-200",
-                isActive
-                  ? "shadow-lg"
-                  : "hover:bg-white/[0.06]"
+                isActive ? "shadow-lg" : "hover:bg-white/[0.06]",
               )}
-              style={
-                isActive
-                  ? {
-                      background: "linear-gradient(135deg, hsl(var(--sidebar-primary)), hsl(var(--sidebar-accent)))",
-                      color: "hsl(var(--sidebar-primary-foreground))",
-                    }
-                  : {
-                      color: "hsl(var(--sidebar-foreground) / 0.7)",
-                    }
-              }
+              style={{
+                ...(isActive
+                  ? { background: accentBg, color: "white" }
+                  : { color: "hsl(var(--sidebar-foreground) / 0.7)" }),
+                animation: itemAnim,
+              }}
               onMouseEnter={(e) => {
                 if (!isActive) (e.currentTarget.style.color = "hsl(var(--sidebar-foreground))");
               }}
@@ -129,6 +202,14 @@ const LeftSidebar = () => {
           Centro de Negocios Senoriales
         </p>
       </div>
+
+      <style>{`
+        @keyframes navItemPop {
+          0% { opacity: 0; transform: scale(0.6); }
+          70% { opacity: 1; transform: scale(1.06); }
+          100% { opacity: 1; transform: scale(1); }
+        }
+      `}</style>
     </aside>
   );
 };

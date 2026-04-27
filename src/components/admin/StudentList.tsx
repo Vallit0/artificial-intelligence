@@ -22,6 +22,7 @@ interface StudentListProps {
   students: Student[];
   onAssignGrade: (userId: string, grade: number, notes?: string) => Promise<boolean>;
   onToggleExamenFinal: (userId: string, enabled: boolean) => Promise<boolean>;
+  onToggleLevel2: (userId: string, unlocked: boolean) => Promise<boolean>;
   onRefetch: () => Promise<void>;
 }
 
@@ -34,7 +35,7 @@ const formatDuration = (seconds: number): string => {
   return `${minutes}m`;
 };
 
-export default function StudentList({ students, onAssignGrade, onToggleExamenFinal, onRefetch }: StudentListProps) {
+export default function StudentList({ students, onAssignGrade, onToggleExamenFinal, onToggleLevel2, onRefetch }: StudentListProps) {
   const { toast } = useToast();
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [gradeStudent, setGradeStudent] = useState<Student | null>(null);
@@ -45,6 +46,7 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
   const [sortAsc, setSortAsc] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [togglingExamenId, setTogglingExamenId] = useState<string | null>(null);
+  const [togglingLevel2Id, setTogglingLevel2Id] = useState<string | null>(null);
 
   const handleApprove = async (student: Student) => {
     setApprovingId(student.id);
@@ -130,6 +132,7 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
             <TableHead className="text-center">Tiempo Total</TableHead>
             <TableHead className="text-center">Promedio IA</TableHead>
             <TableHead className="text-center">Examen Final</TableHead>
+            <TableHead className="text-center">Nivel 2</TableHead>
             <TableHead
               className="cursor-pointer hover:text-foreground text-center"
               onClick={() => handleSort("grade")}
@@ -191,6 +194,37 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
                     <>
                       <Lock className="w-3.5 h-3.5" />
                       Bloqueado
+                    </>
+                  )}
+                </Button>
+              </TableCell>
+              <TableCell className="text-center">
+                <Button
+                  variant={student.level2Unlocked ? "default" : "outline"}
+                  size="sm"
+                  className="gap-1.5"
+                  disabled={togglingLevel2Id === student.id}
+                  onClick={async () => {
+                    setTogglingLevel2Id(student.id);
+                    const ok = await onToggleLevel2(student.id, !student.level2Unlocked);
+                    setTogglingLevel2Id(null);
+                    if (ok) {
+                      toast({
+                        title: student.level2Unlocked ? "Nivel 2 bloqueado" : "Nivel 2 desbloqueado",
+                        description: `${[student.first_name, student.last_name].filter(Boolean).join(' ') || student.email}`,
+                      });
+                    }
+                  }}
+                >
+                  {student.level2Unlocked ? (
+                    <>
+                      <Unlock className="w-3.5 h-3.5" />
+                      Nivel 2
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="w-3.5 h-3.5" />
+                      Nivel 1
                     </>
                   )}
                 </Button>

@@ -84,7 +84,18 @@
       "Bash(npm test *)",
       "Bash(echo \"frontend-exit=$?\")",
       "Bash(echo \"backend-exit=$?\")",
-      "Bash(npx vitest *)"
+      "Bash(npx vitest *)",
+      "Bash(docker version *)",
+      "Bash(docker run *)",
+      "Bash(docker exec *)",
+      "Bash(bun run *)",
+      "PowerShell($h = Get-Item -Path 'C:\\\\Users\\\\estua\\\\Documents\\\\ai\\\\senoriales-48152aa7\\\\server\\\\node_modules\\\\.prisma\\\\client\\\\query_engine-windows.dll.node' -ErrorAction SilentlyContinue; if \\($h\\) { $procs = Get-Process | Where-Object { $_.Modules.FileName -contains $h.FullName } 2>$null; $procs | Select-Object Id, ProcessName })",
+      "PowerShell(Get-Process | Where-Object { $_.ProcessName -match 'node|prisma|tsx' } | Select-Object Id, ProcessName, StartTime, Path | Format-Table -AutoSize)",
+      "PowerShell(Stop-Process *)",
+      "PowerShell(Get-NetTCPConnection *)",
+      "PowerShell(netstat *)",
+      "Bash(npm audit *)",
+      "Bash(docker start *)"
     ]
   },
   "hooks": {

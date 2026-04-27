@@ -13,6 +13,7 @@ import { TimeUpModal } from "@/components/practice/TimeUpModal";
 import { useElevenLabsConversation } from "@/hooks/useElevenLabsConversation";
 import { usePracticeSessions } from "@/hooks/usePracticeSessions";
 import { useAuth } from "@/hooks/useAuth";
+import { useLevelMode, useDidLevelJustChange } from "@/hooks/useLevelMode";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useCallSounds } from "@/hooks/useCallSounds";
 import { api } from "@/lib/api-client";
@@ -73,7 +74,7 @@ interface AgentSuggestion {
   redirectTo?: string;
 }
 
-const agentSuggestions: AgentSuggestion[] = [
+const practiceAgentSuggestions: AgentSuggestion[] = [
   {
     id: "coach",
     label: "Coach",
@@ -130,14 +131,45 @@ const agentSuggestions: AgentSuggestion[] = [
   },
 ];
 
+const LEVEL2_HIDDEN_IDS = new Set(["prospeccion-fisica", "legado-vida"]);
+const LEVEL2_ORB_GRADIENT =
+  "linear-gradient(135deg, #7c3aed 0%, #a855f7 40%, #c084fc 70%, #7c3aed 100%)";
+
+const objectionsAgentSuggestions: AgentSuggestion[] = practiceAgentSuggestions
+  // Nivel 2 oculta los atajos a Prospección y Legado pero mantiene Examen
+  // Final. Conserva los modos de práctica de llamada (Coach, Roleplay) y los
+  // enruta a agentes ElevenLabs distintos vía secret name. También sustituye
+  // el persona "Álvaro" por "Nelson" en las descripciones y unifica el orbe
+  // a un tono morado para diferenciar visualmente el nivel.
+  .filter((agent) => !LEVEL2_HIDDEN_IDS.has(agent.id))
+  .map((agent) => {
+    const next: AgentSuggestion = {
+      ...agent,
+      description: agent.description.replace(/Álvaro/g, "Nelson"),
+      orbGradient: LEVEL2_ORB_GRADIENT,
+    };
+    if (agent.agentSecretName) {
+      next.agentSecretName = agent.agentSecretName.replace(
+        "ELEVENLABS_AGENT_",
+        "ELEVENLABS_AGENT_OBJECCIONES_",
+      );
+    }
+    return next;
+  });
+
 const FREE_TIER_MAX_SECONDS = 180;
 
 const Practice = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
+  const { currentLevel } = useLevelMode();
+  const animateLevelChange = useDidLevelJustChange();
   const isMobile = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  const isLevel2 = currentLevel === 2;
+  const agentSuggestions = isLevel2 ? objectionsAgentSuggestions : practiceAgentSuggestions;
 
   const scenarioId = searchParams.get("scenario");
   const agentParam = searchParams.get("agent");
@@ -159,7 +191,7 @@ const Practice = () => {
   const [selectedAgent, setSelectedAgent] = useState<AgentSuggestion | null>(null);
   const sessionDurationRef = useRef<number>(0);
 
-  const { savePracticeSession } = usePracticeSessions();
+  const { savePracticeSession, evaluateSession } = usePracticeSessions();
   const { playStartCall, playConnected, playEndCall } = useCallSounds();
 
   const [greetingIndex, setGreetingIndex] = useState(0);
@@ -247,6 +279,10 @@ const Practice = () => {
   }, []);
 
   const handleEndCallRef = useRef<() => void>(() => {});
+  const sessionStateRef = useRef<SessionState>("idle");
+  useEffect(() => {
+    sessionStateRef.current = sessionState;
+  }, [sessionState]);
 
   const handleAgentDisconnected = useCallback((reason?: string) => {
     console.log("[TRACE] Agent ended the call, reason:", reason);
@@ -260,6 +296,7 @@ const Practice = () => {
     isMuted,
     sessionTime,
     variantId,
+    getLatencyReport,
     connect,
     disconnect,
     toggleMute,
@@ -364,8 +401,11 @@ const Practice = () => {
 
     if (user && currentSessionId) {
       try {
+        const latency = getLatencyReport();
         await api.patch(`/api/sessions/${currentSessionId}`, {
           durationSeconds: sessionDurationRef.current,
+          connectMs: latency.connectMs,
+          ttfaSamplesMs: latency.ttfaSamplesMs,
         });
       } catch (err) {
         console.error('Failed to update session duration:', err);
@@ -385,16 +425,40 @@ const Practice = () => {
 
     if (user && scenarioId) {
       setSessionState("evaluating");
-      setTimeout(() => {
-        if (sessionState === "evaluating") {
+      // Wait briefly for the agent's submit_evaluation tool call. If it doesn't
+      // arrive (agent not configured with the tool, or it crashed), fall back
+      // to scoring the transcript server-side via OpenAI so the student is
+      // never stuck on the evaluating screen and progression keeps working.
+      const sessionIdForEval = currentSessionId;
+      const transcriptForEval = transcriptMessages.map((m) => ({
+        role: m.isUser ? "user" : "agent",
+        content: m.text,
+        timestamp: m.timestamp.getTime(),
+      }));
+      const durationForEval = sessionDurationRef.current;
+      setTimeout(async () => {
+        // If the agent already emitted submit_evaluation in the meantime,
+        // sessionState will be "evaluated" — don't double-score.
+        if (sessionStateRef.current !== "evaluating" || !sessionIdForEval) return;
+        const result = await evaluateSession(
+          sessionIdForEval,
+          transcriptForEval,
+          scenarioId,
+          durationForEval,
+        );
+        if (sessionStateRef.current !== "evaluating") return;
+        if (result) {
+          setAgentEvaluation(result);
+          setSessionState("evaluated");
+        } else {
           toast({
             variant: "destructive",
-            title: "Evaluacion no recibida",
-            description: "El agente no envio la evaluacion. Puedes intentar de nuevo.",
+            title: "No se pudo evaluar",
+            description: "Hubo un problema al calcular tu puntaje. Intentá de nuevo.",
           });
           setSessionState("idle");
         }
-      }, 15000);
+      }, 8000);
     } else {
       setSessionState("idle");
       setSelectedAgent(null);
@@ -516,7 +580,7 @@ const Practice = () => {
                   listening
                   winkOut={orbWinking}
                   onWinkOutDone={() => {}}
-                  gradient={orbGradient}
+                  gradient={isLevel2 ? LEVEL2_ORB_GRADIENT : orbGradient}
                   interactive
                   onPoke={handleOrbPoke}
                 />
@@ -548,14 +612,22 @@ const Practice = () => {
             </div>
 
             {/* Suggestion bubbles grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full mb-8">
-              {agentSuggestions.map((agent) => {
+            <div
+              key={`agent-grid-${currentLevel}`}
+              className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full mb-8"
+            >
+              {agentSuggestions.map((agent, i) => {
                 const Icon = agent.icon;
                 return (
                   <button
                     key={agent.id}
                     onClick={() => agent.redirectTo ? navigate(agent.redirectTo) : handleStart(agent)}
                     className={`group flex items-start gap-3 p-4 rounded-2xl border-2 bg-gradient-to-br text-left transition-all duration-200 hover:scale-[1.03] hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.97] shadow-md ${agent.color}`}
+                    style={
+                      animateLevelChange
+                        ? { animation: `cardPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) ${i * 0.06}s both` }
+                        : undefined
+                    }
                   >
                     <div className="shrink-0 mt-0.5">
                       <Icon className="w-5 h-5 text-foreground/70 group-hover:text-foreground transition-colors" />
@@ -569,8 +641,8 @@ const Practice = () => {
               })}
             </div>
 
-            {/* Quick scenario access */}
-            {user && (
+            {/* Quick scenario access — solo en Nivel 1 */}
+            {user && !isLevel2 && (
               <div className="flex gap-2">
                 <Button
                   variant="outline"
@@ -608,7 +680,7 @@ const Practice = () => {
                 energy
                 speaking={false}
                 listening={isConnecting}
-                gradient={selectedAgent?.orbGradient}
+                gradient={isLevel2 ? LEVEL2_ORB_GRADIENT : selectedAgent?.orbGradient}
               />
             </button>
             {sessionState === "connecting" && (
@@ -619,8 +691,17 @@ const Practice = () => {
 
         {/* ===== ACTIVE SESSION ===== */}
         {sessionState === "active" && (
-          <div className="flex flex-col items-center justify-center w-full h-full px-4 pb-4 animate-fade-in">
+          <div className="flex flex-col items-center justify-center w-full h-full px-4 pb-32 lg:pb-24 animate-fade-in">
             <div className="flex flex-col items-center gap-3 sm:gap-6">
+              {/* Persona name (Álvaro / Nelson) */}
+              {selectedAgent && (
+                <p
+                  className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.25em] text-muted-foreground/70"
+                  style={{ fontFamily: "'Nunito', 'DIN Rounded', -apple-system, sans-serif" }}
+                >
+                  Personaje · {currentLevel === 1 ? "Álvaro" : "Nelson"}
+                </p>
+              )}
               {/* Agent label */}
               <div className="flex items-center gap-2">
                 {selectedAgent && <selectedAgent.icon className="w-4 h-4 text-muted-foreground" />}
@@ -638,11 +719,12 @@ const Practice = () => {
 
               {!isFreeTier && <PracticeTimer totalSeconds={sessionTime} />}
 
-              <AICompanionOrb speaking={isSpeaking} listening={!isMuted} size={isMobile ? "sm" : "lg"} energy gradient={selectedAgent?.orbGradient} />
-
-              <VoiceControls isMuted={isMuted} onMuteToggle={toggleMute} onEndCall={handleEndCall} />
+              <AICompanionOrb speaking={isSpeaking} listening={!isMuted} size={isMobile ? "sm" : "lg"} energy gradient={isLevel2 ? LEVEL2_ORB_GRADIENT : selectedAgent?.orbGradient} />
             </div>
 
+            <div className="fixed left-1/2 -translate-x-1/2 z-40 bottom-[5.5rem] lg:bottom-8">
+              <VoiceControls isMuted={isMuted} onMuteToggle={toggleMute} onEndCall={handleEndCall} />
+            </div>
           </div>
         )}
       </div>
@@ -653,6 +735,11 @@ const Practice = () => {
         @keyframes pokeBubbleIn {
           0% { opacity: 0; transform: translateX(-50%) translateY(6px) scale(0.8); }
           100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+        }
+        @keyframes cardPop {
+          0% { opacity: 0; transform: scale(0.6); }
+          70% { opacity: 1; transform: scale(1.05); }
+          100% { opacity: 1; transform: scale(1); }
         }
       `}</style>
     </div>

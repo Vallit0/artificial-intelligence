@@ -77,6 +77,7 @@ export async function signup(email: string, password: string, firstName?: string
     firstName: user.firstName || undefined,
     lastName: user.lastName || undefined,
     examenFinalEnabled: user.examenFinalEnabled,
+    level2Unlocked: user.level2Unlocked,
   };
 
   const accessToken = generateAccessToken(authUser);
@@ -117,6 +118,7 @@ export async function login(email: string, password: string): Promise<{
     firstName: user.firstName || undefined,
     lastName: user.lastName || undefined,
     examenFinalEnabled: user.examenFinalEnabled,
+    level2Unlocked: user.level2Unlocked,
   };
 
   const accessToken = generateAccessToken(authUser);
@@ -185,6 +187,7 @@ export async function getUserById(userId: string): Promise<AuthUser | null> {
     firstName: user.firstName || undefined,
     lastName: user.lastName || undefined,
     examenFinalEnabled: user.examenFinalEnabled,
+    level2Unlocked: user.level2Unlocked,
   };
 }
 

@@ -12,6 +12,7 @@ export interface ApiUser {
   firstName?: string;
   lastName?: string;
   examenFinalEnabled?: boolean;
+  level2Unlocked?: boolean;
 }
 
 class ApiClient {

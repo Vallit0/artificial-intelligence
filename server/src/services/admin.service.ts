@@ -41,8 +41,8 @@ export async function createUser(input: CreateUserInput) {
   if (!isValidEmail(email)) {
     throw new BadRequestError('Formato de email inválido');
   }
-  if (!input.password || input.password.length < 4) {
-    throw new BadRequestError('La contraseña debe tener al menos 6 caracteres');
+  if (!input.password || input.password.length < 12) {
+    throw new BadRequestError('La contraseña debe tener al menos 12 caracteres');
   }
 
   const existing = await prisma.user.findUnique({ where: { email } });
@@ -99,8 +99,8 @@ export async function bulkCreateUsers(users: CreateUserInput[]) {
         results.push({ email: email || 'desconocido', success: false, error: 'Email inválido' });
         continue;
       }
-      if (!userData.password || userData.password.length < 4) {
-        results.push({ email, success: false, error: 'Contraseña muy corta' });
+      if (!userData.password || userData.password.length < 12) {
+        results.push({ email, success: false, error: 'Contraseña debe tener al menos 12 caracteres' });
         continue;
       }
       if (existingEmails.has(email)) {
@@ -204,6 +204,7 @@ export async function getAllStudents(): Promise<StudentWithStats[]> {
       gradedBy: user.studentGrade?.gradedBy || null,
       gradeNotes: user.studentGrade?.notes || null,
       examenFinalEnabled: user.examenFinalEnabled,
+      level2Unlocked: user.level2Unlocked,
       phoneNumber: user.phoneNumber,
     };
   });
@@ -219,6 +220,19 @@ export async function toggleExamenFinal(userId: string, enabled: boolean) {
     where: { id: userId },
     data: { examenFinalEnabled: enabled },
     select: { id: true, examenFinalEnabled: true },
+  });
+}
+
+export async function toggleLevel2(userId: string, unlocked: boolean) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) {
+    throw new NotFoundError('Usuario no encontrado');
+  }
+
+  return prisma.user.update({
+    where: { id: userId },
+    data: { level2Unlocked: unlocked },
+    select: { id: true, level2Unlocked: true },
   });
 }
 

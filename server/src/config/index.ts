@@ -49,6 +49,9 @@ const envSchema = z.object({
   ELEVENLABS_AGENT_PROSPECTING_PAREJA_CEMENTERIO: optionalString,
   ELEVENLABS_AGENT_EXAMEN_FINAL: optionalString,
 
+  OPENAI_API_KEY: optionalString,
+  OPENAI_MODEL: z.string().default('gpt-4o-mini'),
+
   RESEND_API_KEY: optionalString,
   RESEND_FROM_EMAIL: z.string().default('Señoriales <onboarding@resend.dev>'),
 
@@ -115,6 +118,11 @@ export const config = {
     apiKey: env.ELEVENLABS_API_KEY,
     agentId: env.ELEVENLABS_AGENT_ID,
     conversationUrl: 'https://api.elevenlabs.io/v1/convai/conversation/get-signed-url',
+  },
+
+  openai: {
+    apiKey: env.OPENAI_API_KEY,
+    model: env.OPENAI_MODEL,
   },
 
   resendApiKey: env.RESEND_API_KEY,

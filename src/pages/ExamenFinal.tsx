@@ -1,16 +1,20 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, GraduationCap, AlertTriangle, Lock, Mic, MicOff, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useElevenLabsConversation } from "@/hooks/useElevenLabsConversation";
 import { useAuth } from "@/hooks/useAuth";
+import { usePracticeSessions } from "@/hooks/usePracticeSessions";
 import LiveTranscript from "@/components/LiveTranscript";
 import VoiceOrb from "@/components/VoiceOrb";
+import EvaluationScreen from "@/components/practice/EvaluationScreen";
+import LevelUpAnimation from "@/components/LevelUpAnimation";
 import { useToast } from "@/hooks/use-toast";
 import LeftSidebar from "@/components/scenarios/LeftSidebar";
 import MobileNavigation from "@/components/MobileNavigation";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { api } from "@/lib/api-client";
 
 interface TranscriptMessage {
   id: string;
@@ -19,12 +23,31 @@ interface TranscriptMessage {
   timestamp: Date;
 }
 
+interface EvaluationResult {
+  score: number;
+  passed: boolean;
+  feedback: string;
+  breakdown?: {
+    apertura: number;
+    escucha_activa: number;
+    manejo_objeciones: number;
+    propuesta_valor: number;
+    cierre: number;
+  };
+}
+
+type ExamState = "idle" | "active" | "evaluating" | "evaluated" | "leveling-up";
+
 export default function ExamenFinal() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user } = useAuth();
-  const [hasStarted, setHasStarted] = useState(false);
+  const { user, refreshUser } = useAuth();
+  const { savePracticeSession, evaluateSession } = usePracticeSessions();
+  const [examState, setExamState] = useState<ExamState>("idle");
   const [transcriptMessages, setTranscriptMessages] = useState<TranscriptMessage[]>([]);
+  const [evaluation, setEvaluation] = useState<EvaluationResult | null>(null);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const sessionDurationRef = useRef(0);
 
   const isLocked = !user?.examenFinalEnabled;
 
@@ -48,31 +71,142 @@ export default function ExamenFinal() {
     });
   }, [toast]);
 
+  const handleAgentEvaluation = useCallback((evalResult: EvaluationResult) => {
+    setEvaluation(evalResult);
+    setExamState("evaluated");
+  }, []);
+
   const {
     isConnected,
     isConnecting,
     isSpeaking,
     isMuted,
     sessionTime,
+    getLatencyReport,
     connect,
     disconnect,
     toggleMute,
   } = useElevenLabsConversation({
     agentSecretName: "ELEVENLABS_AGENT_EXAMEN_FINAL",
+    sessionId: currentSessionId,
+    userId: user?.id || null,
+    userName: user?.firstName || null,
     onTranscript: handleTranscript,
+    onEvaluation: handleAgentEvaluation,
     onError: handleError,
-    onAgentDisconnected: () => setHasStarted(false),
+    onAgentDisconnected: () => {
+      handleEndExamRef.current();
+    },
   });
 
+  sessionDurationRef.current = sessionTime;
+
   const handleStartExam = async () => {
-    setHasStarted(true);
     setTranscriptMessages([]);
+    setEvaluation(null);
+
+    const sessionId = await savePracticeSession(0);
+    setCurrentSessionId(sessionId);
+
+    setExamState("active");
     await connect();
   };
 
-  const handleEndExam = async () => {
+  const handleEndExam = useCallback(async () => {
     await disconnect();
-    setHasStarted(false);
+
+    const sessionId = currentSessionId;
+    const duration = sessionDurationRef.current;
+    const transcript = transcriptMessages;
+
+    if (sessionId) {
+      try {
+        const latency = getLatencyReport();
+        await api.patch(`/api/sessions/${sessionId}`, {
+          durationSeconds: duration,
+          connectMs: latency.connectMs,
+          ttfaSamplesMs: latency.ttfaSamplesMs,
+        });
+      } catch (err) {
+        console.error("Failed to update session duration:", err);
+      }
+
+      if (transcript.length > 0) {
+        api.post(`/api/sessions/${sessionId}/transcript`, {
+          transcript: transcript.map((m) => ({
+            role: m.isUser ? "user" : "agent",
+            content: m.text,
+            timestamp: m.timestamp.getTime(),
+          })),
+        }).catch((err) => console.error("Failed to save transcript:", err));
+      }
+    }
+
+    if (!sessionId) {
+      setExamState("idle");
+      return;
+    }
+
+    setExamState("evaluating");
+
+    const result = await evaluateSession(
+      sessionId,
+      transcript.map((m) => ({
+        role: m.isUser ? "user" : "agent",
+        content: m.text,
+        timestamp: m.timestamp.getTime(),
+      })),
+      null,
+      duration,
+    );
+
+    if (result) {
+      setEvaluation(result);
+      setExamState("evaluated");
+    } else {
+      toast({
+        variant: "destructive",
+        title: "No se pudo evaluar",
+        description: "Hubo un problema al calcular tu punteo. Intenta de nuevo.",
+      });
+      setExamState("idle");
+    }
+  }, [disconnect, currentSessionId, transcriptMessages, evaluateSession, getLatencyReport, toast]);
+
+  const handleEndExamRef = useRef(handleEndExam);
+  handleEndExamRef.current = handleEndExam;
+
+  const handleRetry = () => {
+    setEvaluation(null);
+    setTranscriptMessages([]);
+    setCurrentSessionId(null);
+    setExamState("idle");
+  };
+
+  const handleContinue = async () => {
+    if (evaluation?.passed) {
+      try {
+        await api.post("/api/users/me/unlock-level2", {});
+        await refreshUser();
+      } catch (err) {
+        console.error("Failed to unlock Level 2:", err);
+      }
+      setExamState("leveling-up");
+      return;
+    }
+    setEvaluation(null);
+    setTranscriptMessages([]);
+    setCurrentSessionId(null);
+    setExamState("idle");
+    navigate("/progress");
+  };
+
+  const finishLevelUp = () => {
+    setEvaluation(null);
+    setTranscriptMessages([]);
+    setCurrentSessionId(null);
+    setExamState("idle");
+    navigate("/practice");
   };
 
   const formatTime = (seconds: number) => {
@@ -80,6 +214,24 @@ export default function ExamenFinal() {
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
+
+  if (examState === "leveling-up") {
+    return <LevelUpAnimation onDone={finishLevelUp} />;
+  }
+
+  if (examState === "evaluating" || examState === "evaluated") {
+    return (
+      <EvaluationScreen
+        isEvaluating={examState === "evaluating"}
+        evaluation={evaluation}
+        scenarioName="Examen Final"
+        sessionDuration={sessionDurationRef.current}
+        onContinue={handleContinue}
+        onRetry={handleRetry}
+        continueLabel={evaluation?.passed ? "Avanzar de nivel" : undefined}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -98,7 +250,7 @@ export default function ExamenFinal() {
               >
                 <ArrowLeft className="h-5 w-5" />
               </Button>
-              <div>
+              <div className="flex-1">
                 <h1 className="text-2xl font-bold text-foreground">Examen Final</h1>
                 <p className="text-muted-foreground">Demuestra tus habilidades de venta</p>
               </div>
@@ -130,7 +282,7 @@ export default function ExamenFinal() {
                   </Button>
                 </CardContent>
               </Card>
-            ) : !hasStarted ? (
+            ) : examState === "idle" ? (
               /* Instructions Card */
               <Card className="border-primary/20">
                 <CardHeader className="text-center">
@@ -256,4 +408,3 @@ export default function ExamenFinal() {
     </div>
   );
 }
-

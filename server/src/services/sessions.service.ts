@@ -62,6 +62,8 @@ export async function updateSession(
       passed: input.passed ?? existing.passed,
       rating: input.rating ?? existing.rating,
       aiFeedback: input.aiFeedback ?? existing.aiFeedback,
+      connectMs: input.connectMs !== undefined ? input.connectMs : existing.connectMs,
+      ttfaSamplesMs: input.ttfaSamplesMs ?? existing.ttfaSamplesMs,
     },
   });
 
@@ -73,6 +75,16 @@ export async function saveEvaluation(
   userId: string,
   evaluation: SessionEvaluation
 ): Promise<PracticeSession> {
+  // Verify ownership BEFORE updating (otherwise any authenticated user could
+  // overwrite scores on sessions that don't belong to them via IDOR).
+  const owned = await prisma.practiceSession.findFirst({
+    where: { id: sessionId, userId },
+    select: { id: true },
+  });
+  if (!owned) {
+    throw new NotFoundError('Session not found');
+  }
+
   const session = await prisma.practiceSession.update({
     where: { id: sessionId },
     data: {
@@ -81,10 +93,6 @@ export async function saveEvaluation(
       aiFeedback: evaluation.feedback,
     },
   });
-
-  if (!session) {
-    throw new NotFoundError('Session not found');
-  }
 
   // Persist evaluation breakdown to dedicated table
   if (evaluation.breakdown) {
@@ -185,23 +193,7 @@ export async function getTranscriptAdmin(sessionId: string) {
   };
 }
 
-export async function evaluateSession(
-  _transcript: Array<{ role: string; content: string }>,
-  _scenarioId?: string
-): Promise<SessionEvaluation> {
-  return {
-    score: 75,
-    passed: true,
-    feedback: 'Buen trabajo en la práctica. Continúa mejorando tu técnica de manejo de objeciones.',
-    breakdown: {
-      apertura: 80,
-      escucha_activa: 75,
-      manejo_objeciones: 70,
-      propuesta_valor: 75,
-      cierre: 75,
-    },
-  };
-}
+export { evaluateSession } from './evaluation.service.js';
 
 // ============================================
 // Statistics

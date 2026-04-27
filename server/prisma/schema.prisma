@@ -52,6 +52,7 @@ model User {
   phoneNumber         String?  @map("phone_number")
   emailVerified       Boolean  @default(false) @map("email_verified")
   examenFinalEnabled  Boolean  @default(false) @map("examen_final_enabled")
+  level2Unlocked      Boolean  @default(false) @map("level2_unlocked")
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @default(now()) @updatedAt @map("updated_at")
 
@@ -196,6 +197,8 @@ model PracticeSession {
   aiFeedback      String?  @map("ai_feedback")
   transcript      Json?
   abVariantId     String?  @map("ab_variant_id")
+  connectMs       Int?     @map("connect_ms")
+  ttfaSamplesMs   Int[]    @default([]) @map("ttfa_samples_ms")
   createdAt       DateTime @default(now()) @map("created_at")
 
   user                User                  @relation(fields: [userId], references: [id], onDelete: Cascade)

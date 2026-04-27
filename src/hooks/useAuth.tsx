@@ -9,6 +9,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, firstName?: string, lastName?: string, phoneNumber?: string) => Promise<void>;
   signOut: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -94,6 +95,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setRoles(["learner"]);
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    if (!api.hasTokens()) return;
+    try {
+      const data = await api.get<{ user: ApiUser; roles: string[] }>("/auth/me");
+      setUser(data.user);
+      setRoles(data.roles);
+    } catch (err) {
+      console.warn("refreshUser failed:", err);
+    }
+  }, []);
+
   const signOut = useCallback(async () => {
     try {
       await api.post("/auth/logout", { refreshToken: localStorage.getItem("refresh_token") });
@@ -106,7 +118,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAdmin, roles, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, loading, isAdmin, roles, signIn, signUp, signOut, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

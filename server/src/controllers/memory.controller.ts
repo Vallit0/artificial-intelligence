@@ -4,7 +4,8 @@
 
 import { Request, Response } from 'express';
 import * as memoryService from '../services/memory.service.js';
-import { handleError, BadRequestError } from '../utils/errors.js';
+import { handleError, BadRequestError, ForbiddenError } from '../utils/errors.js';
+import { AuthRequest } from '../types/index.js';
 
 // ============================================
 // POST /api/memory/retrieve
@@ -67,12 +68,17 @@ export async function save(req: Request, res: Response): Promise<void> {
 // POST /api/memory/context
 // Called by frontend to get agent override context
 // ============================================
-export async function getContext(req: Request, res: Response): Promise<void> {
+export async function getContext(req: AuthRequest, res: Response): Promise<void> {
   try {
     const { user_id } = req.body;
 
     if (!user_id) {
       throw new BadRequestError('user_id is required');
+    }
+
+    // Prevent IDOR: a user can only fetch their own memory context.
+    if (!req.user || req.user.id !== user_id) {
+      throw new ForbiddenError('Cannot read another user\'s memory context');
     }
 
     const context = await memoryService.buildAgentContext(user_id);

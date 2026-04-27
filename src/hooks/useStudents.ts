@@ -24,6 +24,7 @@ export interface Student {
   finalGrade: number | null;
   gradedAt: string | null;
   examenFinalEnabled: boolean;
+  level2Unlocked: boolean;
   phoneNumber: string | null;
 }
 
@@ -34,6 +35,7 @@ interface UseStudentsReturn {
   refetch: () => Promise<void>;
   assignGrade: (userId: string, grade: number, notes?: string) => Promise<boolean>;
   toggleExamenFinal: (userId: string, enabled: boolean) => Promise<boolean>;
+  toggleLevel2: (userId: string, unlocked: boolean) => Promise<boolean>;
 }
 
 export const useStudents = (): UseStudentsReturn => {
@@ -61,6 +63,7 @@ export const useStudents = (): UseStudentsReturn => {
         finalGrade: s.finalGrade,
         gradedAt: s.createdAt, // TODO: add gradeUpdatedAt to API
         examenFinalEnabled: s.examenFinalEnabled ?? false,
+        level2Unlocked: s.level2Unlocked ?? false,
         phoneNumber: s.phoneNumber ?? null,
       }));
 
@@ -104,9 +107,20 @@ export const useStudents = (): UseStudentsReturn => {
     }
   };
 
+  const toggleLevel2 = async (userId: string, unlocked: boolean): Promise<boolean> => {
+    try {
+      await api.patch(`/api/admin/users/${userId}/level2-unlock`, { unlocked });
+      await fetchStudents();
+      return true;
+    } catch (err) {
+      console.error("Error toggling level 2:", err);
+      return false;
+    }
+  };
+
   useEffect(() => {
     fetchStudents();
   }, [fetchStudents]);
 
-  return { students, isLoading, error, refetch: fetchStudents, assignGrade, toggleExamenFinal };
+  return { students, isLoading, error, refetch: fetchStudents, assignGrade, toggleExamenFinal, toggleLevel2 };
 };

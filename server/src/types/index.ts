@@ -25,6 +25,7 @@ export interface AuthUser {
   firstName?: string;
   lastName?: string;
   examenFinalEnabled?: boolean;
+  level2Unlocked?: boolean;
 }
 
 export interface AuthRequest extends Request {
@@ -115,6 +116,8 @@ export interface UpdateSessionInput {
   passed?: boolean;
   rating?: number;
   aiFeedback?: string;
+  connectMs?: number | null;
+  ttfaSamplesMs?: number[];
 }
 
 // ============================================
