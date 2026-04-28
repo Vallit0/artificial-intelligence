@@ -138,9 +138,9 @@ const LEVEL2_ORB_GRADIENT =
 const objectionsAgentSuggestions: AgentSuggestion[] = practiceAgentSuggestions
   // Nivel 2 oculta los atajos a Prospección y Legado pero mantiene Examen
   // Final. Conserva los modos de práctica de llamada (Coach, Roleplay) y los
-  // enruta a agentes ElevenLabs distintos vía secret name. También sustituye
-  // el persona "Álvaro" por "Nelson" en las descripciones y unifica el orbe
-  // a un tono morado para diferenciar visualmente el nivel.
+  // enruta a agentes ElevenLabs distintos vía secret name (sufijo _NIVEL2).
+  // También sustituye el persona "Álvaro" por "Nelson" en las descripciones y
+  // unifica el orbe a un tono morado para diferenciar visualmente el nivel.
   .filter((agent) => !LEVEL2_HIDDEN_IDS.has(agent.id))
   .map((agent) => {
     const next: AgentSuggestion = {
@@ -149,10 +149,7 @@ const objectionsAgentSuggestions: AgentSuggestion[] = practiceAgentSuggestions
       orbGradient: LEVEL2_ORB_GRADIENT,
     };
     if (agent.agentSecretName) {
-      next.agentSecretName = agent.agentSecretName.replace(
-        "ELEVENLABS_AGENT_",
-        "ELEVENLABS_AGENT_OBJECCIONES_",
-      );
+      next.agentSecretName = `${agent.agentSecretName}_NIVEL2`;
     }
     return next;
   });
@@ -591,6 +588,19 @@ const Practice = () => {
               alt="Centro de Negocios Señoriales"
               className="h-10 w-auto mb-4 opacity-80"
             />
+
+            {/* Module / Level badge */}
+            <div className="mb-4">
+              <span
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-[0.18em] border ${
+                  isLevel2
+                    ? "bg-purple-500/10 text-purple-600 dark:text-purple-300 border-purple-500/30"
+                    : "bg-primary/10 text-primary border-primary/30"
+                }`}
+              >
+                {isLevel2 ? "Módulo · Manejo de Objeciones" : "Módulo · Prospección"}
+              </span>
+            </div>
 
             {/* Greeting */}
             <div

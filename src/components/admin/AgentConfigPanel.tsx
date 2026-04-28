@@ -11,9 +11,12 @@ const API_KEY_CONFIG = { secretName: "ELEVENLABS_API_KEY", label: "API Key de El
 
 const KNOWN_AGENTS = [
   { secretName: "ELEVENLABS_AGENT_ID", label: "Agente Default (Fallback)" },
-  { secretName: "ELEVENLABS_AGENT_COACH", label: "Coach" },
-  { secretName: "ELEVENLABS_AGENT_ROLEPLAY_CLIENTE", label: "Role-Play Cliente" },
-  { secretName: "ELEVENLABS_AGENT_ROLEPLAY_ASESOR", label: "Role-Play Asesor" },
+  { secretName: "ELEVENLABS_AGENT_COACH", label: "Nivel 1 · Coach (Prospeccion)" },
+  { secretName: "ELEVENLABS_AGENT_ROLEPLAY_CLIENTE", label: "Nivel 1 · Role-Play Cliente (Prospeccion)" },
+  { secretName: "ELEVENLABS_AGENT_ROLEPLAY_ASESOR", label: "Nivel 1 · Role-Play Asesor (Prospeccion)" },
+  { secretName: "ELEVENLABS_AGENT_COACH_NIVEL2", label: "Nivel 2 · Coach (Manejo de Objeciones)" },
+  { secretName: "ELEVENLABS_AGENT_ROLEPLAY_CLIENTE_NIVEL2", label: "Nivel 2 · Role-Play Cliente (Manejo de Objeciones)" },
+  { secretName: "ELEVENLABS_AGENT_ROLEPLAY_ASESOR_NIVEL2", label: "Nivel 2 · Role-Play Asesor (Manejo de Objeciones)" },
   { secretName: "ELEVENLABS_AGENT_PROSPECTING_PAREJA", label: "Prospeccion: Pareja en Caja" },
   { secretName: "ELEVENLABS_AGENT_PROSPECTING_FRUTAS", label: "Prospeccion: Frutas y Verduras" },
   { secretName: "ELEVENLABS_AGENT_PROSPECTING_NEUMATICOS", label: "Prospeccion: Neumaticos" },
