@@ -95,7 +95,8 @@
       "PowerShell(Get-NetTCPConnection *)",
       "PowerShell(netstat *)",
       "Bash(npm audit *)",
-      "Bash(docker start *)"
+      "Bash(docker start *)",
+      "Bash(docker info *)"
     ]
   },
   "hooks": {
