@@ -15,7 +15,7 @@ const KNOWN_AGENTS = [
   { secretName: "ELEVENLABS_AGENT_ROLEPLAY_CLIENTE", label: "Nivel 1 · Role-Play Cliente (Prospeccion)" },
   { secretName: "ELEVENLABS_AGENT_ROLEPLAY_ASESOR", label: "Nivel 1 · Role-Play Asesor (Prospeccion)" },
   { secretName: "ELEVENLABS_AGENT_COACH_NIVEL2", label: "Nivel 2 · Coach (Manejo de Objeciones)" },
-  { secretName: "ELEVENLABS_AGENT_ROLEPLAY_CLIENTE_NIVEL2", label: "Nivel 2 · Role-Play Cliente (Manejo de Objeciones)" },
+  { secretName: "ELEVENLABS_AGENT_ROLEPLAY_CLIENTE_NIVEL2", label: "Nivel 2 · Role-Play Clientes (Pareja, multi-voice)" },
   { secretName: "ELEVENLABS_AGENT_ROLEPLAY_ASESOR_NIVEL2", label: "Nivel 2 · Role-Play Asesor (Manejo de Objeciones)" },
   { secretName: "ELEVENLABS_AGENT_PROSPECTING_PAREJA", label: "Prospeccion: Pareja en Caja" },
   { secretName: "ELEVENLABS_AGENT_PROSPECTING_FRUTAS", label: "Prospeccion: Frutas y Verduras" },
