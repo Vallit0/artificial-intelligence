@@ -10,7 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Calendar, Clock, CheckCircle, XCircle, MessageSquare } from "lucide-react";
+import { Calendar, Clock, CheckCircle, XCircle, MessageSquare, GraduationCap, Repeat } from "lucide-react";
 
 interface StudentDetailModalProps {
   student: Student | null;
@@ -69,6 +69,33 @@ export default function StudentDetailModal({
                 : "-"}
             </p>
             <p className="text-xs text-muted-foreground">Promedio IA</p>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Examen Final */}
+        <div className="py-2">
+          <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+            <GraduationCap className="w-4 h-4 text-primary" />
+            Examen Final
+          </h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-3 bg-muted rounded-lg">
+              <p className="text-xs text-muted-foreground mb-1">Mejor nota</p>
+              <p className="text-2xl font-bold text-foreground">
+                {student.bestExamScore !== null ? `${student.bestExamScore}%` : "—"}
+              </p>
+            </div>
+            <div className="p-3 bg-muted rounded-lg">
+              <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                <Repeat className="w-3 h-3" />
+                Intentos
+              </p>
+              <p className="text-2xl font-bold text-foreground">
+                {student.examAttempts}
+              </p>
+            </div>
           </div>
         </div>
 

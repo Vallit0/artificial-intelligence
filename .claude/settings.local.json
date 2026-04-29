@@ -96,7 +96,11 @@
       "PowerShell(netstat *)",
       "Bash(npm audit *)",
       "Bash(docker start *)",
-      "Bash(docker info *)"
+      "Bash(docker info *)",
+      "Bash(git *)",
+      "WebFetch(domain:www.google.com)",
+      "WebFetch(domain:www.scribd.com)",
+      "WebFetch(domain:www.webfuse.com)"
     ]
   },
   "hooks": {

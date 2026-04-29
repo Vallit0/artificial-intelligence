@@ -21,6 +21,8 @@ export interface Student {
   totalSessions: number;
   totalDuration: number;
   averageScore: number | null;
+  bestExamScore: number | null;
+  examAttempts: number;
   finalGrade: number | null;
   gradedAt: string | null;
   examenFinalEnabled: boolean;
@@ -60,6 +62,8 @@ export const useStudents = (): UseStudentsReturn => {
         totalSessions: s.totalSessions,
         totalDuration: s.totalDuration,
         averageScore: s.averageScore,
+        bestExamScore: s.bestExamScore ?? null,
+        examAttempts: s.examAttempts ?? 0,
         finalGrade: s.finalGrade,
         gradedAt: s.createdAt, // TODO: add gradeUpdatedAt to API
         examenFinalEnabled: s.examenFinalEnabled ?? false,
