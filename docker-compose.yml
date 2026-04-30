@@ -80,7 +80,7 @@ services:
         max-file: "3"
 
   # ============================================
-  # Promtail — ships container logs to Loki at 10.4.6.16:3100
+  # Promtail — ships container logs to Loki at 10.4.6.20:3100
   # ============================================
   promtail:
     image: grafana/promtail:3.3.0
