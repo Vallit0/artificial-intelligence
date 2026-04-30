@@ -100,7 +100,9 @@
       "Bash(git *)",
       "WebFetch(domain:www.google.com)",
       "WebFetch(domain:www.scribd.com)",
-      "WebFetch(domain:www.webfuse.com)"
+      "WebFetch(domain:www.webfuse.com)",
+      "Bash(ping *)",
+      "PowerShell(Test-NetConnection *)"
     ]
   },
   "hooks": {
