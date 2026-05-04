@@ -30,7 +30,7 @@ export default function Admin() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { isAdmin, isLoading: adminLoading } = useAdmin();
-  const { students, isLoading: studentsLoading, assignGrade, toggleExamenFinal, toggleLevel2, refetch } = useStudents();
+  const { students, isLoading: studentsLoading, assignGrade, toggleExamenFinal, bulkToggleExamenFinal, refetch } = useStudents();
 
   const { data: adminAnalytics, isLoading: analyticsLoading } = useAdminAnalytics();
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -318,7 +318,7 @@ export default function Admin() {
                   })}
                   onAssignGrade={assignGrade}
                   onToggleExamenFinal={toggleExamenFinal}
-                  onToggleLevel2={toggleLevel2}
+                  onBulkToggleExamenFinal={bulkToggleExamenFinal}
                   onRefetch={refetch}
                 />
               )}

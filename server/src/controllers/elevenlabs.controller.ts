@@ -3,6 +3,7 @@
 // ============================================
 
 import { Response, NextFunction } from 'express';
+import { z } from 'zod';
 import * as elevenlabsService from '../services/elevenlabs.service.js';
 import * as scenariosService from '../services/scenarios.service.js';
 import * as sessionsService from '../services/sessions.service.js';
@@ -13,6 +14,23 @@ import * as authService from '../services/auth.service.js';
 import { AuthRequest } from '../types/index.js';
 import { handleError, BadRequestError, ForbiddenError } from '../utils/errors.js';
 import { getLogger } from '../utils/logger.js';
+
+// Server-side recomputation: even though the agent sends score+passed, we
+// ignore them and derive everything from the validated breakdown so the client
+// cannot self-assign a passing grade by editing the body before forwarding.
+const PASS_THRESHOLD = 50;
+
+const agentEvaluationSchema = z.object({
+  sessionId: z.string().uuid(),
+  feedback: z.string().min(1).max(2000),
+  breakdown: z.object({
+    apertura: z.number().min(0).max(20),
+    escucha_activa: z.number().min(0).max(20),
+    manejo_objeciones: z.number().min(0).max(20),
+    propuesta_valor: z.number().min(0).max(20),
+    cierre: z.number().min(0).max(20),
+  }),
+});
 
 // ============================================
 // POST /api/elevenlabs/conversation-token
@@ -98,19 +116,28 @@ export async function getConversationToken(req: AuthRequest, res: Response, next
 // ============================================
 export async function saveAgentEvaluation(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { sessionId, score, passed, feedback, breakdown } = req.body;
-    
-    if (!sessionId) {
-      throw new BadRequestError('Session ID required');
+    const parsed = agentEvaluationSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new BadRequestError('Evaluación inválida: se requieren sessionId, feedback y breakdown con los 5 rubros (0-20)');
     }
-    
+
+    const { sessionId, feedback, breakdown } = parsed.data;
+    const score = Math.round(
+      breakdown.apertura +
+      breakdown.escucha_activa +
+      breakdown.manejo_objeciones +
+      breakdown.propuesta_valor +
+      breakdown.cierre,
+    );
+    const passed = score >= PASS_THRESHOLD;
+
     await sessionsService.saveEvaluation(sessionId, req.user!.id, {
       score,
       passed,
       feedback,
       breakdown,
     });
-    
+
     res.json({ success: true, evaluation: { score, passed, feedback, breakdown } });
   } catch (error) {
     const appError = handleError(error);

@@ -231,17 +231,12 @@ export async function toggleExamenFinal(userId: string, enabled: boolean) {
   });
 }
 
-export async function toggleLevel2(userId: string, unlocked: boolean) {
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) {
-    throw new NotFoundError('Usuario no encontrado');
-  }
-
-  return prisma.user.update({
-    where: { id: userId },
-    data: { level2Unlocked: unlocked },
-    select: { id: true, level2Unlocked: true },
+export async function bulkToggleExamenFinal(userIds: string[], enabled: boolean) {
+  const result = await prisma.user.updateMany({
+    where: { id: { in: userIds } },
+    data: { examenFinalEnabled: enabled },
   });
+  return { count: result.count, enabled };
 }
 
 export async function upsertGrade(userId: string, gradedBy: string, finalGrade: number, notes?: string) {

@@ -37,7 +37,7 @@ interface UseStudentsReturn {
   refetch: () => Promise<void>;
   assignGrade: (userId: string, grade: number, notes?: string) => Promise<boolean>;
   toggleExamenFinal: (userId: string, enabled: boolean) => Promise<boolean>;
-  toggleLevel2: (userId: string, unlocked: boolean) => Promise<boolean>;
+  bulkToggleExamenFinal: (userIds: string[], enabled: boolean) => Promise<number | null>;
 }
 
 export const useStudents = (): UseStudentsReturn => {
@@ -111,14 +111,15 @@ export const useStudents = (): UseStudentsReturn => {
     }
   };
 
-  const toggleLevel2 = async (userId: string, unlocked: boolean): Promise<boolean> => {
+  const bulkToggleExamenFinal = async (userIds: string[], enabled: boolean): Promise<number | null> => {
+    if (userIds.length === 0) return 0;
     try {
-      await api.patch(`/api/admin/users/${userId}/level2-unlock`, { unlocked });
+      const res = await api.patch<{ count: number }>(`/api/admin/users/bulk/examen-final`, { userIds, enabled });
       await fetchStudents();
-      return true;
+      return res?.count ?? userIds.length;
     } catch (err) {
-      console.error("Error toggling level 2:", err);
-      return false;
+      console.error("Error bulk toggling examen final:", err);
+      return null;
     }
   };
 
@@ -126,5 +127,5 @@ export const useStudents = (): UseStudentsReturn => {
     fetchStudents();
   }, [fetchStudents]);
 
-  return { students, isLoading, error, refetch: fetchStudents, assignGrade, toggleExamenFinal, toggleLevel2 };
+  return { students, isLoading, error, refetch: fetchStudents, assignGrade, toggleExamenFinal, bulkToggleExamenFinal };
 };

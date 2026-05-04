@@ -31,7 +31,25 @@ const evaluationSchema = z.object({
   feedback: z.string().min(1).max(800),
 });
 
-function neutralEvaluation(reason: string): SessionEvaluation {
+// For practice sessions (with a scenarioId) we keep the lenient fallback so a
+// transient OpenAI outage does not strand the student. For the final exam
+// (scenarioId == null) we MUST NOT pass automatically — that would let any
+// student promote to Level 2 just by triggering a network error.
+function neutralEvaluation(reason: string, isExam: boolean): SessionEvaluation {
+  if (isExam) {
+    return {
+      score: 0,
+      passed: false,
+      feedback: `No pudimos evaluar tu examen automáticamente (${reason}). Volvé a intentarlo en unos minutos. Si el problema persiste, contactá a tu instructor.`,
+      breakdown: {
+        apertura: 0,
+        escucha_activa: 0,
+        manejo_objeciones: 0,
+        propuesta_valor: 0,
+        cierre: 0,
+      },
+    };
+  }
   return {
     score: 50,
     passed: true,
@@ -107,6 +125,11 @@ export async function evaluateSession(
   transcript: TranscriptTurn[],
   scenarioId?: string | null,
 ): Promise<SessionEvaluation> {
+  // No scenarioId means this is the final exam (the only session created
+  // without a scenario). The fallback policy is stricter for exams — see
+  // neutralEvaluation.
+  const isExam = !scenarioId;
+
   if (!Array.isArray(transcript) || transcript.length < MIN_TURNS_FOR_REAL_EVAL) {
     return tooShortEvaluation();
   }
@@ -114,7 +137,7 @@ export async function evaluateSession(
   const apiKey = config.openai.apiKey;
   if (!apiKey) {
     log.warn('OPENAI_API_KEY not set — returning neutral evaluation');
-    return neutralEvaluation('IA no configurada');
+    return neutralEvaluation('IA no configurada', isExam);
   }
 
   const scenarioContext = await fetchScenarioContext(scenarioId);
@@ -150,14 +173,14 @@ export async function evaluateSession(
     if (!res.ok) {
       const body = await res.text().catch(() => '');
       log.warn({ status: res.status, body: body.slice(0, 200) }, 'OpenAI returned non-2xx');
-      return neutralEvaluation('error temporal del modelo');
+      return neutralEvaluation('error temporal del modelo', isExam);
     }
 
     const data = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
     const content = data.choices?.[0]?.message?.content;
     if (!content) {
       log.warn('OpenAI returned empty completion');
-      return neutralEvaluation('respuesta vacía');
+      return neutralEvaluation('respuesta vacía', isExam);
     }
 
     let parsed: unknown;
@@ -165,13 +188,13 @@ export async function evaluateSession(
       parsed = JSON.parse(content);
     } catch {
       log.warn({ content: content.slice(0, 200) }, 'OpenAI returned non-JSON despite response_format');
-      return neutralEvaluation('respuesta inválida');
+      return neutralEvaluation('respuesta inválida', isExam);
     }
 
     const validated = evaluationSchema.safeParse(parsed);
     if (!validated.success) {
       log.warn({ issues: validated.error.issues }, 'OpenAI response failed schema validation');
-      return neutralEvaluation('respuesta con formato inválido');
+      return neutralEvaluation('respuesta con formato inválido', isExam);
     }
 
     const breakdown = {
@@ -191,6 +214,6 @@ export async function evaluateSession(
     };
   } catch (err) {
     log.warn({ err }, 'OpenAI evaluation failed');
-    return neutralEvaluation('error de red');
+    return neutralEvaluation('error de red', isExam);
   }
 }

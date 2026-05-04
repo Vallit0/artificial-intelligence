@@ -100,22 +100,20 @@ export interface SessionEvaluation {
   };
 }
 
+// score, passed and aiFeedback are intentionally excluded from these inputs.
+// Those fields are write-only by the server-side evaluation flow
+// (sessions.service.saveEvaluation) so a client cannot self-assign a passing
+// grade via PATCH /api/sessions/:id or POST /api/sessions.
 export interface CreateSessionInput {
-  scenarioId?: string;
+  scenarioId?: string | null;
   durationSeconds?: number;
-  score?: number;
-  passed?: boolean;
-  rating?: number;
-  aiFeedback?: string;
-  abVariantId?: string;
+  rating?: number | null;
+  abVariantId?: string | null;
 }
 
 export interface UpdateSessionInput {
   durationSeconds?: number;
-  score?: number;
-  passed?: boolean;
-  rating?: number;
-  aiFeedback?: string;
+  rating?: number | null;
   connectMs?: number | null;
   ttfaSamplesMs?: number[];
 }

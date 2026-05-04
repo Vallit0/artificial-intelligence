@@ -30,10 +30,8 @@ export async function createSession(userId: string, input: CreateSessionInput): 
       userId,
       scenarioId: input.scenarioId || null,
       durationSeconds: input.durationSeconds || 0,
-      score: input.score || null,
-      passed: input.passed || false,
+      passed: false,
       rating: input.rating || null,
-      aiFeedback: input.aiFeedback || null,
       abVariantId: input.abVariantId || null,
     },
   });
@@ -58,10 +56,7 @@ export async function updateSession(
     where: { id: sessionId },
     data: {
       durationSeconds: input.durationSeconds ?? existing.durationSeconds,
-      score: input.score ?? existing.score,
-      passed: input.passed ?? existing.passed,
       rating: input.rating ?? existing.rating,
-      aiFeedback: input.aiFeedback ?? existing.aiFeedback,
       connectMs: input.connectMs !== undefined ? input.connectMs : existing.connectMs,
       ttfaSamplesMs: input.ttfaSamplesMs ?? existing.ttfaSamplesMs,
     },

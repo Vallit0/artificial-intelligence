@@ -3,9 +3,10 @@
 // ============================================
 
 import { Router, Response, NextFunction, raw } from 'express';
+import { z } from 'zod';
 import { authMiddleware, requireRole } from '../middleware/auth.js';
 import { AuthRequest } from '../types/index.js';
-import { handleError } from '../utils/errors.js';
+import { handleError, BadRequestError } from '../utils/errors.js';
 import * as adminService from '../services/admin.service.js';
 import * as agentConfigService from '../services/agentConfig.service.js';
 import * as prospectingScenariosService from '../services/prospectingScenarios.service.js';
@@ -150,15 +151,10 @@ adminRouter.patch('/users/:id/examen-final', async (req: AuthRequest, res: Respo
 
 /**
  * @openapi
- * /api/admin/users/{id}/level2-unlock:
+ * /api/admin/users/bulk/examen-final:
  *   patch:
  *     tags: [Admin]
- *     summary: Activa o desactiva manualmente el Nivel 2 para un estudiante
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string, format: uuid }
+ *     summary: Habilita o deshabilita el examen final para varios estudiantes a la vez
  *     requestBody:
  *       required: true
  *       content:
@@ -166,14 +162,25 @@ adminRouter.patch('/users/:id/examen-final', async (req: AuthRequest, res: Respo
  *           schema:
  *             type: object
  *             properties:
- *               unlocked: { type: boolean }
+ *               userIds:
+ *                 type: array
+ *                 items: { type: string, format: uuid }
+ *               enabled: { type: boolean }
  *     responses:
- *       200: { description: Estado actualizado }
+ *       200: { description: Estado actualizado para N usuarios }
  */
-adminRouter.patch('/users/:id/level2-unlock', async (req: AuthRequest, res: Response, next: NextFunction) => {
+const bulkExamenFinalSchema = z.object({
+  userIds: z.array(z.string().uuid()).min(1).max(500),
+  enabled: z.boolean(),
+});
+
+adminRouter.patch('/users/bulk/examen-final', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { unlocked } = req.body;
-    const result = await adminService.toggleLevel2(req.params.id, !!unlocked);
+    const parsed = bulkExamenFinalSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new BadRequestError('userIds (array de UUIDs, 1-500) y enabled (boolean) requeridos');
+    }
+    const result = await adminService.bulkToggleExamenFinal(parsed.data.userIds, parsed.data.enabled);
     res.json({ success: true, ...result });
   } catch (error) {
     const appError = handleError(error);

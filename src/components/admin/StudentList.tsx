@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Student } from "@/hooks/useStudents";
 import {
   Table,
@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Award, Check, ChevronDown, ChevronUp, Clock, Eye, FileText, GraduationCap, Lock, Pencil, Trash2, Unlock, UserPen } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Award, Check, ChevronDown, ChevronUp, Clock, Eye, FileText, Lock, Pencil, Trash2, Unlock, UserPen } from "lucide-react";
 import StudentDetailModal from "./StudentDetailModal";
 import GradeModal from "./GradeModal";
 import CertificateModal from "./CertificateModal";
@@ -22,7 +23,7 @@ interface StudentListProps {
   students: Student[];
   onAssignGrade: (userId: string, grade: number, notes?: string) => Promise<boolean>;
   onToggleExamenFinal: (userId: string, enabled: boolean) => Promise<boolean>;
-  onToggleLevel2: (userId: string, unlocked: boolean) => Promise<boolean>;
+  onBulkToggleExamenFinal: (userIds: string[], enabled: boolean) => Promise<number | null>;
   onRefetch: () => Promise<void>;
 }
 
@@ -35,7 +36,7 @@ const formatDuration = (seconds: number): string => {
   return `${minutes}m`;
 };
 
-export default function StudentList({ students, onAssignGrade, onToggleExamenFinal, onToggleLevel2, onRefetch }: StudentListProps) {
+export default function StudentList({ students, onAssignGrade, onToggleExamenFinal, onBulkToggleExamenFinal, onRefetch }: StudentListProps) {
   const { toast } = useToast();
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [gradeStudent, setGradeStudent] = useState<Student | null>(null);
@@ -46,7 +47,38 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
   const [sortAsc, setSortAsc] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [togglingExamenId, setTogglingExamenId] = useState<string | null>(null);
-  const [togglingLevel2Id, setTogglingLevel2Id] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkPending, setBulkPending] = useState(false);
+
+  const toggleOne = (id: string, checked: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const handleBulk = async (enabled: boolean) => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    setBulkPending(true);
+    const count = await onBulkToggleExamenFinal(ids, enabled);
+    setBulkPending(false);
+    if (count === null) {
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar el examen final para los seleccionados.",
+        variant: "destructive",
+      });
+      return;
+    }
+    toast({
+      title: enabled ? "Examen habilitado" : "Examen deshabilitado",
+      description: `${count} estudiante${count === 1 ? "" : "s"} actualizado${count === 1 ? "" : "s"}.`,
+    });
+    setSelectedIds(new Set());
+  };
 
   const handleApprove = async (student: Student) => {
     setApprovingId(student.id);
@@ -74,6 +106,19 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
       setSortBy(column);
       setSortAsc(false);
     }
+  };
+
+  const visibleIds = useMemo(() => students.map((s) => s.id), [students]);
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id));
+  const someVisibleSelected = visibleIds.some((id) => selectedIds.has(id));
+
+  const toggleAllVisible = (checked: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) visibleIds.forEach((id) => next.add(id));
+      else visibleIds.forEach((id) => next.delete(id));
+      return next;
+    });
   };
 
   const sortedStudents = [...students].sort((a, b) => {
@@ -112,11 +157,58 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
     );
   }
 
+  const selectionCount = selectedIds.size;
+
   return (
     <>
+      {selectionCount > 0 && (
+        <div className="flex items-center justify-between gap-3 bg-muted/60 border border-border rounded-lg px-4 py-3 mb-3">
+          <div className="text-sm">
+            <span className="font-semibold">{selectionCount}</span> estudiante{selectionCount === 1 ? "" : "s"} seleccionado{selectionCount === 1 ? "" : "s"}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="default"
+              disabled={bulkPending}
+              onClick={() => handleBulk(true)}
+              className="gap-1.5"
+            >
+              <Unlock className="w-3.5 h-3.5" />
+              Habilitar examen ({selectionCount})
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={bulkPending}
+              onClick={() => handleBulk(false)}
+              className="gap-1.5"
+            >
+              <Lock className="w-3.5 h-3.5" />
+              Deshabilitar
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={bulkPending}
+              onClick={() => setSelectedIds(new Set())}
+            >
+              Limpiar
+            </Button>
+          </div>
+        </div>
+      )}
+
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead className="w-10">
+              <Checkbox
+                checked={allVisibleSelected ? true : someVisibleSelected ? "indeterminate" : false}
+                onCheckedChange={(v) => toggleAllVisible(!!v)}
+                aria-label="Seleccionar todos"
+              />
+            </TableHead>
             <TableHead
               className="cursor-pointer hover:text-foreground"
               onClick={() => handleSort("name")}
@@ -132,7 +224,7 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
             <TableHead className="text-center">Tiempo Total</TableHead>
             <TableHead className="text-center">Promedio IA</TableHead>
             <TableHead className="text-center">Examen Final</TableHead>
-            <TableHead className="text-center">Nivel 2</TableHead>
+            <TableHead className="text-center">Nivel</TableHead>
             <TableHead
               className="cursor-pointer hover:text-foreground text-center"
               onClick={() => handleSort("grade")}
@@ -144,7 +236,14 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
         </TableHeader>
         <TableBody>
           {sortedStudents.map((student) => (
-            <TableRow key={student.id}>
+            <TableRow key={student.id} data-state={selectedIds.has(student.id) ? "selected" : undefined}>
+              <TableCell className="w-10">
+                <Checkbox
+                  checked={selectedIds.has(student.id)}
+                  onCheckedChange={(v) => toggleOne(student.id, !!v)}
+                  aria-label={`Seleccionar ${student.email ?? student.id}`}
+                />
+              </TableCell>
               <TableCell>
                 <div>
                   <p className="font-medium text-foreground">
@@ -199,35 +298,11 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
                 </Button>
               </TableCell>
               <TableCell className="text-center">
-                <Button
-                  variant={student.level2Unlocked ? "default" : "outline"}
-                  size="sm"
-                  className="gap-1.5"
-                  disabled={togglingLevel2Id === student.id}
-                  onClick={async () => {
-                    setTogglingLevel2Id(student.id);
-                    const ok = await onToggleLevel2(student.id, !student.level2Unlocked);
-                    setTogglingLevel2Id(null);
-                    if (ok) {
-                      toast({
-                        title: student.level2Unlocked ? "Nivel 2 bloqueado" : "Nivel 2 desbloqueado",
-                        description: `${[student.first_name, student.last_name].filter(Boolean).join(' ') || student.email}`,
-                      });
-                    }
-                  }}
-                >
-                  {student.level2Unlocked ? (
-                    <>
-                      <Unlock className="w-3.5 h-3.5" />
-                      Nivel 2
-                    </>
-                  ) : (
-                    <>
-                      <Lock className="w-3.5 h-3.5" />
-                      Nivel 1
-                    </>
-                  )}
-                </Button>
+                {/* Read-only — el ascenso a Nivel 2 solo se logra aprobando
+                    el examen final con 50+ puntos. Sin override manual. */}
+                <Badge variant={student.level2Unlocked ? "default" : "secondary"} className="font-medium">
+                  {student.level2Unlocked ? "Nivel 2" : "Nivel 1"}
+                </Badge>
               </TableCell>
               <TableCell className="text-center">
                 {student.finalGrade !== null ? (
