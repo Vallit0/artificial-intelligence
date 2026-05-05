@@ -1,13 +1,13 @@
 import { useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, GraduationCap, AlertTriangle, Lock, Mic, MicOff, Phone } from "lucide-react";
+import { ArrowLeft, GraduationCap, AlertTriangle, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useElevenLabsConversation } from "@/hooks/useElevenLabsConversation";
 import { useAuth } from "@/hooks/useAuth";
 import { usePracticeSessions } from "@/hooks/usePracticeSessions";
-import LiveTranscript from "@/components/LiveTranscript";
 import AICompanionOrb from "@/components/AICompanionOrb";
+import VoiceControls from "@/components/VoiceControls";
 import EvaluationScreen from "@/components/practice/EvaluationScreen";
 import LevelUpAnimation from "@/components/LevelUpAnimation";
 import { useToast } from "@/hooks/use-toast";
@@ -380,34 +380,14 @@ export default function ExamenFinal() {
                   />
                 </div>
 
-                {/* Transcript */}
-                <Card className="h-64">
-                  <CardContent className="p-0 h-full">
-                    <LiveTranscript messages={transcriptMessages} />
-                  </CardContent>
-                </Card>
-
                 {/* Controls */}
-                <div className="flex items-center justify-center gap-4">
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    onClick={toggleMute}
+                <div className="flex items-center justify-center pt-4">
+                  <VoiceControls
+                    isMuted={isMuted}
+                    onMuteToggle={toggleMute}
+                    onEndCall={handleEndExam}
                     disabled={!isConnected}
-                    className="gap-2"
-                  >
-                    {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-                    {isMuted ? "Activar Mic" : "Silenciar"}
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="lg"
-                    onClick={handleEndExam}
-                    className="gap-2"
-                  >
-                    <Phone className="h-5 w-5" />
-                    Terminar Examen
-                  </Button>
+                  />
                 </div>
               </div>
             )}
