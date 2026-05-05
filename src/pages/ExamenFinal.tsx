@@ -72,6 +72,7 @@ export default function ExamenFinal() {
   }, [toast]);
 
   const handleAgentEvaluation = useCallback((evalResult: EvaluationResult) => {
+    console.log("[DEBUG][EVAL][ExamenFinal] handleAgentEvaluation invoked with:", evalResult);
     setEvaluation(evalResult);
     setExamState("evaluated");
   }, []);

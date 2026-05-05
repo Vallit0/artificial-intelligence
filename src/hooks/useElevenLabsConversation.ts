@@ -181,6 +181,14 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
         };
       };
 
+      if (msg.client_tool_call) {
+        console.log("[DEBUG][EVAL] client_tool_call received:", {
+          tool_name: msg.client_tool_call.tool_name,
+          tool_call_id: msg.client_tool_call.tool_call_id,
+          parameters: msg.client_tool_call.parameters,
+        });
+      }
+
       if (msg.user_transcription_event?.user_transcript) {
         userSpeechEndRef.current = performance.now();
         if (onTranscriptRef.current) {
@@ -209,7 +217,7 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
           cierre?: number;
         };
 
-        console.log("Received evaluation from agent:", params);
+        console.log("[DEBUG][EVAL] submit_evaluation received from agent:", params);
 
         const evaluation: EvaluationResult = {
           score: params.score ?? 0,
@@ -224,17 +232,32 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
           },
         };
 
+        console.log("[DEBUG][EVAL] normalized evaluation object:", evaluation);
+        console.log("[DEBUG][EVAL] sessionId at evaluation time:", sessionIdRef.current);
+
         // Save evaluation via API
         if (sessionIdRef.current) {
+          console.log("[DEBUG][EVAL] POST /api/elevenlabs/agent-evaluation -> sending");
           api.post("/api/elevenlabs/agent-evaluation", {
             sessionId: sessionIdRef.current,
             ...evaluation,
-          }).catch((error) => {
-            console.error("Error saving evaluation:", error);
-          });
+          })
+            .then((res) => {
+              console.log("[DEBUG][EVAL] POST /api/elevenlabs/agent-evaluation -> OK", res);
+            })
+            .catch((error) => {
+              console.error("[DEBUG][EVAL] POST /api/elevenlabs/agent-evaluation -> ERROR", error);
+            });
+        } else {
+          console.warn("[DEBUG][EVAL] sessionId is null — evaluation will NOT be persisted via API");
         }
 
-        onEvaluationRef.current?.(evaluation);
+        if (onEvaluationRef.current) {
+          console.log("[DEBUG][EVAL] invoking onEvaluation callback");
+          onEvaluationRef.current(evaluation);
+        } else {
+          console.warn("[DEBUG][EVAL] onEvaluation callback is not set");
+        }
       }
     },
     onError: (error) => {
