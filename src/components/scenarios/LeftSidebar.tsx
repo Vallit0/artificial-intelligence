@@ -26,7 +26,7 @@ const LeftSidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, isAdmin } = useAuth();
-  const { currentLevel, toggle } = useLevelMode();
+  const { currentLevel, toggle, canSwitchLevel } = useLevelMode();
   const animateLevelChange = useDidLevelJustChange();
 
   const isLevel2 = currentLevel === 2;
@@ -103,8 +103,9 @@ const LeftSidebar = () => {
         </div>
       </div>
 
-      {/* Admin level toggle */}
-      {isAdmin && (
+      {/* Level toggle — visible to admins and to advisors who unlocked Nivel 2
+          so they can revisit Nivel 1 (Prospección, Legado de Vida) any time. */}
+      {canSwitchLevel && (
         <div className="px-3 pt-3">
           <button
             onClick={toggle}
@@ -113,7 +114,11 @@ const LeftSidebar = () => {
               color: "hsl(var(--sidebar-foreground) / 0.7)",
               border: "1px dashed hsl(var(--sidebar-border))",
             }}
-            title="Cambiar entre Nivel 1 y Nivel 2 (admin)"
+            title={
+              isAdmin
+                ? "Cambiar entre Nivel 1 y Nivel 2 (admin)"
+                : "Cambiar entre Nivel 1 y Nivel 2"
+            }
           >
             <span className="flex items-center gap-2">
               <ArrowRightLeft className="w-3.5 h-3.5" />

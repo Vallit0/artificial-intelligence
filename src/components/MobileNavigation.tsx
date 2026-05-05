@@ -14,7 +14,7 @@ const MobileNavigation = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAdmin } = useAuth();
-  const { currentLevel, toggle } = useLevelMode();
+  const { currentLevel, toggle, canSwitchLevel } = useLevelMode();
   const animateLevelChange = useDidLevelJustChange();
 
   const isLevel2 = currentLevel === 2;
@@ -89,11 +89,11 @@ const MobileNavigation = () => {
             </button>
           );
         })}
-        {isAdmin && (
+        {canSwitchLevel && (
           <button
             onClick={toggle}
             className="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl transition-all duration-200 text-muted-foreground hover:text-foreground"
-            title="Cambiar de nivel (admin)"
+            title={isAdmin ? "Cambiar de nivel (admin)" : "Cambiar de nivel"}
             style={{
               animation: animateLevelChange
                 ? "mobileNavPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both"

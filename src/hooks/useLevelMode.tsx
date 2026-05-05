@@ -5,14 +5,19 @@ export type Level = 1 | 2;
 
 interface LevelModeContextValue {
   currentLevel: Level;
-  // True only for admins. Sets a local override that persists in localStorage.
-  // For non-admins this is a no-op — their level is bound to user.level2Unlocked.
+  // Sets a local override that persists in localStorage. Available to admins
+  // (who can preview either level) and to advisors who have unlocked Level 2
+  // (so they can still revisit Level 1 content like Prospección y Legado).
+  // For non-admins without level2Unlocked this is a no-op.
   setLevel: (level: Level) => void;
   toggle: () => void;
-  // True when the admin has manually overridden their level (so we know the
+  // True when the user has manually overridden their level (so we know the
   // toggle has been used and the displayed level isn't just derived from the
   // unlock flag).
   isOverridden: boolean;
+  // Whether the current user is allowed to switch levels (admin, or advisor
+  // with Level 2 unlocked). UIs should hide the toggle when this is false.
+  canSwitchLevel: boolean;
   resetOverride: () => void;
   // Timestamp of last level change. Components compare to Date.now() to decide
   // whether to play the entry animation — this prevents pop animations from
@@ -55,13 +60,17 @@ export const LevelModeProvider = ({ children }: { children: ReactNode }) => {
   }, [user]);
 
   const baseLevel: Level = user?.level2Unlocked ? 2 : 1;
-  const currentLevel: Level = isAdmin && override !== null ? override : baseLevel;
+  // An advisor can switch between Level 1 and Level 2 once Level 2 is unlocked
+  // — Level 1 content (Prospección, Legado de Vida) stays available alongside
+  // the new Level 2 modules. Admins can always switch to preview either level.
+  const canSwitchLevel = isAdmin || baseLevel === 2;
+  const currentLevel: Level = canSwitchLevel && override !== null ? override : baseLevel;
 
   // When the underlying baseLevel flips (e.g., student passes the exam), bump
   // the timestamp so the navbar animates the transition. We also drop a stale
-  // admin override on the 1→2 transition: an admin who toggled to Level 1 to
-  // test the exam flow expects the sidebar to actually advance after passing,
-  // not stay pinned to the old override.
+  // override on the 1→2 transition so the user lands on the freshly-unlocked
+  // Level 2 instead of being pinned to a leftover Level 1 override (e.g., from
+  // an admin testing the exam flow, or from a future signed-out preview).
   const prevBaseRef = useState<{ value: Level }>(() => ({ value: baseLevel }))[0];
   useEffect(() => {
     if (prevBaseRef.value !== baseLevel) {
@@ -77,21 +86,21 @@ export const LevelModeProvider = ({ children }: { children: ReactNode }) => {
 
   const setLevel = useCallback(
     (level: Level) => {
-      if (!isAdmin) return;
+      if (!canSwitchLevel) return;
       setOverride(level);
       writeOverride(level);
       setLastChangeAt(Date.now());
     },
-    [isAdmin],
+    [canSwitchLevel],
   );
 
   const toggle = useCallback(() => {
-    if (!isAdmin) return;
+    if (!canSwitchLevel) return;
     const next: Level = currentLevel === 1 ? 2 : 1;
     setOverride(next);
     writeOverride(next);
     setLastChangeAt(Date.now());
-  }, [isAdmin, currentLevel]);
+  }, [canSwitchLevel, currentLevel]);
 
   const resetOverride = useCallback(() => {
     setOverride(null);
@@ -104,10 +113,11 @@ export const LevelModeProvider = ({ children }: { children: ReactNode }) => {
       setLevel,
       toggle,
       isOverridden: override !== null,
+      canSwitchLevel,
       resetOverride,
       lastChangeAt,
     }),
-    [currentLevel, setLevel, toggle, override, resetOverride, lastChangeAt],
+    [currentLevel, setLevel, toggle, override, canSwitchLevel, resetOverride, lastChangeAt],
   );
 
   return <LevelModeContext.Provider value={value}>{children}</LevelModeContext.Provider>;
