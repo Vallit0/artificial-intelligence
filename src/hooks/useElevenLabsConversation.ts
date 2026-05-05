@@ -132,8 +132,100 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     setLatencyStats({ connectMs: null, lastTtfaMs: null, avgTtfaMs: null, ttfaSamples: 0 });
   }, []);
 
+  const handleSubmitEvaluation = useCallback((parameters: Record<string, unknown>): void => {
+    console.log("[DEBUG][EVAL] submit_evaluation invoked via clientTools:", parameters);
+
+    const hasLegacyShape =
+      "score" in parameters ||
+      "breakdown" in parameters ||
+      "apertura" in parameters ||
+      "escucha_activa" in parameters;
+
+    const hasChecklistShape =
+      "saludo_ok" in parameters ||
+      "identificacion_ok" in parameters ||
+      "justificacion_ok" in parameters ||
+      "permiso_para_avanzar_ok" in parameters ||
+      "ofrece_valor_legado_ok" in parameters ||
+      "pide_cita_ok" in parameters;
+
+    if (hasLegacyShape) {
+      const p = parameters as {
+        score?: number;
+        passed?: boolean;
+        feedback?: string;
+        apertura?: number;
+        escucha_activa?: number;
+        manejo_objeciones?: number;
+        propuesta_valor?: number;
+        cierre?: number;
+        breakdown?: {
+          apertura?: number;
+          escucha_activa?: number;
+          manejo_objeciones?: number;
+          propuesta_valor?: number;
+          cierre?: number;
+        };
+      };
+      const breakdown = {
+        apertura: p.breakdown?.apertura ?? p.apertura ?? 0,
+        escucha_activa: p.breakdown?.escucha_activa ?? p.escucha_activa ?? 0,
+        manejo_objeciones: p.breakdown?.manejo_objeciones ?? p.manejo_objeciones ?? 0,
+        propuesta_valor: p.breakdown?.propuesta_valor ?? p.propuesta_valor ?? 0,
+        cierre: p.breakdown?.cierre ?? p.cierre ?? 0,
+      };
+      const evaluation: EvaluationResult = {
+        score: p.score ?? 0,
+        passed: p.passed ?? false,
+        feedback: p.feedback ?? "",
+        breakdown,
+      };
+
+      if (sessionIdRef.current) {
+        api.post("/api/elevenlabs/agent-evaluation", {
+          sessionId: sessionIdRef.current,
+          ...evaluation,
+        })
+          .then((res) => console.log("[DEBUG][EVAL] POST /agent-evaluation OK", res))
+          .catch((err) => console.error("[DEBUG][EVAL] POST /agent-evaluation ERROR", err));
+      } else {
+        console.warn("[DEBUG][EVAL] sessionId is null — evaluation will NOT be persisted");
+      }
+
+      onEvaluationRef.current?.(evaluation);
+      return;
+    }
+
+    if (hasChecklistShape) {
+      const toBool = (v: unknown) => v === 1 || v === "1" || v === true;
+      const checks = {
+        saludo_ok: toBool(parameters.saludo_ok),
+        identificacion_ok: toBool(parameters.identificacion_ok),
+        justificacion_ok: toBool(parameters.justificacion_ok),
+        permiso_para_avanzar_ok: toBool(parameters.permiso_para_avanzar_ok),
+        ofrece_valor_legado_ok: toBool(parameters.ofrece_valor_legado_ok),
+        pide_cita_ok: toBool(parameters.pide_cita_ok),
+      };
+      const passedCount = Object.values(checks).filter(Boolean).length;
+      const score = Math.round((passedCount / 6) * 100);
+      const evaluation: EvaluationResult = {
+        score,
+        passed: score >= 50,
+        feedback: `Checklist Legado de Vida: ${passedCount}/6 ítems cumplidos.`,
+      };
+      console.log("[DEBUG][EVAL] checklist evaluation (no DB persist yet):", { checks, evaluation });
+      onEvaluationRef.current?.(evaluation);
+      return;
+    }
+
+    console.warn("[DEBUG][EVAL] submit_evaluation: schema desconocido", parameters);
+  }, []);
+
   const conversation = useConversation({
     micMuted: isMuted,
+    clientTools: {
+      submit_evaluation: handleSubmitEvaluation,
+    },
     onConnect: () => {
       console.log("Connected to ElevenLabs agent");
       if (connectStartRef.current !== null) {
@@ -168,26 +260,11 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
       console.log("[DEBUG] Status changed:", status);
     },
     onMessage: (message) => {
-      console.log("Message from agent:", message);
-
       const msg = message as unknown as {
         user_transcription_event?: { user_transcript?: string };
         agent_response_event?: { agent_response?: string };
         agent_response_correction_event?: { corrected_agent_response?: string };
-        client_tool_call?: {
-          tool_name: string;
-          tool_call_id: string;
-          parameters: Record<string, unknown>;
-        };
       };
-
-      if (msg.client_tool_call) {
-        console.log("[DEBUG][EVAL] client_tool_call received:", {
-          tool_name: msg.client_tool_call.tool_name,
-          tool_call_id: msg.client_tool_call.tool_call_id,
-          parameters: msg.client_tool_call.parameters,
-        });
-      }
 
       if (msg.user_transcription_event?.user_transcript) {
         userSpeechEndRef.current = performance.now();
@@ -202,62 +279,6 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
 
       if (msg.agent_response_correction_event?.corrected_agent_response && onTranscriptRef.current) {
         console.log("Agent was interrupted, corrected response:", msg.agent_response_correction_event.corrected_agent_response);
-      }
-
-      // Handle evaluation client tool call from ElevenLabs agent
-      if (msg.client_tool_call?.tool_name === "submit_evaluation") {
-        const params = msg.client_tool_call.parameters as {
-          score?: number;
-          passed?: boolean;
-          feedback?: string;
-          apertura?: number;
-          escucha_activa?: number;
-          manejo_objeciones?: number;
-          propuesta_valor?: number;
-          cierre?: number;
-        };
-
-        console.log("[DEBUG][EVAL] submit_evaluation received from agent:", params);
-
-        const evaluation: EvaluationResult = {
-          score: params.score ?? 0,
-          passed: params.passed ?? false,
-          feedback: params.feedback ?? "",
-          breakdown: {
-            apertura: params.apertura ?? 0,
-            escucha_activa: params.escucha_activa ?? 0,
-            manejo_objeciones: params.manejo_objeciones ?? 0,
-            propuesta_valor: params.propuesta_valor ?? 0,
-            cierre: params.cierre ?? 0,
-          },
-        };
-
-        console.log("[DEBUG][EVAL] normalized evaluation object:", evaluation);
-        console.log("[DEBUG][EVAL] sessionId at evaluation time:", sessionIdRef.current);
-
-        // Save evaluation via API
-        if (sessionIdRef.current) {
-          console.log("[DEBUG][EVAL] POST /api/elevenlabs/agent-evaluation -> sending");
-          api.post("/api/elevenlabs/agent-evaluation", {
-            sessionId: sessionIdRef.current,
-            ...evaluation,
-          })
-            .then((res) => {
-              console.log("[DEBUG][EVAL] POST /api/elevenlabs/agent-evaluation -> OK", res);
-            })
-            .catch((error) => {
-              console.error("[DEBUG][EVAL] POST /api/elevenlabs/agent-evaluation -> ERROR", error);
-            });
-        } else {
-          console.warn("[DEBUG][EVAL] sessionId is null — evaluation will NOT be persisted via API");
-        }
-
-        if (onEvaluationRef.current) {
-          console.log("[DEBUG][EVAL] invoking onEvaluation callback");
-          onEvaluationRef.current(evaluation);
-        } else {
-          console.warn("[DEBUG][EVAL] onEvaluation callback is not set");
-        }
       }
     },
     onError: (error) => {
