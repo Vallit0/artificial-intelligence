@@ -18,7 +18,7 @@ import { getLogger } from '../utils/logger.js';
 // Server-side recomputation: even though the agent sends score+passed, we
 // ignore them and derive everything from the validated breakdown so the client
 // cannot self-assign a passing grade by editing the body before forwarding.
-const PASS_THRESHOLD = 50;
+const PASS_THRESHOLD = 75;
 
 const agentEvaluationSchema = z.object({
   sessionId: z.string().uuid(),

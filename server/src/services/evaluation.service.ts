@@ -19,7 +19,7 @@ export interface TranscriptTurn {
   content: string;
 }
 
-const PASS_THRESHOLD = 50;
+const PASS_THRESHOLD = 75;
 const MIN_TURNS_FOR_REAL_EVAL = 4; // need actual back-and-forth to score
 
 const evaluationSchema = z.object({

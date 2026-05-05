@@ -1,0 +1,123 @@
+{
+  "type": "client",
+  "name": "submit_evaluation",
+  "description": "Esta calificacion es al final de la ejecucion de una charla ",
+  "disable_interruptions": false,
+  "force_pre_tool_speech": false,
+  "pre_tool_speech": "auto",
+  "tool_call_sound": null,
+  "tool_call_sound_behavior": "auto",
+  "tool_error_handling_mode": "auto",
+  "execution_mode": "immediate",
+  "assignments": [
+    {
+      "source": "response",
+      "dynamic_variable": "received",
+      "value_path": "user.ok",
+      "sanitize": false,
+      "preserve_native_type": false
+    }
+  ],
+  "expects_response": false,
+  "response_timeout_secs": 1,
+  "parameters": [
+    {
+      "id": "saludo_ok",
+      "type": "string",
+      "value_type": "llm_prompt",
+      "description": "Devuelve ‘1’ si el asesor inicia con un saludo claro dirigido a la persona (ej. ‘hola’, ‘buenas tardes’, ‘buen día’) antes de entrar a explicar el motivo. Devuelve ‘0’ si inicia sin saludo, con algo brusco (‘mire’, ‘le llamo porque…’ directo) o si el saludo es confuso/inexistente",
+      "dynamic_variable": "",
+      "constant_value": "",
+      "enum": [
+        "0",
+        "1"
+      ],
+      "is_system_provided": false,
+      "required": true
+    },
+    {
+      "id": "identificacion_ok",
+      "type": "string",
+      "value_type": "llm_prompt",
+      "description": "Devuelve ‘1’ si el asesor dice quién es (nombre) y de qué organización/empresa llama (Señoriales) en los primeros 1–2 turnos del asesor. Devuelve ‘0’ si no dice nombre o no menciona de dónde llama, o lo deja ambiguo (‘soy asesor’ sin empresa).”\nEnum Values: 0, 1",
+      "dynamic_variable": "",
+      "constant_value": "",
+      "enum": [
+        "0",
+        "1"
+      ],
+      "is_system_provided": false,
+      "required": true
+    },
+    {
+      "id": "justificacion_ok",
+      "type": "string",
+      "value_type": "llm_prompt",
+      "description": "Devuelve ‘1’ si el asesor explica el motivo de la llamada de forma breve y contextual (por qué llama hoy) sin sonar a venta agresiva. Devuelve ‘0’ si no justifica, si se va a discurso largo, o si suena como cierre/venta directa (‘vengo a venderle…’).",
+      "dynamic_variable": "",
+      "constant_value": "",
+      "enum": [
+        "1",
+        "0"
+      ],
+      "is_system_provided": false,
+      "required": true
+    },
+    {
+      "id": "permiso_para_avanzar_ok",
+      "type": "string",
+      "value_type": "llm_prompt",
+      "description": "“Devuelve ‘1’ si el asesor pide permiso explícito para continuar/explicar (ej. ‘¿le puedo tomar 20 segundos?’, ‘¿le cuento rápido?’) antes de dar explicación del recurso o pedir datos. Devuelve ‘0’ si no pide permiso y se lanza a explicar o a pedir cita/datos.”\nEnum Values: 0, 1",
+      "dynamic_variable": "",
+      "constant_value": "",
+      "enum": [
+        "0",
+        "1"
+      ],
+      "is_system_provided": false,
+      "required": true
+    },
+    {
+      "id": "ofrece_valor_legado_ok",
+      "type": "string",
+      "value_type": "llm_prompt",
+      "description": "“Devuelve ‘1’ si el asesor presenta ‘Legado de Vida’ correctamente como un documento para organizar información/documentos y dar tranquilidad/evitar confusión, usando al menos 1 punto de valor permitido. Devuelve ‘0’ si no menciona el recurso, lo describe mal, inventa beneficios fuera de lo permitido, o lo confunde con un producto de pago/plan.”\nEnum Values: 0, 1",
+      "dynamic_variable": "",
+      "constant_value": "",
+      "enum": [
+        "0",
+        "1"
+      ],
+      "is_system_provided": false,
+      "required": true
+    },
+    {
+      "id": "pide_cita_ok",
+      "type": "string",
+      "value_type": "llm_prompt",
+      "description": "“Devuelve ‘1’ si el asesor pide una cita explícitamente (una reunión/encuentro) para entregar/explicar ‘Legado de Vida’. Devuelve ‘0’ si nunca pide cita o solo dice ‘le escribo’ sin pedir reunión.”",
+      "dynamic_variable": "",
+      "constant_value": "",
+      "enum": [
+        "0",
+        "1"
+      ],
+      "is_system_provided": false,
+      "required": true
+    },
+    {
+      "id": "feedback",
+      "type": "string",
+      "value_type": "llm_prompt",
+      "description": "Retroalimentación cualitativa en español para el asesor (2 a 4 oraciones). Comienza por lo que hizo bien y termina con 1 o 2 áreas concretas a mejorar. No repitas el checklist literal; explica el porqué con ejemplos breves tomados de la conversación real. No inventes datos: básate solo en lo que dijo el asesor durante la llamada.",
+      "dynamic_variable": "",
+      "constant_value": "",
+      "is_system_provided": false,
+      "required": true
+    }
+  ],
+  "dynamic_variables": {
+    "dynamic_variable_placeholders": {}
+  },
+  "response_mocks": []
+}

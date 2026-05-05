@@ -203,7 +203,7 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
         breakdown.manejo_objeciones +
         breakdown.propuesta_valor +
         breakdown.cierre;
-      const passed = score >= 50;
+      const passed = score >= 75;
       const evaluation: EvaluationResult = {
         score,
         passed,
@@ -240,10 +240,11 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
       };
       const passedCount = Object.values(checks).filter(Boolean).length;
       const score = Math.round((passedCount / 6) * 100);
+      const llmFeedback = typeof parameters.feedback === "string" ? parameters.feedback.trim() : "";
       const evaluation: EvaluationResult = {
         score,
-        passed: score >= 50,
-        feedback: `Checklist Legado de Vida: ${passedCount}/6 ítems cumplidos.`,
+        passed: score >= 75,
+        feedback: llmFeedback || `Checklist Legado de Vida: ${passedCount}/6 ítems cumplidos.`,
       };
       console.log("[DEBUG][EVAL] checklist evaluation (no DB persist yet):", { checks, evaluation });
       onEvaluationRef.current?.(evaluation);

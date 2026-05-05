@@ -101,7 +101,7 @@ export function AbExperimentResults({ results }: AbExperimentResultsProps) {
                   <TableCell className="text-center">{v.sessionCount}</TableCell>
                   <TableCell className="text-center">
                     {v.avgScore !== null ? (
-                      <span className={v.avgScore >= 50 ? 'text-green-600' : 'text-red-600'}>
+                      <span className={v.avgScore >= 75 ? 'text-green-600' : 'text-red-600'}>
                         {v.avgScore}
                       </span>
                     ) : '-'}

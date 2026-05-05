@@ -139,7 +139,7 @@ async function main() {
     const progressFactor = idx / Math.max(1, dates.length - 1); // 0..1
     const baseScore = Math.round(45 + progressFactor * 35 + randInt(-8, 10));
     const score = Math.max(20, Math.min(98, baseScore));
-    const passed = score >= 50;
+    const passed = score >= 75;
     const durationSeconds = randInt(90, 420); // 1.5 - 7 minutes
     const rating = Math.max(1, Math.min(5, Math.round(score / 20)));
     const breakdown = buildBreakdown(score);

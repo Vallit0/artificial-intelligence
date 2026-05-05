@@ -264,7 +264,7 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
               <TableCell className="text-center">
                 {student.averageScore !== null ? (
                   <Badge
-                    variant={student.averageScore >= 50 ? "default" : "destructive"}
+                    variant={student.averageScore >= 75 ? "default" : "destructive"}
                   >
                     {Math.round(student.averageScore)}%
                   </Badge>
