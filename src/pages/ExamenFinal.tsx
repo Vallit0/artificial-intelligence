@@ -7,7 +7,7 @@ import { useElevenLabsConversation } from "@/hooks/useElevenLabsConversation";
 import { useAuth } from "@/hooks/useAuth";
 import { usePracticeSessions } from "@/hooks/usePracticeSessions";
 import LiveTranscript from "@/components/LiveTranscript";
-import VoiceOrb from "@/components/VoiceOrb";
+import AICompanionOrb from "@/components/AICompanionOrb";
 import EvaluationScreen from "@/components/practice/EvaluationScreen";
 import LevelUpAnimation from "@/components/LevelUpAnimation";
 import { useToast } from "@/hooks/use-toast";
@@ -41,7 +41,7 @@ type ExamState = "idle" | "active" | "evaluating" | "evaluated" | "leveling-up";
 export default function ExamenFinal() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, refreshUser } = useAuth();
+  const { user, isAdmin, refreshUser } = useAuth();
   const { savePracticeSession, evaluateSession } = usePracticeSessions();
   const [examState, setExamState] = useState<ExamState>("idle");
   const [transcriptMessages, setTranscriptMessages] = useState<TranscriptMessage[]>([]);
@@ -49,7 +49,7 @@ export default function ExamenFinal() {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const sessionDurationRef = useRef(0);
 
-  const isLocked = !user?.examenFinalEnabled;
+  const isLocked = !isAdmin && !user?.examenFinalEnabled;
 
   const handleTranscript = useCallback((text: string, isUser: boolean) => {
     setTranscriptMessages((prev) => [
@@ -365,7 +365,13 @@ export default function ExamenFinal() {
 
                 {/* Voice Orb */}
                 <div className="flex justify-center py-8">
-                  <VoiceOrb isListening={isConnected && !isSpeaking} isSpeaking={isSpeaking} size="lg" />
+                  <AICompanionOrb
+                    energy
+                    size="lg"
+                    speaking={isSpeaking}
+                    listening={isConnected && !isSpeaking}
+                    gradient="radial-gradient(circle at 40% 40%, #f87171, #ef4444, #b91c1c, #7f1d1d)"
+                  />
                 </div>
 
                 {/* Transcript */}
