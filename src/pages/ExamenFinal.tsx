@@ -41,7 +41,7 @@ type ExamState = "idle" | "active" | "evaluating" | "evaluated" | "leveling-up";
 export default function ExamenFinal() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, isAdmin, refreshUser } = useAuth();
+  const { user, isAdmin, refreshUser, patchUser } = useAuth();
   const { savePracticeSession, evaluateSession } = usePracticeSessions();
   const [examState, setExamState] = useState<ExamState>("idle");
   const [transcriptMessages, setTranscriptMessages] = useState<TranscriptMessage[]>([]);
@@ -198,8 +198,19 @@ export default function ExamenFinal() {
         // straight from that session row, so we must wait for the persist
         // to land before requesting the unlock or we race into a 403.
         await awaitEvaluationPersist?.();
-        await api.post("/api/users/me/unlock-level2", {});
-        await refreshUser();
+        const res = await api.post<{ success: boolean; level2Unlocked: boolean }>(
+          "/api/users/me/unlock-level2",
+          {},
+        );
+        // Patch local user state from the mutation response so the sidebar
+        // flips to Level 2 even if a stale /auth/me (ETag/304) would have
+        // otherwise returned the pre-unlock body.
+        if (res?.level2Unlocked) {
+          patchUser({ level2Unlocked: true });
+        }
+        // Best-effort sync of the rest of the user shape — not required for
+        // the level switch, so we don't fail the flow if it errors.
+        refreshUser().catch(() => {});
       } catch (err) {
         console.error("Failed to unlock Level 2:", err);
         toast({

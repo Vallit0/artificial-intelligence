@@ -102,7 +102,9 @@
       "WebFetch(domain:www.scribd.com)",
       "WebFetch(domain:www.webfuse.com)",
       "Bash(ping *)",
-      "PowerShell(Test-NetConnection *)"
+      "PowerShell(Test-NetConnection *)",
+      "Bash(findstr /I \"ELEVENLABS_AGENT_EXAMEN\")",
+      "Bash(timeout 20 docker logs senoriales-48152aa7-app-1 -f)"
     ]
   },
   "hooks": {

@@ -10,6 +10,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, firstName?: string, lastName?: string, phoneNumber?: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  patchUser: (patch: Partial<ApiUser>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -106,6 +107,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
+  // Locally merge a partial update into the cached user. Used after mutations
+  // (e.g., unlock-level2) where awaiting a /auth/me round-trip is fragile —
+  // an ETag/304 can return a stale body and leave the sidebar pinned to the
+  // pre-mutation level even though the DB row is up to date.
+  const patchUser = useCallback((patch: Partial<ApiUser>) => {
+    setUser((prev) => (prev ? { ...prev, ...patch } : prev));
+  }, []);
+
   const signOut = useCallback(async () => {
     try {
       await api.post("/auth/logout", { refreshToken: localStorage.getItem("refresh_token") });
@@ -118,7 +127,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAdmin, roles, signIn, signUp, signOut, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, isAdmin, roles, signIn, signUp, signOut, refreshUser, patchUser }}>
       {children}
     </AuthContext.Provider>
   );
