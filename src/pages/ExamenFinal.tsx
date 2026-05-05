@@ -73,8 +73,7 @@ export default function ExamenFinal() {
 
   const handleAgentEvaluation = useCallback((evalResult: EvaluationResult) => {
     console.log("[DEBUG][EVAL][ExamenFinal] handleAgentEvaluation invoked with:", evalResult);
-    setEvaluation(evalResult);
-    setExamState("evaluated");
+    handleEndExamRef.current(evalResult);
   }, []);
 
   const {
@@ -113,7 +112,7 @@ export default function ExamenFinal() {
     await connect();
   };
 
-  const handleEndExam = useCallback(async () => {
+  const handleEndExam = useCallback(async (preEvaluation?: EvaluationResult) => {
     await disconnect();
 
     const sessionId = currentSessionId;
@@ -145,6 +144,12 @@ export default function ExamenFinal() {
 
     if (!sessionId) {
       setExamState("idle");
+      return;
+    }
+
+    if (preEvaluation) {
+      setEvaluation(preEvaluation);
+      setExamState("evaluated");
       return;
     }
 

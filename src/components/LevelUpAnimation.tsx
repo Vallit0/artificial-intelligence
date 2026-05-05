@@ -1,6 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import confetti from "canvas-confetti";
-import { Trophy, Sparkles } from "lucide-react";
+import { Trophy, Sparkles, ArrowRight } from "lucide-react";
 
 interface LevelUpAnimationProps {
   onDone: () => void;
@@ -15,6 +15,8 @@ const LevelUpAnimation = ({
   level = 2,
   subtitle = "Manejo de Objeciones desbloqueado",
 }: LevelUpAnimationProps) => {
+  const [showButton, setShowButton] = useState(false);
+
   useEffect(() => {
     const end = Date.now() + durationMs;
     const colors = ["#a855f7", "#ec4899", "#facc15", "#06b6d4"];
@@ -44,9 +46,9 @@ const LevelUpAnimation = ({
       colors,
     });
 
-    const timer = setTimeout(onDone, durationMs);
+    const timer = setTimeout(() => setShowButton(true), durationMs);
     return () => clearTimeout(timer);
-  }, [durationMs, onDone]);
+  }, [durationMs]);
 
   return (
     <div
@@ -99,6 +101,23 @@ const LevelUpAnimation = ({
           </h1>
           <p className="text-base text-white/80 max-w-xs">{subtitle}</p>
         </div>
+
+        {showButton && (
+          <button
+            onClick={onDone}
+            className="mt-6 inline-flex items-center gap-2 rounded-full px-7 py-3 text-base font-semibold text-white shadow-lg transition-transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-white/30"
+            style={{
+              background:
+                "linear-gradient(135deg, #a855f7 0%, #ec4899 50%, #facc15 100%)",
+              boxShadow: "0 8px 32px rgba(168,85,247,0.5)",
+              animation: "buttonAppear 0.5s ease-out",
+              fontFamily: "'Nunito', 'DIN Rounded', -apple-system, sans-serif",
+            }}
+          >
+            Avanzar de nivel
+            <ArrowRight className="w-5 h-5" />
+          </button>
+        )}
       </div>
 
       <style>{`
@@ -111,6 +130,10 @@ const LevelUpAnimation = ({
           from { transform: rotate(0deg) scale(1); }
           50% { transform: rotate(180deg) scale(1.2); }
           to { transform: rotate(360deg) scale(1); }
+        }
+        @keyframes buttonAppear {
+          0% { opacity: 0; transform: translateY(12px) scale(0.9); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
         }
       `}</style>
     </div>
