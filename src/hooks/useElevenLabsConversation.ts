@@ -126,6 +126,20 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     ttfaSamplesMs: [...ttfaSamplesRef.current],
   }), []);
 
+  // Tracks the in-flight POST to /api/elevenlabs/agent-evaluation so callers
+  // can await DB persistence before invoking endpoints (like unlock-level2)
+  // that read `passed` straight from the session row.
+  const evaluationPersistRef = useRef<Promise<unknown> | null>(null);
+  const awaitEvaluationPersist = useCallback(async (): Promise<void> => {
+    const p = evaluationPersistRef.current;
+    if (!p) return;
+    try {
+      await p;
+    } catch {
+      // already logged at the call site
+    }
+  }, []);
+
   const resetLatency = useCallback(() => {
     connectMsRef.current = null;
     ttfaSamplesRef.current = [];
@@ -182,10 +196,12 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
       };
 
       if (sessionIdRef.current) {
-        api.post("/api/elevenlabs/agent-evaluation", {
+        const persist = api.post("/api/elevenlabs/agent-evaluation", {
           sessionId: sessionIdRef.current,
           ...evaluation,
-        })
+        });
+        evaluationPersistRef.current = persist;
+        persist
           .then((res) => console.log("[DEBUG][EVAL] POST /agent-evaluation OK", res))
           .catch((err) => console.error("[DEBUG][EVAL] POST /agent-evaluation ERROR", err));
       } else {
@@ -464,5 +480,6 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     connect,
     disconnect,
     toggleMute,
+    awaitEvaluationPersist,
   };
 };

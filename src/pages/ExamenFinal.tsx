@@ -86,6 +86,7 @@ export default function ExamenFinal() {
     connect,
     disconnect,
     toggleMute,
+    awaitEvaluationPersist,
   } = useElevenLabsConversation({
     agentSecretName: "ELEVENLABS_AGENT_EXAMEN_FINAL",
     sessionId: currentSessionId,
@@ -192,10 +193,21 @@ export default function ExamenFinal() {
   const handleContinue = async () => {
     if (evaluation?.passed) {
       try {
+        // The agent submits its evaluation via a fire-and-forget POST to
+        // /api/elevenlabs/agent-evaluation; unlock-level2 reads `passed`
+        // straight from that session row, so we must wait for the persist
+        // to land before requesting the unlock or we race into a 403.
+        await awaitEvaluationPersist?.();
         await api.post("/api/users/me/unlock-level2", {});
         await refreshUser();
       } catch (err) {
         console.error("Failed to unlock Level 2:", err);
+        toast({
+          variant: "destructive",
+          title: "No se pudo desbloquear el Nivel 2",
+          description: "Hubo un problema al desbloquear el siguiente nivel. Intentá de nuevo en unos segundos.",
+        });
+        return;
       }
       setExamState("leveling-up");
       return;

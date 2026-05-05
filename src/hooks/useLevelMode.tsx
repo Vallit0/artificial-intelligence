@@ -58,12 +58,20 @@ export const LevelModeProvider = ({ children }: { children: ReactNode }) => {
   const currentLevel: Level = isAdmin && override !== null ? override : baseLevel;
 
   // When the underlying baseLevel flips (e.g., student passes the exam), bump
-  // the timestamp so the navbar animates the transition.
+  // the timestamp so the navbar animates the transition. We also drop a stale
+  // admin override on the 1→2 transition: an admin who toggled to Level 1 to
+  // test the exam flow expects the sidebar to actually advance after passing,
+  // not stay pinned to the old override.
   const prevBaseRef = useState<{ value: Level }>(() => ({ value: baseLevel }))[0];
   useEffect(() => {
     if (prevBaseRef.value !== baseLevel) {
+      const prev = prevBaseRef.value;
       prevBaseRef.value = baseLevel;
       setLastChangeAt(Date.now());
+      if (prev === 1 && baseLevel === 2) {
+        setOverride(null);
+        writeOverride(null);
+      }
     }
   }, [baseLevel, prevBaseRef]);
 
