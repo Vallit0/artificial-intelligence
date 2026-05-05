@@ -128,16 +128,14 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
 
   // Tracks the in-flight POST to /api/elevenlabs/agent-evaluation so callers
   // can await DB persistence before invoking endpoints (like unlock-level2)
-  // that read `passed` straight from the session row.
+  // that read `passed` straight from the session row. Errors propagate so
+  // handleContinue can surface them and skip the unlock instead of racing
+  // into a 403.
   const evaluationPersistRef = useRef<Promise<unknown> | null>(null);
   const awaitEvaluationPersist = useCallback(async (): Promise<void> => {
     const p = evaluationPersistRef.current;
     if (!p) return;
-    try {
-      await p;
-    } catch {
-      // already logged at the call site
-    }
+    await p;
   }, []);
 
   const resetLatency = useCallback(() => {
@@ -181,17 +179,35 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
           cierre?: number;
         };
       };
+      // Defensive clamp to 0–20 per rubric: the server validates this range
+      // with zod (elevenlabs.controller.ts) and rejects anything else with a
+      // 400, which would silently break the unlock flow downstream. Some
+      // agent variants send 0–100 per rubric; clamping keeps both sides in
+      // agreement instead of letting the request bounce on validation.
+      const clamp = (n: number) => Math.max(0, Math.min(20, Math.round(n)));
       const breakdown = {
-        apertura: p.breakdown?.apertura ?? p.apertura ?? 0,
-        escucha_activa: p.breakdown?.escucha_activa ?? p.escucha_activa ?? 0,
-        manejo_objeciones: p.breakdown?.manejo_objeciones ?? p.manejo_objeciones ?? 0,
-        propuesta_valor: p.breakdown?.propuesta_valor ?? p.propuesta_valor ?? 0,
-        cierre: p.breakdown?.cierre ?? p.cierre ?? 0,
+        apertura: clamp(p.breakdown?.apertura ?? p.apertura ?? 0),
+        escucha_activa: clamp(p.breakdown?.escucha_activa ?? p.escucha_activa ?? 0),
+        manejo_objeciones: clamp(p.breakdown?.manejo_objeciones ?? p.manejo_objeciones ?? 0),
+        propuesta_valor: clamp(p.breakdown?.propuesta_valor ?? p.propuesta_valor ?? 0),
+        cierre: clamp(p.breakdown?.cierre ?? p.cierre ?? 0),
       };
+      // Mirror the server-side recompute (elevenlabs.controller.ts:124-132):
+      // score/passed are derived from the breakdown, ignoring whatever the
+      // agent claims. Trusting `p.passed` here was the bug that surfaced
+      // "Avanzar de nivel" while the DB row still had passed:false → 403 on
+      // /api/users/me/unlock-level2.
+      const score =
+        breakdown.apertura +
+        breakdown.escucha_activa +
+        breakdown.manejo_objeciones +
+        breakdown.propuesta_valor +
+        breakdown.cierre;
+      const passed = score >= 50;
       const evaluation: EvaluationResult = {
-        score: p.score ?? 0,
-        passed: p.passed ?? false,
-        feedback: p.feedback ?? "",
+        score,
+        passed,
+        feedback: (p.feedback ?? "").trim() || "Sin comentarios del agente.",
         breakdown,
       };
 

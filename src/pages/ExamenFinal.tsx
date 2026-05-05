@@ -213,10 +213,13 @@ export default function ExamenFinal() {
         refreshUser().catch(() => {});
       } catch (err) {
         console.error("Failed to unlock Level 2:", err);
+        const detail = err instanceof Error && err.message
+          ? err.message
+          : "Hubo un problema al desbloquear el siguiente nivel. Intentá de nuevo en unos segundos.";
         toast({
           variant: "destructive",
           title: "No se pudo desbloquear el Nivel 2",
-          description: "Hubo un problema al desbloquear el siguiente nivel. Intentá de nuevo en unos segundos.",
+          description: detail,
         });
         return;
       }
