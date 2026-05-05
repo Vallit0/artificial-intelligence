@@ -231,24 +231,6 @@ apiRouter.post('/users/me/unlock-level2', async (req: AuthRequest, res: Response
     const userId = req.user!.id;
     const { default: prisma } = await import('../db/index.js');
 
-    // Admins bypass the passed-exam requirement so they can demo the next
-    // module without burning through a full examen final session.
-    const isAdmin = await prisma.userRole.findFirst({
-      where: { userId, role: 'admin' },
-      select: { id: true },
-    });
-
-    if (!isAdmin) {
-      const passedExam = await prisma.practiceSession.findFirst({
-        where: { userId, scenarioId: null, passed: true },
-        orderBy: { createdAt: 'desc' },
-      });
-      if (!passedExam) {
-        res.status(403).json({ error: 'Debes aprobar el examen final primero' });
-        return;
-      }
-    }
-
     const updated = await prisma.user.update({
       where: { id: userId },
       data: { level2Unlocked: true },
