@@ -243,6 +243,125 @@ JWT_SECRET=tu-secreto-seguro
 
 ---
 
+## 2.bis. Sincronizacion de Roster (NRPS) — Notas que caen sin que el alumno haya hecho launch
+
+Por defecto, una nota solo cae en el gradebook de Moodle si el estudiante hizo un launch LTI antes (eso crea la `LtiSession` con `agsLineitemUrl`). Si tus alumnos entran directo por link a `centro-de-negocios.org` y nunca pasan por Moodle, sus notas se quedan en Senoriales.
+
+La sincronizacion NRPS (Names and Role Provisioning Services) resuelve esto: cada cierto tiempo pedimos a Moodle la lista de matriculados del curso, hacemos match con tu base de usuarios (por correo, y como fallback por nombre+apellido), y precreamos las `LtiSession` para que cualquier practica/examen futura ya tenga a donde mandar la nota.
+
+### Paso 1: Habilitar el servicio NRPS en Moodle
+
+En el mismo tool LTI que registraste en la seccion 2 (Manage tools > Edit), verifica que en **Services** este activado:
+
+- `IMS LTI Names and Role Provisioning Services`: **Use this service** (ya pedido en seccion 2 paso 4, esto solo lo confirma)
+
+Sin esto, Moodle no enviara el claim `namesroleservice` en el launch y no podremos consultar el roster.
+
+### Paso 2: Registrar el curso para sync
+
+Hay dos formas:
+
+**Automatica (recomendada):** una vez que cualquier usuario (profesor o estudiante) haga un launch LTI desde el curso, el sistema detecta el endpoint NRPS y la actividad evaluable y crea automaticamente la fila `lti_course_syncs`. No tienes que hacer nada manual.
+
+**Manual:** si necesitas pre-registrar el curso antes de cualquier launch (por ejemplo para sincronizar antes de que el primer alumno entre):
+
+```bash
+POST /api/admin/lti/courses
+Content-Type: application/json
+Authorization: Bearer <token-admin>
+
+{
+  "platformId": "<uuid del lti_platform>",
+  "contextId": "<id del curso en Moodle>",
+  "contextTitle": "Ventas Avanzadas 2026",
+  "membershipsUrl": "https://tu-moodle.com/mod/lti/services.php/CourseSection/42/bindings/4/memberships",
+  "lineitemUrl": "https://tu-moodle.com/mod/lti/services.php/2/lineitems/9/lineitem"
+}
+```
+
+Los URLs los puedes leer del `id_token` capturado en un launch anterior, o desde la API de Moodle.
+
+### Paso 3: Disparar el sync
+
+**Manual / on-demand:**
+
+```bash
+POST /api/admin/lti/courses/:id/sync
+Authorization: Bearer <token-admin>
+```
+
+Devuelve los contadores del sync:
+
+```json
+{
+  "success": true,
+  "result": {
+    "courseSyncId": "...",
+    "membersFetched": 42,
+    "matched": 28,    // usuario existente, LtiSession creada/actualizada
+    "created": 10,    // usuario nuevo creado automaticamente
+    "pending": 3,     // homonimos — requieren resolucion manual
+    "skipped": 1,     // miembro sin email ni nombre — no se pudo matchear
+    "errors": 0
+  }
+}
+```
+
+**Automatico (cron):** no esta cableado a un scheduler todavia. Opciones para correrlo periodicamente:
+
+1. Cron del host (`crontab -e`):
+   ```cron
+   0 */6 * * * curl -X POST -H "Authorization: Bearer $ADMIN_TOKEN" https://centro-de-negocios.org/api/admin/lti/courses/<course-id>/sync
+   ```
+2. GitHub Action programada que llame al endpoint.
+3. Implementar `node-cron` dentro del proceso (no esta hecho — pedirlo si lo necesitas).
+
+### Paso 4: Resolver matches ambiguos
+
+Cuando dos o mas usuarios en Senoriales tienen el mismo nombre normalizado que un miembro del roster, el sync no decide por ti. Queda en estado pendiente:
+
+```bash
+GET /api/admin/lti/pending-matches
+```
+
+Devuelve cada caso con los candidatos completos (email, nombre, fecha de creacion) para que el admin elija. Luego:
+
+```bash
+POST /api/admin/lti/pending-matches/:id/resolve
+{ "userId": "<uuid del usuario correcto>" }
+```
+
+O si determinas que ninguno aplica (por ejemplo, el miembro de Moodle no es un asesor):
+
+```bash
+POST /api/admin/lti/pending-matches/:id/dismiss
+```
+
+### Cascada de matching (orden de prioridad)
+
+1. **Email exacto** (case-insensitive) — clave unica en `users`, siempre desambigua.
+2. **Nombre + apellido normalizado** (lowercase, sin tildes, espacios colapsados):
+   - 0 candidatos → crea usuario nuevo (rol `learner`, `emailVerified=true`, sin password).
+   - 1 candidato → linkea.
+   - 2+ candidatos → registra `LtiPendingMatch` y deja la decision al admin.
+3. Si el miembro no tiene email y tampoco firstName+lastName, se reporta como `skipped`.
+
+### Idempotencia
+
+Volver a correr el sync sobre el mismo curso no duplica registros. Las `LtiSession` se hacen upsert por `(platformId, ltiUserId)`; los `LtiPendingMatch` por `(courseSyncId, ltiUserId)`. Se actualizan `agsLineitemUrl` y metadatos pero NO se reasigna `userId` si ya hubo un launch que lo fijo manualmente.
+
+### Aplicar el schema
+
+Las tablas nuevas (`lti_course_syncs`, `lti_pending_matches`) y la columna `nrps_memberships_url` en `lti_sessions` requieren correr:
+
+```bash
+cd server && npx prisma db push
+```
+
+(Este proyecto no usa migraciones — `db push` aplica el schema directamente.)
+
+---
+
 ## 2.5. ElevenLabs Server Tool: WhatsApp (Mensajes y Documentos)
 
 Permite que los agentes de ElevenLabs envien mensajes de texto y documentos PDF por WhatsApp durante la conversacion.

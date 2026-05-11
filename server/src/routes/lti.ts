@@ -2,12 +2,14 @@ import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import prisma from '../db/index.js';
 import { generateAccessToken, generateRefreshToken } from '../services/auth.service.js';
+import { getPublicJwks } from '../services/toolKey.service.js';
 import config from '../config/index.js';
 import { getLogger } from '../utils/logger.js';
 
 export const ltiRouter = Router();
 
 const APP_URL = config.appUrl;
+const LAUNCH_STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
 // ============================================
 // Utility functions
@@ -116,6 +118,18 @@ ltiRouter.post('/initiate', async (req: Request, res: Response) => {
 
     const state = crypto.randomUUID();
     const nonce = crypto.randomUUID();
+    const expiresAt = new Date(Date.now() + LAUNCH_STATE_TTL_MS);
+
+    // Persist state + nonce so /launch can verify they match the values we
+    // issued (CSRF + replay protection). Same call cleans expired rows
+    // opportunistically — keeps the table from growing unbounded without a
+    // dedicated cron job.
+    await prisma.$transaction([
+      prisma.ltiLaunchState.deleteMany({ where: { expiresAt: { lt: new Date() } } }),
+      prisma.ltiLaunchState.create({
+        data: { state, nonce, platformId: platform.id, expiresAt },
+      }),
+    ]);
 
     const authParams = new URLSearchParams({
       scope: 'openid',
@@ -147,9 +161,14 @@ ltiRouter.post('/initiate', async (req: Request, res: Response) => {
 ltiRouter.post('/launch', async (req: Request, res: Response) => {
   try {
     const idToken = req.body.id_token;
+    const stateParam = req.body.state;
 
     if (!idToken) {
       res.status(400).json({ error: 'Missing id_token' });
+      return;
+    }
+    if (!stateParam) {
+      res.status(400).json({ error: 'Missing state' });
       return;
     }
 
@@ -167,6 +186,30 @@ ltiRouter.post('/launch', async (req: Request, res: Response) => {
 
     if (!platform) {
       res.status(403).json({ error: 'Platform not found' });
+      return;
+    }
+
+    // Validate state was issued by /lti/initiate, hasn't expired, belongs
+    // to this same platform, and the nonce in the id_token matches the one
+    // we paired with that state. Delete on read so it can't be replayed.
+    const launchState = await prisma.ltiLaunchState.findUnique({
+      where: { state: stateParam },
+    });
+    if (!launchState) {
+      res.status(401).json({ error: 'Unknown or already-used state' });
+      return;
+    }
+    await prisma.ltiLaunchState.delete({ where: { state: stateParam } });
+    if (launchState.expiresAt < new Date()) {
+      res.status(401).json({ error: 'State expired' });
+      return;
+    }
+    if (launchState.platformId !== platform.id) {
+      res.status(401).json({ error: 'State does not match issuer' });
+      return;
+    }
+    if (claims.nonce !== launchState.nonce) {
+      res.status(401).json({ error: 'Nonce mismatch' });
       return;
     }
 
@@ -204,6 +247,21 @@ ltiRouter.post('/launch', async (req: Request, res: Response) => {
     const resourceLink = claims['https://purl.imsglobal.org/spec/lti/claim/resource_link'];
     const ltiRoles = claims['https://purl.imsglobal.org/spec/lti/claim/roles'] || [];
 
+    // AGS endpoint claim — present only when the teacher attached the tool
+    // to a gradable activity. Captured per session so submitScore() can
+    // post back without depending on global config.
+    const agsEndpoint = claims['https://purl.imsglobal.org/spec/lti-ags/claim/endpoint'];
+    const agsLineitemUrl = agsEndpoint?.lineitem ?? null;
+    const agsLineitemsUrl = agsEndpoint?.lineitems ?? null;
+    const agsScopes: string[] = Array.isArray(agsEndpoint?.scope) ? agsEndpoint.scope : [];
+
+    // NRPS endpoint claim — present when Moodle has the Names & Role
+    // Provisioning service enabled on the tool. Captured here so a single
+    // launch from any teacher is enough to opt the course into periodic
+    // roster sync (we upsert LtiCourseSync below).
+    const nrpsClaim = claims['https://purl.imsglobal.org/spec/lti-nrps/claim/namesroleservice'];
+    const nrpsMembershipsUrl: string | null = nrpsClaim?.context_memberships_url ?? null;
+
     // Check for existing LTI session
     const existingSession = await prisma.ltiSession.findUnique({
       where: { platformId_ltiUserId: { platformId: platform.id, ltiUserId } },
@@ -223,6 +281,10 @@ ltiRouter.post('/launch', async (req: Request, res: Response) => {
           contextTitle: context?.title,
           resourceLinkId: resourceLink?.id,
           roles: mapLTIRoles(ltiRoles),
+          agsLineitemUrl,
+          agsLineitemsUrl,
+          agsScopes,
+          nrpsMembershipsUrl,
           lastLaunchAt: new Date(),
         },
       });
@@ -261,6 +323,37 @@ ltiRouter.post('/launch', async (req: Request, res: Response) => {
           contextTitle: context?.title,
           resourceLinkId: resourceLink?.id,
           roles: mapLTIRoles(ltiRoles),
+          agsLineitemUrl,
+          agsLineitemsUrl,
+          agsScopes,
+          nrpsMembershipsUrl,
+        },
+      });
+    }
+
+    // Auto-register the course for periodic roster sync. We only need one
+    // launch from any user (teacher or student) to learn the NRPS endpoint
+    // and the default lineitem; from there the cron can pre-create
+    // LtiSessions for everyone else so their web-only practice still
+    // posts grades. Upsert so re-launches refresh the lineitemUrl if the
+    // teacher re-binds the activity, but keep isActive untouched so admin
+    // toggles aren't reverted by traffic.
+    if (nrpsMembershipsUrl && context?.id) {
+      await prisma.ltiCourseSync.upsert({
+        where: {
+          platformId_contextId: { platformId: platform.id, contextId: context.id },
+        },
+        create: {
+          platformId: platform.id,
+          contextId: context.id,
+          contextTitle: context.title ?? null,
+          membershipsUrl: nrpsMembershipsUrl,
+          lineitemUrl: agsLineitemUrl,
+        },
+        update: {
+          contextTitle: context.title ?? undefined,
+          membershipsUrl: nrpsMembershipsUrl,
+          ...(agsLineitemUrl ? { lineitemUrl: agsLineitemUrl } : {}),
         },
       });
     }
@@ -302,7 +395,7 @@ ltiRouter.get('/info', (req: Request, res: Response) => {
     target_link_uri: `${APP_URL}/lti/launch`,
     redirect_uris: [`${APP_URL}/lti/launch`],
     oidc_initiation_url: `${APP_URL}/lti/initiate`,
-    public_jwks_url: null,
+    public_jwks_url: `${APP_URL}/lti/jwks`,
     messages: [
       {
         type: 'LtiResourceLinkRequest',
@@ -310,4 +403,22 @@ ltiRouter.get('/info', (req: Request, res: Response) => {
       },
     ],
   });
+});
+
+// ============================================
+// GET /lti/jwks - Public JWKS for the tool
+// ============================================
+// Moodle (and other platforms) fetch this when verifying client_assertion
+// JWTs we send to their token endpoint, and Deep Linking responses we
+// post back. Cache for 10 minutes — long enough to avoid hammering on
+// every token call, short enough that key rotation propagates quickly.
+ltiRouter.get('/jwks', async (_req: Request, res: Response) => {
+  try {
+    const jwks = await getPublicJwks();
+    res.set('Cache-Control', 'public, max-age=600');
+    res.json(jwks);
+  } catch (error) {
+    getLogger({ component: 'lti', op: 'jwks' }).error({ err: error }, 'Failed to build JWKS');
+    res.status(500).json({ error: 'Could not build JWKS' });
+  }
 });

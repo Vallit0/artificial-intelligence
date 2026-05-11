@@ -87,6 +87,12 @@ export interface PracticeSession {
   createdAt: Date;
 }
 
+// 'real' = LLM produced a valid evaluation
+// 'too_short' = transcript below MIN_TURNS_FOR_REAL_EVAL — score is 0
+// 'fallback_practice' = LLM unreachable on a practice session — neutral 50
+// 'fallback_exam' = LLM unreachable on the final exam — score forced to 0
+export type EvaluationStatus = 'real' | 'too_short' | 'fallback_practice' | 'fallback_exam';
+
 export interface SessionEvaluation {
   score: number;
   passed: boolean;
@@ -98,6 +104,7 @@ export interface SessionEvaluation {
     propuesta_valor?: number;
     cierre?: number;
   };
+  evaluationStatus?: EvaluationStatus;
 }
 
 // score, passed and aiFeedback are intentionally excluded from these inputs.

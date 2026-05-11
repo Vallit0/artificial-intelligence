@@ -48,6 +48,7 @@ function neutralEvaluation(reason: string, isExam: boolean): SessionEvaluation {
         propuesta_valor: 0,
         cierre: 0,
       },
+      evaluationStatus: 'fallback_exam',
     };
   }
   return {
@@ -61,6 +62,7 @@ function neutralEvaluation(reason: string, isExam: boolean): SessionEvaluation {
       propuesta_valor: 10,
       cierre: 10,
     },
+    evaluationStatus: 'fallback_practice',
   };
 }
 
@@ -76,6 +78,7 @@ function tooShortEvaluation(): SessionEvaluation {
       propuesta_valor: 0,
       cierre: 0,
     },
+    evaluationStatus: 'too_short',
   };
 }
 
@@ -211,6 +214,7 @@ export async function evaluateSession(
       passed: score >= PASS_THRESHOLD,
       feedback: validated.data.feedback,
       breakdown,
+      evaluationStatus: 'real',
     };
   } catch (err) {
     log.warn({ err }, 'OpenAI evaluation failed');

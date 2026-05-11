@@ -25,6 +25,7 @@ import { AppError } from './utils/errors.js';
 import { rootLogger, getLogger } from './utils/logger.js';
 import { requestContextMiddleware, httpLogger } from './middleware/requestContext.js';
 import { getReadinessReport } from './services/health.service.js';
+import { ensureToolKey } from './services/toolKey.service.js';
 import { mountSwagger } from './swagger.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -186,12 +187,22 @@ app.use((err: Error, req: express.Request, res: express.Response, _next: express
 // ============================================
 
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(config.port, () => {
-    rootLogger.info(
-      { port: config.port, environment: config.nodeEnv, appUrl: config.appUrl },
-      'Señoriales server started',
-    );
-  });
+  // Bootstrap LTI tool keypair before accepting traffic. Failure to ensure
+  // a signing key would mean AGS/NRPS calls and Deep Linking responses
+  // fail later with a confusing error — fail fast at boot instead.
+  ensureToolKey()
+    .then(() => {
+      app.listen(config.port, () => {
+        rootLogger.info(
+          { port: config.port, environment: config.nodeEnv, appUrl: config.appUrl },
+          'Señoriales server started',
+        );
+      });
+    })
+    .catch((err) => {
+      rootLogger.fatal({ err }, 'Failed to ensure LTI tool key — refusing to start');
+      process.exit(1);
+    });
 }
 
 export default app;
