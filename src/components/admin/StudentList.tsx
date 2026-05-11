@@ -11,12 +11,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Award, Check, ChevronDown, ChevronUp, Clock, Eye, FileText, Lock, Pencil, Trash2, Unlock, UserPen } from "lucide-react";
+import { Award, Check, ChevronDown, ChevronUp, Clock, Eye, FileText, KeyRound, Lock, Pencil, Trash2, Unlock, UserPen } from "lucide-react";
 import StudentDetailModal from "./StudentDetailModal";
 import GradeModal from "./GradeModal";
 import CertificateModal from "./CertificateModal";
 import DeleteUserModal from "./DeleteUserModal";
 import EditNameModal from "./EditNameModal";
+import ResetStudentPasswordModal from "./ResetStudentPasswordModal";
 import { useToast } from "@/hooks/use-toast";
 
 interface StudentListProps {
@@ -43,6 +44,7 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
   const [certificateStudent, setCertificateStudent] = useState<Student | null>(null);
   const [deleteStudent, setDeleteStudent] = useState<Student | null>(null);
   const [editNameStudent, setEditNameStudent] = useState<Student | null>(null);
+  const [resetPasswordStudent, setResetPasswordStudent] = useState<Student | null>(null);
   const [sortBy, setSortBy] = useState<"name" | "sessions" | "grade">("sessions");
   const [sortAsc, setSortAsc] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
@@ -340,6 +342,15 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8"
+                    onClick={() => setResetPasswordStudent(student)}
+                    title="Resetear contraseña"
+                  >
+                    <KeyRound className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
                     onClick={() => setGradeStudent(student)}
                     title="Editar calificación"
                   >
@@ -422,6 +433,12 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
         open={!!editNameStudent}
         onOpenChange={(open) => !open && setEditNameStudent(null)}
         onSuccess={onRefetch}
+      />
+
+      <ResetStudentPasswordModal
+        student={resetPasswordStudent}
+        open={!!resetPasswordStudent}
+        onOpenChange={(open) => !open && setResetPasswordStudent(null)}
       />
     </>
   );
