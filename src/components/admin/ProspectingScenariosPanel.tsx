@@ -7,36 +7,40 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Save, Target, Users as UsersIcon } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Check, Loader2, Save, Target, Users as UsersIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   useProspectingScenarioConfigs,
   useUserScenarioAccess,
 } from "@/hooks/useProspectingScenarios";
+import { useAgentConfigs } from "@/hooks/useAgentConfigs";
 import { useStudents } from "@/hooks/useStudents";
 
 // Known prospecting scenarios (keep in sync with ProspectingCarousel.tsx)
 const SCENARIOS: Array<{ secretName: string; label: string }> = [
   { secretName: "ELEVENLABS_AGENT_PROSPECTING_PAREJA", label: "Pareja en la Fila de Caja" },
   { secretName: "ELEVENLABS_AGENT_PROSPECTING_FRUTAS", label: "Señora en Frutas y Verduras" },
-  { secretName: "ELEVENLABS_AGENT_PROSPECTING_FAMILIA_STAND", label: "Familia en Stand" },
+  { secretName: "ELEVENLABS_AGENT_FAMILIA", label: "Familia en Stand" },
   { secretName: "ELEVENLABS_AGENT_PROSPECTING_NEUMATICOS", label: "Señor en Neumáticos" },
   { secretName: "ELEVENLABS_AGENT_PROSPECTING_RESTAURANTE", label: "Profesional en Restaurante" },
   { secretName: "ELEVENLABS_AGENT_PROSPECTING_PARQUEO", label: "Señor en el Parqueo" },
-  { secretName: "ELEVENLABS_AGENT_PROSPECTING_PROFESIONAL_CAMINANDO", label: "Profesional Caminando" },
-  { secretName: "ELEVENLABS_AGENT_PROSPECTING_SENORA_COMPRAS_1", label: "Señora de Compras (Stand 1)" },
-  { secretName: "ELEVENLABS_AGENT_PROSPECTING_SENORA_COMPRAS_2", label: "Señora de Compras (Stand 2)" },
-  { secretName: "ELEVENLABS_AGENT_PROSPECTING_PAREJA_CEMENTERIO", label: "Pareja en Cementerio" },
+  { secretName: "ELEVENLABS_AGENT_PROSPECTING_CAMINANDO", label: "Profesional Caminando" },
+  { secretName: "ELEVENLABS_AGENT_STAND1", label: "Señora de Compras (Stand 1)" },
+  { secretName: "ELEVENLABS_AGENT_STAND2", label: "Señora de Compras (Stand 2)" },
+  { secretName: "ELEVENLABS_AGENT_PROSPECTING_CEMENTERIO", label: "Pareja en Cementerio" },
 ];
 
 interface RowState {
   systemPrompt: string;
   firstMessage: string;
   isActiveGlobal: boolean;
+  agentId: string;
 }
 
 export default function ProspectingScenariosPanel() {
   const { configs, isLoading, saveConfig } = useProspectingScenarioConfigs();
+  const { configs: agentConfigs, saveConfig: saveAgentConfig } = useAgentConfigs();
   const { students, isLoading: studentsLoading } = useStudents();
   const { toast } = useToast();
 
@@ -44,19 +48,26 @@ export default function ProspectingScenariosPanel() {
   const [savingKey, setSavingKey] = useState<string | null>(null);
 
   useEffect(() => {
+    const agentMap = new Map(agentConfigs.map((c) => [c.secretName, c.agentId]));
     const merged: Record<string, RowState> = {};
     for (const s of SCENARIOS) {
-      merged[s.secretName] = { systemPrompt: "", firstMessage: "", isActiveGlobal: true };
+      merged[s.secretName] = {
+        systemPrompt: "",
+        firstMessage: "",
+        isActiveGlobal: true,
+        agentId: agentMap.get(s.secretName) || "",
+      };
     }
     for (const cfg of configs) {
       merged[cfg.secretName] = {
         systemPrompt: cfg.systemPrompt || "",
         firstMessage: cfg.firstMessage || "",
         isActiveGlobal: cfg.isActiveGlobal,
+        agentId: agentMap.get(cfg.secretName) || "",
       };
     }
     setRows(merged);
-  }, [configs]);
+  }, [configs, agentConfigs]);
 
   const updateRow = (secretName: string, patch: Partial<RowState>) => {
     setRows((prev) => ({ ...prev, [secretName]: { ...prev[secretName], ...patch } }));
@@ -66,13 +77,25 @@ export default function ProspectingScenariosPanel() {
     const row = rows[secretName];
     const label = SCENARIOS.find((s) => s.secretName === secretName)?.label;
     setSavingKey(secretName);
-    const ok = await saveConfig(secretName, {
-      label,
-      systemPrompt: row.systemPrompt,
-      firstMessage: row.firstMessage,
-      isActiveGlobal: row.isActiveGlobal,
-    });
+
+    const trimmedAgentId = row.agentId.trim();
+    const previousAgentId = agentConfigs.find((c) => c.secretName === secretName)?.agentId || "";
+    const agentChanged = trimmedAgentId !== previousAgentId;
+
+    const [okScenario, okAgent] = await Promise.all([
+      saveConfig(secretName, {
+        label,
+        systemPrompt: row.systemPrompt,
+        firstMessage: row.firstMessage,
+        isActiveGlobal: row.isActiveGlobal,
+      }),
+      agentChanged && trimmedAgentId
+        ? saveAgentConfig(secretName, trimmedAgentId, label)
+        : Promise.resolve(true),
+    ]);
     setSavingKey(null);
+
+    const ok = okScenario && okAgent;
     if (ok) toast({ title: "Guardado", description: `${label} actualizado.` });
     else toast({ title: "Error", description: "No se pudo guardar.", variant: "destructive" });
   };
@@ -102,7 +125,8 @@ export default function ProspectingScenariosPanel() {
               </div>
             ) : (
               SCENARIOS.map((s) => {
-                const row = rows[s.secretName] || { systemPrompt: "", firstMessage: "", isActiveGlobal: true };
+                const row = rows[s.secretName] || { systemPrompt: "", firstMessage: "", isActiveGlobal: true, agentId: "" };
+                const agentConfigured = !!agentConfigs.find((c) => c.secretName === s.secretName)?.agentId;
                 return (
                   <div key={s.secretName} className="p-4 rounded-lg border bg-muted/20 space-y-3">
                     <div className="flex items-center justify-between gap-4">
@@ -118,6 +142,23 @@ export default function ProspectingScenariosPanel() {
                           onCheckedChange={(v) => updateRow(s.secretName, { isActiveGlobal: v })}
                         />
                       </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Label className="text-xs">Agent ID (override)</Label>
+                        {agentConfigured && (
+                          <Badge variant="secondary" className="text-[10px]">
+                            <Check className="w-3 h-3 mr-0.5" /> En DB
+                          </Badge>
+                        )}
+                      </div>
+                      <Input
+                        placeholder="agent_xxxxxxxxxx (dejar vacío para usar la variable de entorno)"
+                        value={row.agentId}
+                        onChange={(e) => updateRow(s.secretName, { agentId: e.target.value })}
+                        className="text-sm font-mono"
+                      />
                     </div>
 
                     <div className="space-y-1">

@@ -17,6 +17,7 @@ import * as aiAccessService from '../services/aiAccess.service.js';
 import * as latencyProbeService from '../services/latencyProbe.service.js';
 import { submitScoreForUser } from '../services/ags.service.js';
 import { syncCourse, resolvePendingMatch, dismissPendingMatch } from '../services/ltiSync.service.js';
+import { runNrpsSyncTick } from '../services/ltiSyncCron.service.js';
 import prisma from '../db/index.js';
 
 export const adminRouter = Router();
@@ -673,6 +674,19 @@ adminRouter.delete('/lti/courses/:id', async (req: AuthRequest, res: Response) =
 adminRouter.post('/lti/courses/:id/sync', async (req: AuthRequest, res: Response) => {
   try {
     const result = await syncCourse(req.params.id);
+    res.json({ success: true, result });
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
+// Run one full NRPS sync tick across every active LtiCourseSync. Same code
+// path as the cron, exposed manually so the admin can force-sync everything
+// without waiting for the next scheduled firing.
+adminRouter.post('/lti/sync-all', async (_req: AuthRequest, res: Response) => {
+  try {
+    const result = await runNrpsSyncTick();
     res.json({ success: true, result });
   } catch (error) {
     const appError = handleError(error);

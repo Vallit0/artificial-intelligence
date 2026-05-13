@@ -15,6 +15,8 @@ import BulkUploadModal from "@/components/admin/BulkUploadModal";
 import AgentConfigPanel from "@/components/admin/AgentConfigPanel";
 import ProspectingScenariosPanel from "@/components/admin/ProspectingScenariosPanel";
 import LtiPlatformPanel from "@/components/admin/LtiPlatformPanel";
+import LtiCourseSyncPanel from "@/components/admin/LtiCourseSyncPanel";
+import LtiPendingMatchesPanel from "@/components/admin/LtiPendingMatchesPanel";
 import AbExperimentsPanel from "@/components/admin/AbExperimentsPanel";
 import AiAccessPanel from "@/components/admin/AiAccessPanel";
 import LatencyTesterPanel from "@/components/admin/LatencyTesterPanel";
@@ -403,7 +405,22 @@ export default function Admin() {
           </TabsContent>
 
           <TabsContent value="lti">
-            <LtiPlatformPanel />
+            <Tabs defaultValue="platforms" className="space-y-4">
+              <TabsList>
+                <TabsTrigger value="platforms">Plataformas</TabsTrigger>
+                <TabsTrigger value="courses">Cursos & Roster</TabsTrigger>
+                <TabsTrigger value="pending">Matches Pendientes</TabsTrigger>
+              </TabsList>
+              <TabsContent value="platforms">
+                <LtiPlatformPanel />
+              </TabsContent>
+              <TabsContent value="courses">
+                <LtiCourseSyncPanel />
+              </TabsContent>
+              <TabsContent value="pending">
+                <LtiPendingMatchesPanel />
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
           <TabsContent value="latency">

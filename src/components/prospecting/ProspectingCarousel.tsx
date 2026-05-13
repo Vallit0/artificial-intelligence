@@ -43,7 +43,7 @@ export const prospectingScenarios: (ProspectingScenario & { agentId?: string })[
     targetAge: "Familia joven",
     icon: "mall",
     videoUrl: "/videos/prospecting/scenario-7-familia-stand.mp4",
-    agentId: "ELEVENLABS_AGENT_PROSPECTING_FAMILIA_STAND",
+    agentId: "ELEVENLABS_AGENT_FAMILIA",
   },
   {
     id: 3,
@@ -83,7 +83,7 @@ export const prospectingScenarios: (ProspectingScenario & { agentId?: string })[
     targetAge: "28 años",
     icon: "street",
     videoUrl: "/videos/prospecting/scenario-6-profesional-caminando.mp4",
-    agentId: "ELEVENLABS_AGENT_PROSPECTING_PROFESIONAL_CAMINANDO",
+    agentId: "ELEVENLABS_AGENT_PROSPECTING_CAMINANDO",
   },
   {
     id: 8,
@@ -93,7 +93,7 @@ export const prospectingScenarios: (ProspectingScenario & { agentId?: string })[
     targetAge: "40 años",
     icon: "mall",
     videoUrl: "/videos/prospecting/scenario-8-senora-compras.mp4",
-    agentId: "ELEVENLABS_AGENT_PROSPECTING_SENORA_COMPRAS_1",
+    agentId: "ELEVENLABS_AGENT_STAND1",
   },
   {
     id: 9,
@@ -102,7 +102,7 @@ export const prospectingScenarios: (ProspectingScenario & { agentId?: string })[
     location: "Centro Comercial",
     targetAge: "40 años",
     icon: "mall",
-    agentId: "ELEVENLABS_AGENT_PROSPECTING_SENORA_COMPRAS_2",
+    agentId: "ELEVENLABS_AGENT_STAND2",
   },
   {
     id: 10,
@@ -112,7 +112,7 @@ export const prospectingScenarios: (ProspectingScenario & { agentId?: string })[
     targetAge: "30 años",
     icon: "cemetery",
     videoUrl: "/videos/prospecting/scenario-10-cementerio.mp4",
-    agentId: "ELEVENLABS_AGENT_PROSPECTING_PAREJA_CEMENTERIO",
+    agentId: "ELEVENLABS_AGENT_PROSPECTING_CEMENTERIO",
   },
 ];
 

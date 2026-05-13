@@ -241,6 +241,16 @@ APP_URL=https://tu-dominio.com    # DEBE ser HTTPS para LTI
 JWT_SECRET=tu-secreto-seguro
 ```
 
+### Procedimiento end-to-end para cargar un Moodle real
+
+1. **En Moodle**: registra el tool (seccion 2 paso 2). Activa **Deep Linking**, **NRPS**, **AGS**. Guarda y abre la configuracion para copiar Platform ID, Client ID, Auth URL, Token URL, JWKS URL, Deployment ID.
+2. **En la app**: entra a `/admin > LTI / Moodle > Plataformas > Nueva Plataforma`. Pega los 6 valores. Guarda.
+3. **Smoke test del launch**: agrega una actividad External Tool en un curso de prueba (sin Deep Linking primero, modo "Default — auto" para el content launch). Loguea como alumno y clickea. Deberias caer en el SPA autenticado.
+4. **Smoke test de AGS**: hace una practica corta, espera la evaluacion. Revisa `server` logs por `AGS score submitted`. Verifica en el gradebook de Moodle que la nota aparecio.
+5. **Smoke test de NRPS**: entra a `/admin > LTI / Moodle > Cursos & Roster`. Despues del primer launch en el curso, deberia aparecer una fila auto-registrada. Click "Sync ahora". Revisa los contadores y los `LtiPendingMatch` que aparezcan.
+6. **Smoke test de Deep Linking**: en otro curso de prueba, "Add activity > External tool > Select content". Te debe abrir el picker con la lista de escenarios. Marca 2 o 3, "Enviar a Moodle". Verifica que Moodle creo una actividad por cada uno.
+7. **Activar cron**: setea `LTI_NRPS_CRON_ENABLED=true` y `LTI_NRPS_CRON_SCHEDULE=0 */6 * * *` en `.env`. Reinicia el server. Revisa al primer firing en logs (`NRPS cron started` al boot, `NRPS cron tick — scanning active courses` cada 6h).
+
 ---
 
 ## 2.bis. Sincronizacion de Roster (NRPS) — Notas que caen sin que el alumno haya hecho launch
@@ -307,14 +317,38 @@ Devuelve los contadores del sync:
 }
 ```
 
-**Automatico (cron):** no esta cableado a un scheduler todavia. Opciones para correrlo periodicamente:
+**Automatico (cron in-process):** disponible. El servidor incluye un scheduler `node-cron` que itera `LtiCourseSync` activos y llama `syncCourse` de cada uno. Se activa via variables de entorno:
 
-1. Cron del host (`crontab -e`):
-   ```cron
-   0 */6 * * * curl -X POST -H "Authorization: Bearer $ADMIN_TOKEN" https://centro-de-negocios.org/api/admin/lti/courses/<course-id>/sync
-   ```
-2. GitHub Action programada que llame al endpoint.
-3. Implementar `node-cron` dentro del proceso (no esta hecho — pedirlo si lo necesitas).
+```env
+LTI_NRPS_CRON_ENABLED=true               # opt-in; default desactivado para dev/test
+LTI_NRPS_CRON_SCHEDULE=0 */6 * * *       # cualquier expresion cron valida; default cada 6 horas
+LTI_NRPS_CRON_TZ=America/Guatemala       # opcional; default UTC
+```
+
+Cada tick procesa los cursos en orden, secuencial (no paralelo) para no martillar Moodle. Los resultados van al log estructurado con `component: lti-sync-cron`.
+
+Tambien existe un endpoint para forzar un tick completo sin esperar al cron:
+
+```bash
+POST /api/admin/lti/sync-all
+Authorization: Bearer <token-admin>
+```
+
+Respuesta:
+```json
+{
+  "success": true,
+  "result": {
+    "startedAt": "...",
+    "finishedAt": "...",
+    "coursesProcessed": 5,
+    "coursesSucceeded": 5,
+    "coursesFailed": 0
+  }
+}
+```
+
+Alternativas externas (cron del host o GitHub Action) siguen siendo validas si preferis no correr el scheduler in-process.
 
 ### Paso 4: Resolver matches ambiguos
 
@@ -352,13 +386,57 @@ Volver a correr el sync sobre el mismo curso no duplica registros. Las `LtiSessi
 
 ### Aplicar el schema
 
-Las tablas nuevas (`lti_course_syncs`, `lti_pending_matches`) y la columna `nrps_memberships_url` en `lti_sessions` requieren correr:
+Las tablas nuevas (`lti_course_syncs`, `lti_pending_matches`, `lti_deep_linking_states`) y la columna `nrps_memberships_url` en `lti_sessions` requieren correr:
 
 ```bash
 cd server && npx prisma db push
 ```
 
 (Este proyecto no usa migraciones — `db push` aplica el schema directamente.)
+
+---
+
+## 2.ter. Deep Linking 1.3 (Seleccion de actividad desde Moodle)
+
+Permite que el profesor, al crear una actividad "External tool" en Moodle, elija **que escenario(s)** se embebe en lugar de mandar siempre al menu general. Cada escenario seleccionado se vuelve una actividad clickeable independiente en el curso.
+
+### Habilitar Deep Linking en el tool registrado
+
+En la misma configuracion del tool LTI (Manage tools > Edit) que registraste en la seccion 2, agrega en **Services > Tool settings**:
+
+- **Supports Deep Linking (Content-Item Message):** Yes
+- **Content selection URL:** dejalo vacio — Moodle usa la `target_link_uri` del tool registrado (`https://tu-dominio.com/lti/launch`); el branching de `message_type` lo hacemos del lado del tool.
+
+### Flujo del profesor
+
+1. En el curso, **Add an activity or resource > External tool > Select content**.
+2. Moodle abre el tool en modo Deep Linking (envia `message_type=LtiDeepLinkingRequest`).
+3. El tool persiste el state, redirige al picker en `/lti/deep-linking/select?state=<id>`.
+4. El profesor marca uno o varios escenarios (opcionalmente tambien el "menu general").
+5. Click en "Enviar a Moodle" → el tool firma un `LtiDeepLinkingResponse` JWT y postea de vuelta al `deep_link_return_url`.
+6. Moodle crea una actividad por cada escenario seleccionado. Cuando un alumno clickea una de esas actividades, Moodle envia el `custom.scenarioId` en el launch y el tool lo redirige directo a `/practice?scenario=<id>`.
+
+### State id como credencial
+
+El `state` en la URL del picker es la unica credencial. Es UUID generado server-side, valido 30 minutos, y se marca consumido al primer submit. Si el profesor abandona la sesion y vuelve mas tarde, tendra que reiniciar el flujo desde Moodle.
+
+### Variables custom propagadas al launch
+
+Cuando el alumno entra por una actividad deep-linkeada, el `id_token` del launch incluye:
+
+```json
+"https://purl.imsglobal.org/spec/lti/claim/custom": {
+  "scenarioId": "<uuid del escenario elegido por el profesor>"
+}
+```
+
+El tool lee ese claim en `/lti/launch` y lo agrega como `?scenario=<id>` al redirect al SPA. El `Practice.tsx` ya espera ese query param.
+
+### Troubleshooting
+
+- **Picker dice "Deep linking state not found"**: el state caduco (30 min) o el id de la URL esta corrupto. Reiniciar desde Moodle.
+- **Picker dice "already used"**: alguien ya envio la seleccion para ese state. Reiniciar.
+- **El JWT firmado de respuesta es rechazado por Moodle**: Moodle no esta encontrando la clave publica del tool en `/lti/jwks`. Confirmar que `Public key type = Keyset URL` y `Public keyset = https://tu-dominio.com/lti/jwks` en la config del tool en Moodle.
 
 ---
 

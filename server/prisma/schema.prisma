@@ -131,8 +131,9 @@ model LtiPlatform {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
 
-  sessions    LtiSession[]
-  courseSyncs LtiCourseSync[]
+  sessions          LtiSession[]
+  courseSyncs       LtiCourseSync[]
+  deepLinkingStates LtiDeepLinkingState[]
 
   @@index([issuerUrl])
   @@map("lti_platforms")
@@ -267,6 +268,33 @@ model LtiLaunchState {
 
   @@index([expiresAt])
   @@map("lti_launch_states")
+}
+
+// Deep Linking 1.3 — short-lived handoff between the launch (where Moodle
+// sent us a LtiDeepLinkingRequest with the return URL) and the picker UI
+// (where the teacher chooses which scenarios to embed). The picker reads
+// this row to know which scenarios to show, and POSTs the selection back
+// against the same id; the submit endpoint signs the LtiDeepLinkingResponse
+// JWT and returns an auto-submit form pointed at returnUrl. Single-use:
+// consumedAt is set on submit so the same picker URL cannot be replayed
+// to register another activity.
+model LtiDeepLinkingState {
+  id            String    @id @default(uuid())
+  platformId    String    @map("platform_id")
+  deploymentId  String    @map("deployment_id")
+  returnUrl     String    @map("return_url")
+  data          String?   // opaque "data" field from the request, echoed back per spec
+  ltiUserId     String    @map("lti_user_id")
+  contextId     String?   @map("context_id")
+  contextTitle  String?   @map("context_title")
+  expiresAt     DateTime  @map("expires_at")
+  consumedAt    DateTime? @map("consumed_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  platform LtiPlatform @relation(fields: [platformId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@map("lti_deep_linking_states")
 }
 
 // ============================================

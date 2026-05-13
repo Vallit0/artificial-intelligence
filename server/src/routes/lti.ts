@@ -1,8 +1,16 @@
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
+import { z } from 'zod';
 import prisma from '../db/index.js';
 import { generateAccessToken, generateRefreshToken } from '../services/auth.service.js';
 import { getPublicJwks } from '../services/toolKey.service.js';
+import {
+  isDeepLinkingRequest,
+  extractDeepLinkingSettings,
+  signDeepLinkingResponse,
+  autoSubmitForm,
+  SelectedScenarioItem,
+} from '../services/deepLinking.service.js';
 import config from '../config/index.js';
 import { getLogger } from '../utils/logger.js';
 
@@ -10,6 +18,7 @@ export const ltiRouter = Router();
 
 const APP_URL = config.appUrl;
 const LAUNCH_STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const DEEP_LINKING_STATE_TTL_MS = 30 * 60 * 1000; // 30 min — teacher needs time to pick
 
 // ============================================
 // Utility functions
@@ -239,6 +248,53 @@ ltiRouter.post('/launch', async (req: Request, res: Response) => {
       return;
     }
 
+    // Branch on message_type. LtiDeepLinkingRequest is the teacher-side flow
+    // where Moodle is asking us to render a content picker; we persist a
+    // short-lived state row and redirect to the picker UI instead of running
+    // the resource-link launch path.
+    if (isDeepLinkingRequest(claims)) {
+      const settings = extractDeepLinkingSettings(claims);
+      if (!settings) {
+        res.status(400).json({ error: 'Deep linking settings missing or malformed' });
+        return;
+      }
+
+      const deploymentId = claims['https://purl.imsglobal.org/spec/lti/claim/deployment_id'];
+      if (typeof deploymentId !== 'string') {
+        res.status(400).json({ error: 'deployment_id claim missing' });
+        return;
+      }
+
+      if (typeof claims.sub !== 'string' || claims.sub.length === 0) {
+        res.status(400).json({ error: 'sub claim missing in deep linking request' });
+        return;
+      }
+
+      const ctx = claims['https://purl.imsglobal.org/spec/lti/claim/context'];
+
+      const dlState = await prisma.ltiDeepLinkingState.create({
+        data: {
+          platformId: platform.id,
+          deploymentId,
+          returnUrl: settings.deep_link_return_url,
+          data: settings.data ?? null,
+          ltiUserId: claims.sub,
+          contextId: ctx?.id ?? null,
+          contextTitle: ctx?.title ?? null,
+          expiresAt: new Date(Date.now() + DEEP_LINKING_STATE_TTL_MS),
+        },
+      });
+
+      // Redirect to the SPA picker page. The state id is the only credential
+      // — short-lived (30 min) and single-use, so it's acceptable as a
+      // bearer for the picker flow.
+      const pickerUrl = new URL(APP_URL);
+      pickerUrl.pathname = '/lti/deep-linking/select';
+      pickerUrl.searchParams.set('state', dlState.id);
+      res.redirect(302, pickerUrl.toString());
+      return;
+    }
+
     // Extract user info
     const ltiUserId = claims.sub;
     const email = claims.email;
@@ -371,8 +427,20 @@ ltiRouter.post('/launch', async (req: Request, res: Response) => {
       data: { userId, token: refreshToken, expiresAt },
     });
 
-    // Redirect to app with tokens
+    // Redirect to app with tokens. If the resource link was deep-linked
+    // with a specific scenarioId in custom params, route directly to the
+    // practice page for that scenario; otherwise land on the menu.
+    const customClaim = claims['https://purl.imsglobal.org/spec/lti/claim/custom'];
+    const customScenarioId =
+      customClaim && typeof customClaim === 'object' && typeof customClaim.scenarioId === 'string'
+        ? customClaim.scenarioId
+        : null;
+
     const redirectUrl = new URL(APP_URL);
+    if (customScenarioId) {
+      redirectUrl.pathname = '/practice';
+      redirectUrl.searchParams.set('scenario', customScenarioId);
+    }
     redirectUrl.searchParams.set('access_token', accessToken);
     redirectUrl.searchParams.set('refresh_token', refreshToken);
 
@@ -420,5 +488,140 @@ ltiRouter.get('/jwks', async (_req: Request, res: Response) => {
   } catch (error) {
     getLogger({ component: 'lti', op: 'jwks' }).error({ err: error }, 'Failed to build JWKS');
     res.status(500).json({ error: 'Could not build JWKS' });
+  }
+});
+
+// ============================================
+// Deep Linking picker endpoints
+// ============================================
+// These two are consumed by the SPA picker rendered at /lti/deep-linking/select.
+// Auth model: the `state` id is generated server-side at launch, short-lived
+// (30 min), and single-use. Possession of it stands in for a session here —
+// the teacher arrived from Moodle and likely has no Señoriales account yet.
+
+// GET state + scenario list so the picker can render the form.
+ltiRouter.get('/deep-linking/state/:id', async (req: Request, res: Response) => {
+  try {
+    const state = await prisma.ltiDeepLinkingState.findUnique({
+      where: { id: req.params.id },
+      include: { platform: { select: { name: true } } },
+    });
+    if (!state) {
+      res.status(404).json({ error: 'Deep linking state not found' });
+      return;
+    }
+    if (state.consumedAt) {
+      res.status(410).json({ error: 'Deep linking state already used' });
+      return;
+    }
+    if (state.expiresAt < new Date()) {
+      res.status(410).json({ error: 'Deep linking state expired' });
+      return;
+    }
+
+    const scenarios = await prisma.scenario.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true, description: true, displayOrder: true },
+      orderBy: { displayOrder: 'asc' },
+    });
+
+    res.json({
+      stateId: state.id,
+      platformName: state.platform.name,
+      contextTitle: state.contextTitle,
+      scenarios,
+    });
+  } catch (error) {
+    getLogger({ component: 'lti', op: 'dl-state' }).error({ err: error }, 'Failed to fetch deep linking state');
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Picker submits selection. We sign a LtiDeepLinkingResponse JWT, mark the
+// state consumed, and return an HTML auto-submit form. Returning text/html
+// directly (instead of JSON) keeps the browser flow seamless — the picker
+// page replaces document.body with this HTML and the form submits to
+// Moodle automatically.
+const submitSchema = z.object({
+  stateId: z.string().uuid(),
+  // scenarioIds can be empty — that means "show the practice menu". Each
+  // ltiResourceLink rendered in Moodle becomes one clickable activity.
+  scenarioIds: z.array(z.string().uuid()).optional().default([]),
+  includeMenuLink: z.boolean().optional().default(false),
+});
+
+ltiRouter.post('/deep-linking/submit', async (req: Request, res: Response) => {
+  try {
+    const parsed = submitSchema.parse(req.body);
+
+    const state = await prisma.ltiDeepLinkingState.findUnique({
+      where: { id: parsed.stateId },
+      include: { platform: true },
+    });
+    if (!state) {
+      res.status(404).json({ error: 'Deep linking state not found' });
+      return;
+    }
+    if (state.consumedAt) {
+      res.status(410).json({ error: 'Deep linking state already used' });
+      return;
+    }
+    if (state.expiresAt < new Date()) {
+      res.status(410).json({ error: 'Deep linking state expired' });
+      return;
+    }
+
+    // Resolve scenarios. Skip any IDs that no longer exist or are inactive
+    // (teacher may have left the picker open for a while).
+    const scenarios = parsed.scenarioIds.length
+      ? await prisma.scenario.findMany({
+          where: { id: { in: parsed.scenarioIds }, isActive: true },
+          select: { id: true, name: true, description: true },
+        })
+      : [];
+
+    const launchUrl = `${APP_URL}/lti/launch`;
+
+    const items: SelectedScenarioItem[] = scenarios.map((s) => ({
+      scenarioId: s.id,
+      title: s.name,
+      description: s.description ?? undefined,
+      launchUrl,
+    }));
+
+    if (parsed.includeMenuLink || items.length === 0) {
+      // Always provide at least one link so Moodle has something to embed —
+      // if the teacher picked nothing, fall back to the practice menu so the
+      // activity isn't empty.
+      items.push({
+        scenarioId: null,
+        title: 'Práctica Señoriales',
+        description: 'Menú completo de prácticas y escenarios',
+        launchUrl,
+      });
+    }
+
+    const jwtToken = await signDeepLinkingResponse({
+      platformClientId: state.platform.clientId,
+      platformIssuerUrl: state.platform.issuerUrl,
+      deploymentId: state.deploymentId,
+      data: state.data,
+      items,
+    });
+
+    await prisma.ltiDeepLinkingState.update({
+      where: { id: state.id },
+      data: { consumedAt: new Date() },
+    });
+
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.send(autoSubmitForm(state.returnUrl, jwtToken));
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: 'Invalid request', issues: error.issues });
+      return;
+    }
+    getLogger({ component: 'lti', op: 'dl-submit' }).error({ err: error }, 'Failed to submit deep linking response');
+    res.status(500).json({ error: 'Internal server error' });
   }
 });

@@ -30,8 +30,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     if (accessToken && refreshToken) {
       api.setTokens(accessToken, refreshToken);
-      // Clean URL
-      window.history.replaceState({}, "", window.location.pathname);
+      // Strip ONLY the auth tokens; keep other query params (e.g.
+      // ?scenario=... set by an LTI deep-linked resource launch) so the
+      // landing page can still react to them.
+      params.delete("access_token");
+      params.delete("refresh_token");
+      const remaining = params.toString();
+      const cleanUrl = window.location.pathname + (remaining ? `?${remaining}` : "");
+      window.history.replaceState({}, "", cleanUrl);
     }
   }, []);
 

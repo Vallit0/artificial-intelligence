@@ -26,6 +26,7 @@ import { rootLogger, getLogger } from './utils/logger.js';
 import { requestContextMiddleware, httpLogger } from './middleware/requestContext.js';
 import { getReadinessReport } from './services/health.service.js';
 import { ensureToolKey } from './services/toolKey.service.js';
+import { startNrpsCron } from './services/ltiSyncCron.service.js';
 import { mountSwagger } from './swagger.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -149,9 +150,17 @@ if (config.isProduction) {
 
   app.use(express.static(staticPath));
   
-  // SPA fallback
+  // SPA fallback. /lti/* is mostly handled by the backend router (initiate,
+  // launch, info, jwks, deep-linking/state/:id, deep-linking/submit), but
+  // /lti/deep-linking/select is an SPA page — fall through to index.html
+  // for that one path. Anything else under /lti hits the API router above
+  // and never reaches this handler.
   app.get('*', (req, res) => {
-    if (!req.path.startsWith('/api') && !req.path.startsWith('/auth') && !req.path.startsWith('/lti')) {
+    const isApiPath =
+      req.path.startsWith('/api') ||
+      req.path.startsWith('/auth') ||
+      (req.path.startsWith('/lti') && req.path !== '/lti/deep-linking/select');
+    if (!isApiPath) {
       res.sendFile(path.join(staticPath, 'index.html'));
     }
   });
@@ -192,6 +201,10 @@ if (process.env.NODE_ENV !== 'test') {
   // fail later with a confusing error — fail fast at boot instead.
   ensureToolKey()
     .then(() => {
+      // NRPS roster sync. Opt-in via LTI_NRPS_CRON_ENABLED so dev/test never
+      // hit real Moodle instances without explicit configuration.
+      startNrpsCron();
+
       app.listen(config.port, () => {
         rootLogger.info(
           { port: config.port, environment: config.nodeEnv, appUrl: config.appUrl },
