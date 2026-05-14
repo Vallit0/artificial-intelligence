@@ -37,6 +37,16 @@ export interface UpdateSedeInput {
   isActive?: boolean;
 }
 
+// Cada llamada a useSedes mantenía su propio estado, así que crear una sede en
+// SedesPanel no actualizaba el dropdown del CreateUserModal hasta que alguien
+// disparara un refetch manual. Mantenemos un bus de mutaciones a nivel de
+// módulo: cada vez que alguien crea/edita/borra una sede, todas las instancias
+// re-piden el listado para mantenerse en sync.
+const sedeMutationListeners = new Set<() => void>();
+const notifySedesChanged = () => {
+  sedeMutationListeners.forEach((listener) => listener());
+};
+
 export const useSedes = (options?: { includeInactive?: boolean }) => {
   const [sedes, setSedes] = useState<Sede[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -61,7 +71,7 @@ export const useSedes = (options?: { includeInactive?: boolean }) => {
   const createSede = async (input: CreateSedeInput): Promise<Sede | null> => {
     try {
       const sede = await api.post<Sede>("/api/admin/sedes", input);
-      await fetchSedes();
+      notifySedesChanged();
       return sede;
     } catch (err) {
       console.error("Error creating sede:", err);
@@ -72,7 +82,7 @@ export const useSedes = (options?: { includeInactive?: boolean }) => {
   const updateSede = async (id: string, input: UpdateSedeInput): Promise<Sede | null> => {
     try {
       const sede = await api.patch<Sede>(`/api/admin/sedes/${id}`, input);
-      await fetchSedes();
+      notifySedesChanged();
       return sede;
     } catch (err) {
       console.error("Error updating sede:", err);
@@ -83,7 +93,7 @@ export const useSedes = (options?: { includeInactive?: boolean }) => {
   const deleteSede = async (id: string): Promise<boolean> => {
     try {
       await api.delete(`/api/admin/sedes/${id}`);
-      await fetchSedes();
+      notifySedesChanged();
       return true;
     } catch (err) {
       console.error("Error deleting sede:", err);
@@ -93,6 +103,10 @@ export const useSedes = (options?: { includeInactive?: boolean }) => {
 
   useEffect(() => {
     fetchSedes();
+    sedeMutationListeners.add(fetchSedes);
+    return () => {
+      sedeMutationListeners.delete(fetchSedes);
+    };
   }, [fetchSedes]);
 
   return { sedes, isLoading, error, refetch: fetchSedes, createSede, updateSede, deleteSede };

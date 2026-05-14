@@ -62,7 +62,7 @@ export default function CreateUserModal({
   onSuccess,
 }: CreateUserModalProps) {
   const { toast } = useToast();
-  const { sedes, isLoading: sedesLoading, refetch: refetchSedes } = useSedes();
+  const { sedes, isLoading: sedesLoading } = useSedes();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -82,15 +82,6 @@ export default function CreateUserModal({
       if (firstActive) setSedeId(firstActive.id);
     }
   }, [sedes, sedeId]);
-
-  // Refetch al abrir: el modal se monta junto con Admin y el cache de sedes es
-  // por instancia (no compartido). Si el admin crea una sede en la tab Sedes y
-  // luego abre este modal, hay que re-pedir el listado para verla.
-  useEffect(() => {
-    if (open) {
-      refetchSedes();
-    }
-  }, [open, refetchSedes]);
 
   const resetForm = () => {
     setEmail("");
