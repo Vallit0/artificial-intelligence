@@ -21,4 +21,19 @@ export async function resetDatabase(): Promise<void> {
   await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${tables} RESTART IDENTITY CASCADE;`);
 }
 
+/**
+ * Crea una sede de test idempotente. Casi todos los tests necesitan AL
+ * MENOS una sede activa porque signup/createUser exigen sede a nivel
+ * aplicación (aunque sedeId sea nullable a nivel DB para tolerar
+ * backfill). Devuelve el id+slug para que el test los use al hacer signup.
+ */
+export async function ensureTestSede(slug = 'test-sede', name = 'Test Sede'): Promise<{ id: string; slug: string; name: string }> {
+  const sede = await prisma.sede.upsert({
+    where: { slug },
+    create: { slug, name },
+    update: {},
+  });
+  return { id: sede.id, slug: sede.slug, name: sede.name };
+}
+
 export { prisma };

@@ -12,8 +12,11 @@ import { handleError } from '../utils/errors.js';
 // ============================================
 export async function signup(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { email, password, firstName, lastName, phoneNumber } = req.body;
-    const result = await authService.signup(email, password, firstName, lastName, phoneNumber);
+    const { email, password, firstName, lastName, phoneNumber, sede, sedeId } = req.body;
+    // Aceptamos `sede` (UUID o slug) o `sedeId` (UUID) — la UI puede mandar
+    // cualquiera de los dos, ambas formas resuelven contra Sede en el servicio.
+    const sedeRef = sede ?? sedeId;
+    const result = await authService.signup(email, password, sedeRef, firstName, lastName, phoneNumber);
     
     res.status(201).json({
       user: result.user,

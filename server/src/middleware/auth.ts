@@ -6,7 +6,6 @@ import { Response, NextFunction } from 'express';
 import { verifyToken, getUserById } from '../services/auth.service.js';
 import { AuthRequest, AuthUser, AppRole } from '../types/index.js';
 import { UnauthorizedError, ForbiddenError, handleError } from '../utils/errors.js';
-import prisma from '../db/index.js';
 
 // ============================================
 // JWT Authentication Middleware
@@ -56,14 +55,8 @@ export function requireRole(...roles: AppRole[]) {
         throw new UnauthorizedError('Not authenticated');
       }
 
-      const userRoles = await prisma.userRole.findMany({
-        where: { userId: req.user.id },
-        select: { role: true },
-      });
-
-      const roleValues = userRoles.map(r => r.role as AppRole);
-      const hasRequiredRole = roles.some(role => roleValues.includes(role));
-
+      // req.user.roles ya viene poblado desde authMiddleware (vía loadAuthUser).
+      const hasRequiredRole = roles.some((role) => req.user!.roles.includes(role));
       if (!hasRequiredRole) {
         throw new ForbiddenError('Insufficient permissions');
       }

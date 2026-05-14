@@ -19,6 +19,14 @@ export interface User {
   updatedAt: Date;
 }
 
+// Permisos granulares para usuarios con rol `coach`. Vienen de la tabla
+// coach_permissions. Si el user no tiene rol coach o no hay fila, estos
+// flags se consideran `false`.
+export interface CoachPermissionFlags {
+  canCreateCoaches: boolean;
+  canEditPrompts: boolean;
+}
+
 export interface AuthUser {
   id: string;
   email: string;
@@ -26,13 +34,23 @@ export interface AuthUser {
   lastName?: string;
   examenFinalEnabled?: boolean;
   level2Unlocked?: boolean;
+  // sedeId puede ser null durante la ventana del backfill (usuarios viejos
+  // que aún no fueron asignados). Cualquier endpoint sede-scoped debe
+  // rechazar requests con sedeId null vía `requireSede(req)`.
+  sedeId: string | null;
+  // Roles efectivos resueltos en el middleware de auth, para que los
+  // controllers no tengan que volver a consultar `user_roles`.
+  roles: AppRole[];
+  // Sólo presente si el user tiene rol coach. Cualquier check de permiso
+  // debe usar `coachPermissions?.canX ?? false`.
+  coachPermissions?: CoachPermissionFlags;
 }
 
 export interface AuthRequest extends Request {
   user?: AuthUser;
 }
 
-export type AppRole = 'admin' | 'instructor' | 'learner';
+export type AppRole = 'admin' | 'instructor' | 'learner' | 'coach';
 export type LTIRole = 'instructor' | 'learner' | 'admin' | 'content_developer';
 
 // ============================================

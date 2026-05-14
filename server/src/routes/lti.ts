@@ -354,12 +354,43 @@ ltiRouter.post('/launch', async (req: Request, res: Response) => {
       let user = await prisma.user.findUnique({ where: { email } });
 
       if (!user) {
+        // Resolver sede al hacer JIT-provisioning desde el launch.
+        // Preferimos la sede registrada en LtiCourseSync (admin la asignó
+        // explícitamente al curso); fallback: primera sede activa.
+        let sedeIdForNewUser: string | null = null;
+        if (context?.id) {
+          const cs = await prisma.ltiCourseSync.findUnique({
+            where: { platformId_contextId: { platformId: platform.id, contextId: context.id } },
+            select: { defaultSedeId: true },
+          });
+          if (cs?.defaultSedeId) {
+            const sede = await prisma.sede.findFirst({
+              where: { id: cs.defaultSedeId, isActive: true },
+              select: { id: true },
+            });
+            sedeIdForNewUser = sede?.id ?? null;
+          }
+        }
+        if (!sedeIdForNewUser) {
+          const fallback = await prisma.sede.findFirst({
+            where: { isActive: true },
+            orderBy: { createdAt: 'asc' },
+            select: { id: true },
+          });
+          sedeIdForNewUser = fallback?.id ?? null;
+        }
+        if (!sedeIdForNewUser) {
+          res.status(503).json({ error: 'No hay sede configurada — contactá al administrador' });
+          return;
+        }
+
         user = await prisma.user.create({
           data: {
             email,
             firstName: name?.split(' ')[0] || null,
             lastName: name?.split(' ').slice(1).join(' ') || null,
             emailVerified: true,
+            sedeId: sedeIdForNewUser,
             roles: { create: { role: 'learner' } },
           },
         });
@@ -415,9 +446,19 @@ ltiRouter.post('/launch', async (req: Request, res: Response) => {
     }
 
     // Generate tokens
-    const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    const user = await prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      include: { roles: { select: { role: true } } },
+    });
 
-    const authUser = { id: user.id, email: user.email, firstName: user.firstName || undefined, lastName: user.lastName || undefined };
+    const authUser = {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName || undefined,
+      lastName: user.lastName || undefined,
+      sedeId: user.sedeId,
+      roles: user.roles.map((r) => r.role) as any,
+    };
     const accessToken = generateAccessToken(authUser);
     const refreshToken = generateRefreshToken(authUser);
 

@@ -104,6 +104,26 @@ async function resolveMatch(member: RosterMember): Promise<MatchResolution> {
   return { kind: 'ambiguous', candidateUserIds: matches.map((m) => m.id) };
 }
 
+// Resuelve la sede a asignar a usuarios auto-creados por NRPS. Prefiere
+// LtiCourseSync.defaultSedeId si está seteado; fallback a la primera sede
+// activa. Si no hay ninguna sede activa (caso degenerado pre-backfill),
+// devolvemos null y el caller hace skip.
+async function resolveDefaultSedeId(courseSync: { defaultSedeId: string | null }): Promise<string | null> {
+  if (courseSync.defaultSedeId) {
+    const sede = await prisma.sede.findFirst({
+      where: { id: courseSync.defaultSedeId, isActive: true },
+      select: { id: true },
+    });
+    if (sede) return sede.id;
+  }
+  const fallback = await prisma.sede.findFirst({
+    where: { isActive: true },
+    orderBy: { createdAt: 'asc' },
+    select: { id: true },
+  });
+  return fallback?.id ?? null;
+}
+
 // Apply the resolution: upsert LtiSession (matched / created paths) or
 // LtiPendingMatch (ambiguous). Idempotent for repeat syncs.
 async function applyResolution(
@@ -115,6 +135,7 @@ async function applyResolution(
   contextTitle: string | null,
   lineitemUrl: string | null,
   membershipsUrl: string,
+  defaultSedeId: string | null,
 ): Promise<'matched' | 'created' | 'pending' | 'skipped'> {
   if (resolution.kind === 'ambiguous') {
     await prisma.ltiPendingMatch.upsert({
@@ -149,6 +170,16 @@ async function applyResolution(
     // Without one, we'd have no stable key to upsert against on future
     // syncs and the user couldn't ever sign in via the web link.
     if (!member.email) return 'skipped';
+    // Tampoco creamos si no hay sede a la cual asignar — un user sin sede
+    // queda bloqueado para todos los endpoints sede-scoped, mejor saltarlo
+    // y dejar que el admin registre la sede primero.
+    if (!defaultSedeId) {
+      log.warn(
+        { courseSyncId, ltiUserId: member.ltiUserId },
+        'cannot auto-create LTI user — no sede asignable',
+      );
+      return 'skipped';
+    }
 
     const created = await prisma.user.create({
       data: {
@@ -156,6 +187,7 @@ async function applyResolution(
         firstName: member.givenName ?? fullNameOf(member).split(' ')[0] ?? null,
         lastName: member.familyName ?? fullNameOf(member).split(' ').slice(1).join(' ') ?? null,
         emailVerified: true,
+        sedeId: defaultSedeId,
         roles: { create: { role: 'learner' } },
       },
       select: { id: true },
@@ -236,6 +268,7 @@ export async function syncCourse(courseSyncId: string): Promise<SyncCourseResult
   }
 
   result.membersFetched = fetched.members.length;
+  const defaultSedeId = await resolveDefaultSedeId(course);
 
   for (const member of fetched.members) {
     try {
@@ -249,6 +282,7 @@ export async function syncCourse(courseSyncId: string): Promise<SyncCourseResult
         course.contextTitle,
         course.lineitemUrl,
         course.membershipsUrl,
+        defaultSedeId,
       );
       result[outcome] += 1;
     } catch (err) {

@@ -203,19 +203,32 @@ export async function getTranscript(sessionId: string, userId: string) {
   };
 }
 
-export async function getTranscriptAdmin(sessionId: string) {
+// Variante admin: usada desde /api/admin/sessions/:id/transcript. A diferencia
+// de getTranscript (que valida `userId` del dueño), acá el caller es admin o
+// coach inspeccionando sesiones ajenas. Aplica filtro sede-aware: coach sólo
+// ve sesiones de users de su misma sede.
+export async function getTranscriptAdmin(sessionId: string, caller: { id: string; sedeId: string | null; roles: string[] }) {
   const session = await prisma.practiceSession.findFirst({
     where: { id: sessionId },
     include: {
       evaluationBreakdown: true,
       sessionSummary: true,
       scenario: { select: { name: true } },
-      user: { select: { firstName: true, lastName: true, email: true } },
+      user: { select: { firstName: true, lastName: true, email: true, sedeId: true } },
     },
   });
   if (!session) {
     throw new NotFoundError('Session not found');
   }
+
+  const isGlobalAdmin = caller.roles.includes('admin');
+  if (!isGlobalAdmin) {
+    if (!session.user.sedeId || session.user.sedeId !== caller.sedeId) {
+      // 404 en vez de 403 para no filtrar existencia entre sedes.
+      throw new NotFoundError('Session not found');
+    }
+  }
+
   return {
     transcript: session.transcript as any[] | null,
     score: session.score,
@@ -226,7 +239,7 @@ export async function getTranscriptAdmin(sessionId: string) {
     scenarioName: (session.scenario as any)?.name || null,
     breakdown: session.evaluationBreakdown,
     summary: session.sessionSummary,
-    user: session.user,
+    user: { firstName: session.user.firstName, lastName: session.user.lastName, email: session.user.email },
   };
 }
 

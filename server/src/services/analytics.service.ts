@@ -3,6 +3,8 @@
 // ============================================
 
 import prisma from '../db/index.js';
+import { AuthUser } from '../types/index.js';
+import { getSedeScope } from '../middleware/sedeScope.js';
 
 // ============================================
 // User Analytics
@@ -110,10 +112,17 @@ export async function getCompetencyHistory(userId: string) {
 // Admin Group Analytics
 // ============================================
 
-export async function getGroupAnalytics() {
+export async function getGroupAnalytics(caller: AuthUser) {
+  const scope = getSedeScope(caller);
+  // El filtro por sede para los aggregates de evaluationBreakdown se hace
+  // vía la relación session → user → sede.
+  const breakdownWhere = scope.scope === 'sede'
+    ? { session: { user: { sedeId: scope.sedeId } } }
+    : {};
+
   const [overallBreakdown, studentStats, activityTrend] = await Promise.all([
-    // Overall average breakdown
     prisma.evaluationBreakdown.aggregate({
+      where: breakdownWhere,
       _avg: {
         apertura: true,
         escuchaActiva: true,
@@ -122,12 +131,8 @@ export async function getGroupAnalytics() {
         cierre: true,
       },
     }),
-
-    // Per-student averages
-    getPerStudentAverages(),
-
-    // Activity trend (sessions per day, last 30 days)
-    getActivityTrend(),
+    getPerStudentAverages(caller),
+    getActivityTrend(caller),
   ]);
 
   return {
@@ -137,9 +142,11 @@ export async function getGroupAnalytics() {
   };
 }
 
-async function getPerStudentAverages() {
+async function getPerStudentAverages(caller: AuthUser) {
+  const scope = getSedeScope(caller);
   const students = await prisma.user.findMany({
     where: {
+      ...(scope.scope === 'sede' ? { sedeId: scope.sedeId } : {}),
       roles: { some: { role: 'learner' } },
       practiceSessions: { some: { score: { not: null } } },
     },
@@ -185,11 +192,15 @@ async function getPerStudentAverages() {
   }).sort((a, b) => b.avgScore - a.avgScore);
 }
 
-async function getActivityTrend() {
+async function getActivityTrend(caller: AuthUser) {
+  const scope = getSedeScope(caller);
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
   const sessions = await prisma.practiceSession.findMany({
-    where: { createdAt: { gte: thirtyDaysAgo } },
+    where: {
+      createdAt: { gte: thirtyDaysAgo },
+      ...(scope.scope === 'sede' ? { user: { sedeId: scope.sedeId } } : {}),
+    },
     select: { createdAt: true },
     orderBy: { createdAt: 'asc' },
   });

@@ -4,15 +4,24 @@
 
 import bcrypt from 'bcryptjs';
 import prisma from '../db/index.js';
-import { BadRequestError, ConflictError, NotFoundError } from '../utils/errors.js';
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '../utils/errors.js';
+import { AuthUser, AppRole } from '../types/index.js';
+import { canCreateCoachIn, isGlobalAdmin, getSedeScope } from '../middleware/sedeScope.js';
+
+// Roles que se pueden crear desde el panel admin. `admin` se trata aparte
+// para retrocompatibilidad con el flag `isAdmin` legacy.
+const CREATABLE_ROLES: AppRole[] = ['learner', 'coach', 'instructor'];
 
 interface CreateUserInput {
   email: string;
   password: string;
+  sedeId?: string;            // UUID o slug — el servicio lo resuelve
+  sede?: string;              // alias para sedeId, conveniente desde la UI
+  role?: AppRole;             // 'learner' | 'coach' | 'instructor' (default 'learner')
   firstName?: string;
   lastName?: string;
   phoneNumber?: string;
-  isAdmin?: boolean;
+  isAdmin?: boolean;          // legacy — equivale a role=admin
 }
 
 interface StudentWithStats {
@@ -37,7 +46,7 @@ interface StudentWithStats {
 // User Management
 // ============================================
 
-export async function createUser(input: CreateUserInput) {
+export async function createUser(input: CreateUserInput, caller: AuthUser) {
   const email = input.email.trim().toLowerCase();
 
   if (!isValidEmail(email)) {
@@ -45,6 +54,45 @@ export async function createUser(input: CreateUserInput) {
   }
   if (!input.password || input.password.length < 12) {
     throw new BadRequestError('La contraseña debe tener al menos 12 caracteres');
+  }
+
+  // Resolver sede (UUID o slug). Obligatorio para todo user nuevo.
+  const sedeRef = input.sedeId ?? input.sede;
+  if (!sedeRef) {
+    throw new BadRequestError('sedeId es requerido');
+  }
+  const sede = await prisma.sede.findFirst({
+    where: { isActive: true, OR: [{ id: sedeRef }, { slug: sedeRef }] },
+    select: { id: true },
+  });
+  if (!sede) {
+    throw new BadRequestError('Sede inválida o inactiva');
+  }
+
+  // Resolver rol target. `isAdmin` legacy se mapea a `admin`.
+  let targetRole: AppRole;
+  if (input.isAdmin) {
+    targetRole = 'admin';
+  } else if (input.role) {
+    if (!CREATABLE_ROLES.includes(input.role) && input.role !== 'admin') {
+      throw new BadRequestError(`Rol inválido: ${input.role}`);
+    }
+    targetRole = input.role;
+  } else {
+    targetRole = 'learner';
+  }
+
+  // Autorización: quién puede crear qué.
+  //  - admin global: cualquier rol en cualquier sede
+  //  - coach con canCreateCoaches: sólo rol coach en su propia sede
+  //  - resto: prohibido
+  if (!isGlobalAdmin(caller)) {
+    if (targetRole !== 'coach') {
+      throw new ForbiddenError('Sólo admin global puede crear este rol');
+    }
+    if (!canCreateCoachIn(caller, sede.id)) {
+      throw new ForbiddenError('No tenés permiso para crear coaches en esta sede');
+    }
   }
 
   const existing = await prisma.user.findUnique({ where: { email } });
@@ -62,23 +110,46 @@ export async function createUser(input: CreateUserInput) {
       lastName: input.lastName?.trim() || null,
       phoneNumber: input.phoneNumber?.trim() || null,
       emailVerified: true,
+      sedeId: sede.id,
       roles: {
-        create: { role: input.isAdmin ? 'admin' : 'learner' },
+        create: { role: targetRole },
       },
     },
   });
 
-  // If admin, also add learner role
-  if (input.isAdmin) {
+  // Convención existente: admin también obtiene learner para que vea su propia
+  // vista de práctica. La mantenemos por retrocompat.
+  if (targetRole === 'admin') {
     await prisma.userRole.create({
       data: { userId: user.id, role: 'learner' },
     }).catch(() => {}); // ignore if already exists
   }
 
-  return { id: user.id, email: user.email };
+  // Si el rol es coach, creamos la fila de permisos en false por defecto.
+  // Un admin la editará desde el panel para otorgar canCreateCoaches /
+  // canEditPrompts según corresponda.
+  if (targetRole === 'coach') {
+    await prisma.coachPermission.create({
+      data: {
+        userId: user.id,
+        canCreateCoaches: false,
+        canEditPrompts: false,
+        grantedBy: caller.id,
+      },
+    });
+  }
+
+  return { id: user.id, email: user.email, role: targetRole, sedeId: sede.id };
 }
 
-export async function bulkCreateUsers(users: CreateUserInput[]) {
+// Bulk create — el caller pasa un sedeId común a todo el lote (la UI hace
+// una creación masiva por sede), o cada item puede traer su propio sedeId.
+// Sólo admin global puede hacer bulk; coaches no porque por diseño la UI
+// de coaches crea uno por vez con permisos canCreateCoaches.
+export async function bulkCreateUsers(users: CreateUserInput[], caller: AuthUser, defaultSedeRef?: string) {
+  if (!isGlobalAdmin(caller)) {
+    throw new ForbiddenError('Sólo admin global puede hacer creación masiva');
+  }
   if (!users || !Array.isArray(users) || users.length === 0) {
     throw new BadRequestError('Se requiere un array de usuarios');
   }
@@ -86,10 +157,36 @@ export async function bulkCreateUsers(users: CreateUserInput[]) {
     throw new BadRequestError('Máximo 100 usuarios por lote');
   }
 
+  // Pre-resolver todas las sedes referenciadas para no consultarlas 1 por
+  // user. Construimos un mapa ref→id válido (sólo sedes activas).
+  const refsNeeded = new Set<string>();
+  if (defaultSedeRef) refsNeeded.add(defaultSedeRef);
+  for (const u of users) {
+    const ref = u.sedeId ?? u.sede;
+    if (ref) refsNeeded.add(ref);
+  }
+  const sedes = refsNeeded.size
+    ? await prisma.sede.findMany({
+        where: {
+          isActive: true,
+          OR: [
+            { id: { in: Array.from(refsNeeded) } },
+            { slug: { in: Array.from(refsNeeded) } },
+          ],
+        },
+        select: { id: true, slug: true },
+      })
+    : [];
+  const sedeIdByRef = new Map<string, string>();
+  for (const s of sedes) {
+    sedeIdByRef.set(s.id, s.id);
+    sedeIdByRef.set(s.slug, s.id);
+  }
+
   const existingUsers = await prisma.user.findMany({
     select: { email: true },
   });
-  const existingEmails = new Set(existingUsers.map(u => u.email.toLowerCase()));
+  const existingEmails = new Set(existingUsers.map((u) => u.email.toLowerCase()));
 
   const results: { email: string; success: boolean; error?: string }[] = [];
 
@@ -110,6 +207,17 @@ export async function bulkCreateUsers(users: CreateUserInput[]) {
         continue;
       }
 
+      const ref = userData.sedeId ?? userData.sede ?? defaultSedeRef;
+      if (!ref) {
+        results.push({ email, success: false, error: 'sedeId requerido' });
+        continue;
+      }
+      const resolvedSedeId = sedeIdByRef.get(ref);
+      if (!resolvedSedeId) {
+        results.push({ email, success: false, error: 'Sede inválida o inactiva' });
+        continue;
+      }
+
       const passwordHash = await bcrypt.hash(userData.password, 12);
       await prisma.user.create({
         data: {
@@ -118,6 +226,7 @@ export async function bulkCreateUsers(users: CreateUserInput[]) {
           firstName: userData.firstName?.trim() || null,
           lastName: userData.lastName?.trim() || null,
           emailVerified: true,
+          sedeId: resolvedSedeId,
           roles: { create: { role: 'learner' } },
         },
       });
@@ -130,8 +239,8 @@ export async function bulkCreateUsers(users: CreateUserInput[]) {
     }
   }
 
-  const successCount = results.filter(r => r.success).length;
-  const failCount = results.filter(r => !r.success).length;
+  const successCount = results.filter((r) => r.success).length;
+  const failCount = results.filter((r) => !r.success).length;
 
   return {
     summary: { total: users.length, created: successCount, failed: failCount },
@@ -153,15 +262,33 @@ export async function deleteUser(userId: string, adminUserId: string) {
   return { success: true };
 }
 
-export async function updateUserPassword(userId: string, newPassword: string) {
+// Verifica que el caller tenga acceso a `userId` según su scope. Para admin
+// global pasa siempre; para coach valida que el target sea de su misma
+// sede. Pasa filterByRoles para que el listado de "estudiantes" del coach
+// no incluya otros coaches/instructores de su sede por accidente.
+async function loadUserScopedOrThrow(userId: string, caller: AuthUser): Promise<{ id: string; sedeId: string | null }> {
+  const target = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, sedeId: true },
+  });
+  if (!target) {
+    throw new NotFoundError('Usuario no encontrado');
+  }
+  if (!isGlobalAdmin(caller)) {
+    if (!target.sedeId || target.sedeId !== caller.sedeId) {
+      // 404 en lugar de 403 para no filtrar existencia entre sedes.
+      throw new NotFoundError('Usuario no encontrado');
+    }
+  }
+  return target;
+}
+
+export async function updateUserPassword(userId: string, newPassword: string, caller: AuthUser) {
   if (!newPassword || newPassword.length < 6) {
     throw new BadRequestError('La contraseña debe tener al menos 6 caracteres');
   }
 
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) {
-    throw new NotFoundError('Usuario no encontrado');
-  }
+  await loadUserScopedOrThrow(userId, caller);
 
   const passwordHash = await bcrypt.hash(newPassword, 12);
   await prisma.user.update({
@@ -176,8 +303,20 @@ export async function updateUserPassword(userId: string, newPassword: string) {
 // Student Management
 // ============================================
 
-export async function getAllStudents(): Promise<StudentWithStats[]> {
+export async function getAllStudents(caller: AuthUser): Promise<StudentWithStats[]> {
+  // Coach/instructor ven sólo learners de su sede. Admin global ve todos
+  // los learners (o todos los users si pasa override — no implementado acá
+  // todavía; el override por ?sedeId= se aplicaría en el route).
+  const scope = getSedeScope(caller);
+  const sedeFilter = scope.scope === 'sede' ? { sedeId: scope.sedeId } : {};
+
   const users = await prisma.user.findMany({
+    where: {
+      ...sedeFilter,
+      // Listado de "estudiantes" — sólo learners. Si más adelante se quiere
+      // un panel separado de "coaches" del admin, agregamos otra función.
+      roles: { some: { role: 'learner' } },
+    },
     include: {
       practiceSessions: {
         select: { durationSeconds: true, score: true, scenarioId: true },
@@ -218,11 +357,8 @@ export async function getAllStudents(): Promise<StudentWithStats[]> {
   });
 }
 
-export async function toggleExamenFinal(userId: string, enabled: boolean) {
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) {
-    throw new NotFoundError('Usuario no encontrado');
-  }
+export async function toggleExamenFinal(userId: string, enabled: boolean, caller: AuthUser) {
+  await loadUserScopedOrThrow(userId, caller);
 
   return prisma.user.update({
     where: { id: userId },
@@ -231,18 +367,27 @@ export async function toggleExamenFinal(userId: string, enabled: boolean) {
   });
 }
 
-export async function bulkToggleExamenFinal(userIds: string[], enabled: boolean) {
+export async function bulkToggleExamenFinal(userIds: string[], enabled: boolean, caller: AuthUser) {
+  // Filtramos a sólo IDs dentro del scope del caller. Si un ID del lote
+  // pertenece a otra sede, se ignora silenciosamente (count será menor).
+  const scope = getSedeScope(caller);
+  const where: any = { id: { in: userIds } };
+  if (scope.scope === 'sede') {
+    where.sedeId = scope.sedeId;
+  }
+
   const result = await prisma.user.updateMany({
-    where: { id: { in: userIds } },
+    where,
     data: { examenFinalEnabled: enabled },
   });
   return { count: result.count, enabled };
 }
 
-export async function upsertGrade(userId: string, gradedBy: string, finalGrade: number, notes?: string) {
+export async function upsertGrade(userId: string, gradedBy: string, finalGrade: number, caller: AuthUser, notes?: string) {
   if (finalGrade < 0 || finalGrade > 100) {
     throw new BadRequestError('La calificación debe estar entre 0 y 100');
   }
+  await loadUserScopedOrThrow(userId, caller);
 
   return prisma.studentGrade.upsert({
     where: { userId },
@@ -251,11 +396,8 @@ export async function upsertGrade(userId: string, gradedBy: string, finalGrade: 
   });
 }
 
-export async function updateUserName(userId: string, firstName?: string, lastName?: string) {
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) {
-    throw new NotFoundError('Usuario no encontrado');
-  }
+export async function updateUserName(userId: string, caller: AuthUser, firstName?: string, lastName?: string) {
+  await loadUserScopedOrThrow(userId, caller);
 
   return prisma.user.update({
     where: { id: userId },

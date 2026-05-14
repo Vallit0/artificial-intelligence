@@ -1,9 +1,15 @@
 // ============================================
 // Citas (Appointments) Service
 // ============================================
+//
+// Las citas son sede-scoped: una cita pertenece a la sede del asesor
+// asignado. El listado, las mutaciones y los lookups (directores, users)
+// se restringen a la sede del caller — sólo admin global ve todas las sedes.
 
 import prisma from '../db/index.js';
-import { BadRequestError, NotFoundError } from '../utils/errors.js';
+import { AuthUser } from '../types/index.js';
+import { BadRequestError, ForbiddenError, NotFoundError } from '../utils/errors.js';
+import { getSedeScope } from '../middleware/sedeScope.js';
 
 export interface CreateCitaInput {
   director: string;
@@ -34,8 +40,11 @@ export interface CitaFilters {
 export async function getCitasByRange(
   startDate: string,
   endDate: string,
-  filters?: CitaFilters
+  caller: AuthUser,
+  filters?: CitaFilters,
 ) {
+  const scope = getSedeScope(caller);
+
   const where: any = {
     fecha: {
       gte: new Date(startDate),
@@ -48,6 +57,11 @@ export async function getCitasByRange(
   }
   if (filters?.prioridad) {
     where.prioridad = filters.prioridad;
+  }
+  // Filtro sede-aware: las citas se filtran por la sede del asesor.
+  // Para admin global no se aplica filtro (ve todo).
+  if (scope.scope === 'sede') {
+    where.asesor = { sedeId: scope.sedeId };
   }
 
   return prisma.cita.findMany({
@@ -63,9 +77,22 @@ export async function getCitasByRange(
 // ============================================
 // Create cita
 // ============================================
-export async function createCita(data: CreateCitaInput, createdBy: string) {
+export async function createCita(data: CreateCitaInput, createdBy: string, caller: AuthUser) {
   if (!data.director || !data.asesorId || !data.cliente || !data.fecha || !data.horaInicio) {
     throw new BadRequestError('Campos requeridos: director, asesorId, cliente, fecha, horaInicio');
+  }
+
+  // El asesor asignado debe ser de la misma sede del caller (excepto admin global).
+  const scope = getSedeScope(caller);
+  const asesor = await prisma.user.findUnique({
+    where: { id: data.asesorId },
+    select: { id: true, sedeId: true },
+  });
+  if (!asesor) {
+    throw new BadRequestError('Asesor no encontrado');
+  }
+  if (scope.scope === 'sede' && asesor.sedeId !== scope.sedeId) {
+    throw new ForbiddenError('No podés crear citas para asesores de otra sede');
   }
 
   return prisma.cita.create({
@@ -95,10 +122,33 @@ export async function createCita(data: CreateCitaInput, createdBy: string) {
 // ============================================
 // Update cita
 // ============================================
-export async function updateCita(id: string, data: UpdateCitaInput) {
-  const existing = await prisma.cita.findUnique({ where: { id } });
+export async function updateCita(id: string, data: UpdateCitaInput, caller: AuthUser) {
+  const scope = getSedeScope(caller);
+
+  const existing = await prisma.cita.findUnique({
+    where: { id },
+    include: { asesor: { select: { sedeId: true } } },
+  });
   if (!existing) {
     throw new NotFoundError('Cita no encontrada');
+  }
+  if (scope.scope === 'sede' && existing.asesor.sedeId !== scope.sedeId) {
+    // 404 vs 403 — no filtrar existencia.
+    throw new NotFoundError('Cita no encontrada');
+  }
+
+  // Si se cambia el asesor, validar que el nuevo también sea de la misma sede.
+  if (data.asesorId && data.asesorId !== existing.asesorId) {
+    const nuevoAsesor = await prisma.user.findUnique({
+      where: { id: data.asesorId },
+      select: { sedeId: true },
+    });
+    if (!nuevoAsesor) {
+      throw new BadRequestError('Asesor no encontrado');
+    }
+    if (scope.scope === 'sede' && nuevoAsesor.sedeId !== scope.sedeId) {
+      throw new ForbiddenError('No podés asignar la cita a un asesor de otra sede');
+    }
   }
 
   const updateData: any = { ...data };
@@ -119,20 +169,34 @@ export async function updateCita(id: string, data: UpdateCitaInput) {
 // ============================================
 // Delete cita
 // ============================================
-export async function deleteCita(id: string) {
-  const existing = await prisma.cita.findUnique({ where: { id } });
+export async function deleteCita(id: string, caller: AuthUser) {
+  const scope = getSedeScope(caller);
+  const existing = await prisma.cita.findUnique({
+    where: { id },
+    include: { asesor: { select: { sedeId: true } } },
+  });
   if (!existing) {
     throw new NotFoundError('Cita no encontrada');
   }
-
+  if (scope.scope === 'sede' && existing.asesor.sedeId !== scope.sedeId) {
+    throw new NotFoundError('Cita no encontrada');
+  }
   return prisma.cita.delete({ where: { id } });
 }
 
 // ============================================
-// Get distinct directors
+// Get distinct directors (filtered by sede)
 // ============================================
-export async function getDirectors() {
+export async function getDirectors(caller: AuthUser) {
+  const scope = getSedeScope(caller);
+
+  const where: any = {};
+  if (scope.scope === 'sede') {
+    where.asesor = { sedeId: scope.sedeId };
+  }
+
   const result = await prisma.cita.findMany({
+    where,
     select: { director: true },
     distinct: ['director'],
     orderBy: { director: 'asc' },
@@ -141,10 +205,18 @@ export async function getDirectors() {
 }
 
 // ============================================
-// Get all users (for asesor selection)
+// Get all users (for asesor selection) — filtered by sede
 // ============================================
-export async function getUsers() {
+export async function getUsers(caller: AuthUser) {
+  const scope = getSedeScope(caller);
+
+  const where: any = {};
+  if (scope.scope === 'sede') {
+    where.sedeId = scope.sedeId;
+  }
+
   return prisma.user.findMany({
+    where,
     select: { id: true, email: true, firstName: true, lastName: true },
     orderBy: { firstName: 'asc' },
   });

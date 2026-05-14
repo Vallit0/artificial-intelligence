@@ -5,9 +5,12 @@
 import { Router, Response, NextFunction, raw } from 'express';
 import { z } from 'zod';
 import { authMiddleware, requireRole } from '../middleware/auth.js';
+import { requireGlobalAdmin, canEditPrompts } from '../middleware/sedeScope.js';
 import { AuthRequest } from '../types/index.js';
-import { handleError, BadRequestError } from '../utils/errors.js';
+import { handleError, BadRequestError, ForbiddenError } from '../utils/errors.js';
 import * as adminService from '../services/admin.service.js';
+import * as sedesService from '../services/sedes.service.js';
+import * as coachesService from '../services/coaches.service.js';
 import * as agentConfigService from '../services/agentConfig.service.js';
 import * as prospectingScenariosService from '../services/prospectingScenarios.service.js';
 import * as sessionsService from '../services/sessions.service.js';
@@ -29,9 +32,13 @@ export const adminRouter = Router();
  *     description: Todas las rutas bajo /api/admin requieren rol admin (bearer token + role admin).
  */
 
-// All admin routes require authentication + admin role
+// Todas las rutas bajo /api/admin requieren autenticación. Algunas son
+// global-admin only (ver requireGlobalAdmin más abajo); otras (e.g. las de
+// estudiantes/sesiones) ahora también admiten coach, con filtros sede-aware
+// aplicados en el service. La restricción admin-only general se quita acá
+// y se aplica endpoint por endpoint según el caso.
 adminRouter.use(authMiddleware);
-adminRouter.use(requireRole('admin'));
+adminRouter.use(requireRole('admin', 'coach'));
 
 /**
  * @openapi
@@ -45,7 +52,7 @@ adminRouter.use(requireRole('admin'));
  */
 adminRouter.get('/students', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const students = await adminService.getAllStudents();
+    const students = await adminService.getAllStudents(req.user!);
     res.json(students);
   } catch (error) {
     const appError = handleError(error);
@@ -58,7 +65,7 @@ adminRouter.get('/students', async (req: AuthRequest, res: Response, next: NextF
 // ============================================
 adminRouter.post('/users', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const result = await adminService.createUser(req.body);
+    const result = await adminService.createUser(req.body, req.user!);
     res.status(201).json({ success: true, user: result });
   } catch (error) {
     const appError = handleError(error);
@@ -67,11 +74,11 @@ adminRouter.post('/users', async (req: AuthRequest, res: Response, next: NextFun
 });
 
 // ============================================
-// POST /api/admin/users/bulk - Bulk create users
+// POST /api/admin/users/bulk - Bulk create users (admin global only)
 // ============================================
-adminRouter.post('/users/bulk', async (req: AuthRequest, res: Response, next: NextFunction) => {
+adminRouter.post('/users/bulk', requireGlobalAdmin, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const result = await adminService.bulkCreateUsers(req.body.users);
+    const result = await adminService.bulkCreateUsers(req.body.users, req.user!, req.body.sedeId ?? req.body.sede);
     res.json({ success: true, ...result });
   } catch (error) {
     const appError = handleError(error);
@@ -80,9 +87,9 @@ adminRouter.post('/users/bulk', async (req: AuthRequest, res: Response, next: Ne
 });
 
 // ============================================
-// DELETE /api/admin/users/:id
+// DELETE /api/admin/users/:id (admin global only)
 // ============================================
-adminRouter.delete('/users/:id', async (req: AuthRequest, res: Response, next: NextFunction) => {
+adminRouter.delete('/users/:id', requireGlobalAdmin, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     await adminService.deleteUser(req.params.id, req.user!.id);
     res.json({ success: true });
@@ -97,7 +104,7 @@ adminRouter.delete('/users/:id', async (req: AuthRequest, res: Response, next: N
 // ============================================
 adminRouter.patch('/users/:id/password', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    await adminService.updateUserPassword(req.params.id, req.body.password);
+    await adminService.updateUserPassword(req.params.id, req.body.password, req.user!);
     res.json({ success: true });
   } catch (error) {
     const appError = handleError(error);
@@ -111,7 +118,7 @@ adminRouter.patch('/users/:id/password', async (req: AuthRequest, res: Response,
 adminRouter.patch('/users/:id/name', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { firstName, lastName } = req.body;
-    const result = await adminService.updateUserName(req.params.id, firstName, lastName);
+    const result = await adminService.updateUserName(req.params.id, req.user!, firstName, lastName);
     res.json({ success: true, ...result });
   } catch (error) {
     const appError = handleError(error);
@@ -144,7 +151,7 @@ adminRouter.patch('/users/:id/name', async (req: AuthRequest, res: Response, nex
 adminRouter.patch('/users/:id/examen-final', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { enabled } = req.body;
-    const result = await adminService.toggleExamenFinal(req.params.id, !!enabled);
+    const result = await adminService.toggleExamenFinal(req.params.id, !!enabled, req.user!);
     res.json({ success: true, ...result });
   } catch (error) {
     const appError = handleError(error);
@@ -183,8 +190,129 @@ adminRouter.patch('/users/bulk/examen-final', async (req: AuthRequest, res: Resp
     if (!parsed.success) {
       throw new BadRequestError('userIds (array de UUIDs, 1-500) y enabled (boolean) requeridos');
     }
-    const result = await adminService.bulkToggleExamenFinal(parsed.data.userIds, parsed.data.enabled);
+    const result = await adminService.bulkToggleExamenFinal(parsed.data.userIds, parsed.data.enabled, req.user!);
     res.json({ success: true, ...result });
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
+// ============================================
+// Sedes CRUD (admin global only)
+// ============================================
+const createSedeSchema = z.object({
+  slug: z.string().min(2).max(64),
+  name: z.string().min(1).max(120),
+  country: z.string().max(8).optional(),
+  city: z.string().max(120).optional(),
+  address: z.string().max(255).optional(),
+});
+
+const updateSedeSchema = z.object({
+  slug: z.string().min(2).max(64).optional(),
+  name: z.string().min(1).max(120).optional(),
+  country: z.string().max(8).nullable().optional(),
+  city: z.string().max(120).nullable().optional(),
+  address: z.string().max(255).nullable().optional(),
+  isActive: z.boolean().optional(),
+});
+
+adminRouter.get('/sedes', async (req: AuthRequest, res: Response) => {
+  try {
+    // Listar sedes está disponible para coach y admin (necesitan elegir sede
+    // al crear users). Sólo se incluyen inactivas si lo pide admin global.
+    const includeInactive = req.query.includeInactive === 'true' && req.user!.roles.includes('admin');
+    const sedes = await sedesService.listSedes({ includeInactive });
+    res.json(sedes);
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
+adminRouter.get('/sedes/:id', requireGlobalAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const sede = await sedesService.getSedeById(req.params.id);
+    res.json(sede);
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
+adminRouter.post('/sedes', requireGlobalAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const parsed = createSedeSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new BadRequestError('Datos de sede inválidos');
+    }
+    const sede = await sedesService.createSede(parsed.data);
+    res.status(201).json(sede);
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
+adminRouter.patch('/sedes/:id', requireGlobalAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const parsed = updateSedeSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new BadRequestError('Datos de sede inválidos');
+    }
+    const sede = await sedesService.updateSede(req.params.id, parsed.data);
+    res.json(sede);
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
+adminRouter.delete('/sedes/:id', requireGlobalAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    await sedesService.deleteSede(req.params.id);
+    res.json({ success: true });
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
+// ============================================
+// Coaches: listado + toggles de permisos
+// ============================================
+// - GET /coaches: admin global (todos) o coach con canCreateCoaches (su sede)
+// - PATCH /coaches/:id/permissions: admin global only
+const coachPermissionsSchema = z.object({
+  canCreateCoaches: z.boolean().optional(),
+  canEditPrompts: z.boolean().optional(),
+});
+
+adminRouter.get('/coaches', async (req: AuthRequest, res: Response) => {
+  try {
+    const isAdmin = req.user!.roles.includes('admin');
+    const isCoachWithCreate =
+      req.user!.roles.includes('coach') && !!req.user!.coachPermissions?.canCreateCoaches;
+    if (!isAdmin && !isCoachWithCreate) {
+      throw new ForbiddenError('No tenés permiso para listar coaches');
+    }
+    const coaches = await coachesService.listCoaches(req.user!);
+    res.json(coaches);
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
+adminRouter.patch('/coaches/:id/permissions', requireGlobalAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const parsed = coachPermissionsSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new BadRequestError('Datos de permisos inválidos');
+    }
+    const result = await coachesService.updateCoachPermissions(req.params.id, parsed.data, req.user!);
+    res.json(result);
   } catch (error) {
     const appError = handleError(error);
     res.status(appError.statusCode).json({ error: appError.message });
@@ -197,7 +325,7 @@ adminRouter.patch('/users/bulk/examen-final', async (req: AuthRequest, res: Resp
 adminRouter.post('/grades', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { userId, finalGrade, notes } = req.body;
-    const grade = await adminService.upsertGrade(userId, req.user!.id, finalGrade, notes);
+    const grade = await adminService.upsertGrade(userId, req.user!.id, finalGrade, req.user!, notes);
     res.json({ success: true, grade });
   } catch (error) {
     const appError = handleError(error);
@@ -208,7 +336,7 @@ adminRouter.post('/grades', async (req: AuthRequest, res: Response, next: NextFu
 // ============================================
 // Agent Config CRUD
 // ============================================
-adminRouter.get('/agent-configs', async (req: AuthRequest, res: Response, next: NextFunction) => {
+adminRouter.get('/agent-configs', requireGlobalAdmin, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const configs = await agentConfigService.getAll();
     res.json(configs);
@@ -218,7 +346,7 @@ adminRouter.get('/agent-configs', async (req: AuthRequest, res: Response, next: 
   }
 });
 
-adminRouter.put('/agent-configs', async (req: AuthRequest, res: Response, next: NextFunction) => {
+adminRouter.put('/agent-configs', requireGlobalAdmin, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { secretName, agentId, label } = req.body;
     const config = await agentConfigService.upsert(secretName, agentId, label);
@@ -229,7 +357,7 @@ adminRouter.put('/agent-configs', async (req: AuthRequest, res: Response, next: 
   }
 });
 
-adminRouter.delete('/agent-configs/:id', async (req: AuthRequest, res: Response, next: NextFunction) => {
+adminRouter.delete('/agent-configs/:id', requireGlobalAdmin, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     await agentConfigService.remove(req.params.id);
     res.json({ success: true });
@@ -254,6 +382,12 @@ adminRouter.get('/prospecting-scenarios', async (req: AuthRequest, res: Response
 
 adminRouter.put('/prospecting-scenarios', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
+    // Editar prompts requiere admin global O coach con canEditPrompts.
+    // El check va acá en vez de un middleware porque el route también
+    // lo usaría un coach con permiso, así que requireGlobalAdmin no sirve.
+    if (!canEditPrompts(req.user)) {
+      throw new ForbiddenError('No tenés permiso para editar prompts');
+    }
     const { secretName, label, systemPrompt, firstMessage, isActiveGlobal, builderParams } = req.body;
     if (!secretName) {
       res.status(400).json({ error: 'secretName required' });
@@ -273,7 +407,7 @@ adminRouter.put('/prospecting-scenarios', async (req: AuthRequest, res: Response
   }
 });
 
-adminRouter.get('/user-scenario-access/:userId', async (req: AuthRequest, res: Response, next: NextFunction) => {
+adminRouter.get('/user-scenario-access/:userId', requireGlobalAdmin, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const access = await prospectingScenariosService.getUserAccess(req.params.userId);
     res.json(access);
@@ -283,7 +417,7 @@ adminRouter.get('/user-scenario-access/:userId', async (req: AuthRequest, res: R
   }
 });
 
-adminRouter.put('/user-scenario-access/:userId', async (req: AuthRequest, res: Response, next: NextFunction) => {
+adminRouter.put('/user-scenario-access/:userId', requireGlobalAdmin, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { entries } = req.body as { entries: Array<{ secretName: string; enabled: boolean }> };
     if (!Array.isArray(entries)) {
@@ -301,11 +435,11 @@ adminRouter.put('/user-scenario-access/:userId', async (req: AuthRequest, res: R
 // ============================================
 // AI Access Kill-Switch (global)
 // ============================================
-adminRouter.get('/ai-access', (_req: AuthRequest, res: Response) => {
+adminRouter.get('/ai-access', requireGlobalAdmin, (_req: AuthRequest, res: Response) => {
   res.json(aiAccessService.getLockStatus());
 });
 
-adminRouter.put('/ai-access', (req: AuthRequest, res: Response) => {
+adminRouter.put('/ai-access', requireGlobalAdmin, (req: AuthRequest, res: Response) => {
   const { locked, reason } = req.body as { locked?: boolean; reason?: string };
   aiAccessService.setAiLocked(!!locked, reason ?? null);
   res.json({ success: true, ...aiAccessService.getLockStatus() });
@@ -317,21 +451,21 @@ adminRouter.put('/ai-access', (req: AuthRequest, res: Response) => {
 adminRouter.get('/analytics', analyticsController.getAdminAnalytics);
 
 // ============================================
-// A/B Testing Experiments
+// A/B Testing Experiments (admin global only)
 // ============================================
-adminRouter.get('/experiments', abTestingController.list);
-adminRouter.post('/experiments', abTestingController.create);
-adminRouter.get('/experiments/:id', abTestingController.getById);
-adminRouter.put('/experiments/:id', abTestingController.update);
-adminRouter.delete('/experiments/:id', abTestingController.remove);
-adminRouter.get('/experiments/:id/results', abTestingController.getResults);
+adminRouter.get('/experiments', requireGlobalAdmin, abTestingController.list);
+adminRouter.post('/experiments', requireGlobalAdmin, abTestingController.create);
+adminRouter.get('/experiments/:id', requireGlobalAdmin, abTestingController.getById);
+adminRouter.put('/experiments/:id', requireGlobalAdmin, abTestingController.update);
+adminRouter.delete('/experiments/:id', requireGlobalAdmin, abTestingController.remove);
+adminRouter.get('/experiments/:id/results', requireGlobalAdmin, abTestingController.getResults);
 
 // ============================================
 // Admin Session Transcript (view any student's session)
 // ============================================
 adminRouter.get('/sessions/:id/transcript', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const data = await sessionsService.getTranscriptAdmin(req.params.id);
+    const data = await sessionsService.getTranscriptAdmin(req.params.id, req.user!);
     res.json(data);
   } catch (error) {
     const appError = handleError(error);
@@ -381,7 +515,7 @@ adminRouter.get('/sessions/:id/transcript', async (req: AuthRequest, res: Respon
 // Aggregated TTFA + connect latency across all PracticeSessions.
 // Used by the admin "Performance del Agente" tab.
 // ============================================
-adminRouter.get('/agent-latency', async (req: AuthRequest, res: Response, next: NextFunction) => {
+adminRouter.get('/agent-latency', requireGlobalAdmin, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const limit = Math.min(parseInt(String(req.query.limit ?? '50'), 10) || 50, 500);
     const sessions = await prisma.practiceSession.findMany({
@@ -452,7 +586,7 @@ adminRouter.get('/agent-latency', async (req: AuthRequest, res: Response, next: 
 //   - POST /latency-probe/upload  → recibe bytes crudos para medir subida
 // ============================================
 
-adminRouter.get('/latency-probe', async (_req: AuthRequest, res: Response) => {
+adminRouter.get('/latency-probe', requireGlobalAdmin, async (_req: AuthRequest, res: Response) => {
   try {
     const report = await latencyProbeService.runAllProbes();
     res.json(report);
@@ -463,7 +597,7 @@ adminRouter.get('/latency-probe', async (_req: AuthRequest, res: Response) => {
 });
 
 // Ping ligero: el cliente mide el RTT, el servidor solo responde con su timestamp.
-adminRouter.get('/latency-probe/ping', (_req: AuthRequest, res: Response) => {
+adminRouter.get('/latency-probe/ping', requireGlobalAdmin, (_req: AuthRequest, res: Response) => {
   res.setHeader('Cache-Control', 'no-store');
   res.json({ t: Date.now() });
 });
@@ -471,7 +605,7 @@ adminRouter.get('/latency-probe/ping', (_req: AuthRequest, res: Response) => {
 // Descarga un payload de tamano conocido. Sirve para estimar el ancho de banda de bajada.
 // Se capa a 5MB para evitar abusos.
 const DOWNLOAD_MAX_BYTES = 5 * 1024 * 1024;
-adminRouter.get('/latency-probe/download', (req: AuthRequest, res: Response) => {
+adminRouter.get('/latency-probe/download', requireGlobalAdmin, (req: AuthRequest, res: Response) => {
   const requested = parseInt(String(req.query.bytes ?? ''), 10);
   const bytes = Number.isFinite(requested) && requested > 0
     ? Math.min(requested, DOWNLOAD_MAX_BYTES)
@@ -486,6 +620,7 @@ adminRouter.get('/latency-probe/download', (req: AuthRequest, res: Response) => 
 // Recibe un payload crudo y responde con el conteo. El cliente mide cuanto tardo el POST.
 adminRouter.post(
   '/latency-probe/upload',
+  requireGlobalAdmin,
   raw({ type: '*/*', limit: '10mb' }),
   (req: AuthRequest, res: Response) => {
     const body = req.body as Buffer | undefined;
@@ -498,7 +633,7 @@ adminRouter.post(
 // ============================================
 // LTI Platform CRUD
 // ============================================
-adminRouter.get('/lti-platforms', async (req: AuthRequest, res: Response, next: NextFunction) => {
+adminRouter.get('/lti-platforms', requireGlobalAdmin, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const platforms = await prisma.ltiPlatform.findMany({ orderBy: { createdAt: 'desc' } });
     res.json(platforms);
@@ -508,7 +643,7 @@ adminRouter.get('/lti-platforms', async (req: AuthRequest, res: Response, next: 
   }
 });
 
-adminRouter.post('/lti-platforms', async (req: AuthRequest, res: Response, next: NextFunction) => {
+adminRouter.post('/lti-platforms', requireGlobalAdmin, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { name, issuerUrl, clientId, authEndpoint, tokenEndpoint, jwksUrl, deploymentId } = req.body;
     const platform = await prisma.ltiPlatform.create({
@@ -521,7 +656,7 @@ adminRouter.post('/lti-platforms', async (req: AuthRequest, res: Response, next:
   }
 });
 
-adminRouter.put('/lti-platforms/:id', async (req: AuthRequest, res: Response, next: NextFunction) => {
+adminRouter.put('/lti-platforms/:id', requireGlobalAdmin, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { name, issuerUrl, clientId, authEndpoint, tokenEndpoint, jwksUrl, deploymentId, isActive } = req.body;
     const platform = await prisma.ltiPlatform.update({
@@ -535,7 +670,7 @@ adminRouter.put('/lti-platforms/:id', async (req: AuthRequest, res: Response, ne
   }
 });
 
-adminRouter.delete('/lti-platforms/:id', async (req: AuthRequest, res: Response, next: NextFunction) => {
+adminRouter.delete('/lti-platforms/:id', requireGlobalAdmin, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     await prisma.ltiPlatform.delete({ where: { id: req.params.id } });
     res.json({ success: true });
@@ -551,6 +686,7 @@ adminRouter.delete('/lti-platforms/:id', async (req: AuthRequest, res: Response,
 // without re-running the practice.
 adminRouter.post(
   '/lti/sessions/:practiceSessionId/resync-grade',
+  requireGlobalAdmin,
   async (req: AuthRequest, res: Response) => {
     try {
       const session = await prisma.practiceSession.findUnique({
@@ -589,7 +725,7 @@ adminRouter.post(
 // from the web link still get grades posted to Moodle.
 // ============================================
 
-adminRouter.get('/lti/courses', async (req: AuthRequest, res: Response) => {
+adminRouter.get('/lti/courses', requireGlobalAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const courses = await prisma.ltiCourseSync.findMany({
       orderBy: { createdAt: 'desc' },
@@ -605,7 +741,7 @@ adminRouter.get('/lti/courses', async (req: AuthRequest, res: Response) => {
 // Manual course registration — useful when no launch has happened yet
 // (which would auto-detect), or when the admin wants to override the
 // lineitem captured from a launch.
-adminRouter.post('/lti/courses', async (req: AuthRequest, res: Response) => {
+adminRouter.post('/lti/courses', requireGlobalAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const schema = z.object({
       platformId: z.string().uuid(),
@@ -640,7 +776,7 @@ adminRouter.post('/lti/courses', async (req: AuthRequest, res: Response) => {
   }
 });
 
-adminRouter.patch('/lti/courses/:id', async (req: AuthRequest, res: Response) => {
+adminRouter.patch('/lti/courses/:id', requireGlobalAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const schema = z.object({
       contextTitle: z.string().nullable().optional(),
@@ -660,7 +796,7 @@ adminRouter.patch('/lti/courses/:id', async (req: AuthRequest, res: Response) =>
   }
 });
 
-adminRouter.delete('/lti/courses/:id', async (req: AuthRequest, res: Response) => {
+adminRouter.delete('/lti/courses/:id', requireGlobalAdmin, async (req: AuthRequest, res: Response) => {
   try {
     await prisma.ltiCourseSync.delete({ where: { id: req.params.id } });
     res.json({ success: true });
@@ -672,7 +808,7 @@ adminRouter.delete('/lti/courses/:id', async (req: AuthRequest, res: Response) =
 
 // On-demand sync trigger. Returns the SyncCourseResult counters so the
 // admin sees how many were matched/created/pending.
-adminRouter.post('/lti/courses/:id/sync', async (req: AuthRequest, res: Response) => {
+adminRouter.post('/lti/courses/:id/sync', requireGlobalAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const result = await syncCourse(req.params.id);
     res.json({ success: true, result });
@@ -685,7 +821,7 @@ adminRouter.post('/lti/courses/:id/sync', async (req: AuthRequest, res: Response
 // Run one full NRPS sync tick across every active LtiCourseSync. Same code
 // path as the cron, exposed manually so the admin can force-sync everything
 // without waiting for the next scheduled firing.
-adminRouter.post('/lti/sync-all', async (_req: AuthRequest, res: Response) => {
+adminRouter.post('/lti/sync-all', requireGlobalAdmin, async (_req: AuthRequest, res: Response) => {
   try {
     const result = await runNrpsSyncTick();
     res.json({ success: true, result });
@@ -697,7 +833,7 @@ adminRouter.post('/lti/sync-all', async (_req: AuthRequest, res: Response) => {
 
 // Pending matches — only the still-open ones, with candidate users
 // embedded so the admin UI can render the picker without N+1 queries.
-adminRouter.get('/lti/pending-matches', async (req: AuthRequest, res: Response) => {
+adminRouter.get('/lti/pending-matches', requireGlobalAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const pending = await prisma.ltiPendingMatch.findMany({
       where: { resolvedAt: null, dismissedAt: null },
@@ -728,6 +864,7 @@ adminRouter.get('/lti/pending-matches', async (req: AuthRequest, res: Response) 
 
 adminRouter.post(
   '/lti/pending-matches/:id/resolve',
+  requireGlobalAdmin,
   async (req: AuthRequest, res: Response) => {
     try {
       const schema = z.object({ userId: z.string().uuid() });
@@ -743,6 +880,7 @@ adminRouter.post(
 
 adminRouter.post(
   '/lti/pending-matches/:id/dismiss',
+  requireGlobalAdmin,
   async (req: AuthRequest, res: Response) => {
     try {
       await dismissPendingMatch(req.params.id);

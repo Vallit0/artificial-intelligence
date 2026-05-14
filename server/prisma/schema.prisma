@@ -15,6 +15,7 @@ enum AppRole {
   admin
   instructor
   learner
+  coach
 }
 
 enum LtiRole {
@@ -39,6 +40,36 @@ enum ExperimentStatus {
 }
 
 // ============================================
+// Sedes (Branches / Locations)
+// ============================================
+
+// Cada usuario pertenece a exactamente una sede. El aislamiento de datos
+// entre sedes es duro: un coach o admin de sede A no puede leer ni mutar
+// datos de sede B. Sólo el rol `admin` global puede atravesar sedes.
+//
+// sedeId en User es nullable a nivel DB (para tolerar el backfill y para
+// que un crash durante el seed no deje la app rota), pero la capa de
+// aplicación trata sede como obligatoria: todo signup/createUser exige
+// sedeId, y `requireSede` rechaza requests cuyo user no tenga sede.
+model Sede {
+  id        String   @id @default(uuid())
+  slug      String   @unique               // "guatemala", "cdmx", "tapachula"
+  name      String   @unique               // "Guatemala", "Ciudad de México"
+  country   String?                        // "GT", "MX" — códigos ISO opcionales
+  city      String?                        // descriptivo
+  address   String?                        // dirección física opcional
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  users           User[]
+  ltiCourseSyncs  LtiCourseSync[]
+
+  @@index([isActive])
+  @@map("sedes")
+}
+
+// ============================================
 // Users & Auth
 // ============================================
 
@@ -53,9 +84,12 @@ model User {
   emailVerified      Boolean  @default(false) @map("email_verified")
   examenFinalEnabled Boolean  @default(false) @map("examen_final_enabled")
   level2Unlocked     Boolean  @default(false) @map("level2_unlocked")
+  sedeId             String?  @map("sede_id")
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @default(now()) @updatedAt @map("updated_at")
 
+  sede                Sede?                  @relation(fields: [sedeId], references: [id], onDelete: Restrict)
+  coachPermissions    CoachPermission?
   roles               UserRole[]
   refreshTokens       RefreshToken[]
   practiceSessions    PracticeSession[]
@@ -70,7 +104,26 @@ model User {
   citasCreated        Cita[]                 @relation("CitaCreator")
 
   @@index([email])
+  @@index([sedeId])
   @@map("users")
+}
+
+// Permisos granulares para el rol `coach`. Existen sólo cuando el usuario
+// tiene rol coach; los toggles los maneja un admin desde el panel.
+// Modelados aparte (en vez de columnas en User) porque sólo aplican a
+// coaches — ensuciarían User con campos null para learners/admins.
+model CoachPermission {
+  id               String   @id @default(uuid())
+  userId           String   @unique @map("user_id")
+  canCreateCoaches Boolean  @default(false) @map("can_create_coaches")
+  canEditPrompts   Boolean  @default(false) @map("can_edit_prompts")
+  grantedBy        String?  @map("granted_by")   // userId del admin que otorgó
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("coach_permissions")
 }
 
 model UserRole {
@@ -215,6 +268,11 @@ model LtiCourseSync {
   // pure roster sync (no grading) and because the value is only known
   // after a teacher has bound the tool to a gradable activity.
   lineitemUrl    String?   @map("lineitem_url")
+  // Sede asignada a los usuarios auto-creados por NRPS sync. Si es null,
+  // el servicio de sync usa la primera sede activa como fallback. El
+  // admin la setea explícitamente desde el panel cuando un curso de
+  // Moodle corresponde a una sede específica.
+  defaultSedeId  String?   @map("default_sede_id")
   isActive       Boolean   @default(true) @map("is_active")
   lastSyncedAt   DateTime? @map("last_synced_at")
   lastSyncStatus String?   @map("last_sync_status")
@@ -223,6 +281,7 @@ model LtiCourseSync {
   updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at")
 
   platform       LtiPlatform       @relation(fields: [platformId], references: [id], onDelete: Cascade)
+  defaultSede    Sede?             @relation(fields: [defaultSedeId], references: [id], onDelete: SetNull)
   pendingMatches LtiPendingMatch[]
 
   @@unique([platformId, contextId])

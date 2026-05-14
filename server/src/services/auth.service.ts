@@ -6,8 +6,46 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import prisma from '../db/index.js';
 import config from '../config/index.js';
-import { AuthUser, AppRole } from '../types/index.js';
+import { AuthUser, AppRole, CoachPermissionFlags } from '../types/index.js';
 import { BadRequestError, ConflictError, UnauthorizedError, NotFoundError } from '../utils/errors.js';
+
+// Carga el user con roles + coachPermissions en un solo round-trip y lo
+// proyecta al shape que esperan los middlewares y controllers.
+async function loadAuthUser(userId: string): Promise<AuthUser | null> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      roles: { select: { role: true } },
+      coachPermissions: {
+        select: { canCreateCoaches: true, canEditPrompts: true },
+      },
+    },
+  });
+  if (!user) return null;
+
+  const roles = user.roles.map((r) => r.role as AppRole);
+  const coachPermissions: CoachPermissionFlags | undefined =
+    roles.includes('coach') && user.coachPermissions
+      ? {
+          canCreateCoaches: user.coachPermissions.canCreateCoaches,
+          canEditPrompts: user.coachPermissions.canEditPrompts,
+        }
+      : roles.includes('coach')
+        ? { canCreateCoaches: false, canEditPrompts: false }
+        : undefined;
+
+  return {
+    id: user.id,
+    email: user.email,
+    firstName: user.firstName || undefined,
+    lastName: user.lastName || undefined,
+    examenFinalEnabled: user.examenFinalEnabled,
+    level2Unlocked: user.level2Unlocked,
+    sedeId: user.sedeId,
+    roles,
+    coachPermissions,
+  };
+}
 
 // ============================================
 // Token Management
@@ -41,13 +79,37 @@ export function verifyToken(token: string): { sub: string; email?: string } | nu
 // User Authentication
 // ============================================
 
-export async function signup(email: string, password: string, firstName?: string, lastName?: string, phoneNumber?: string): Promise<{
+export async function signup(
+  email: string,
+  password: string,
+  sedeIdOrSlug: string,
+  firstName?: string,
+  lastName?: string,
+  phoneNumber?: string,
+): Promise<{
   user: AuthUser;
   accessToken: string;
   refreshToken: string;
 }> {
   if (!email || !password) {
     throw new BadRequestError('Email and password required');
+  }
+  if (!sedeIdOrSlug || typeof sedeIdOrSlug !== 'string') {
+    throw new BadRequestError('Sede es requerida');
+  }
+
+  // Acepta sede como UUID o como slug — la UI puede mandar cualquiera.
+  // Restringimos a sedes activas para que un slug viejo no resucite una
+  // sede deshabilitada.
+  const sede = await prisma.sede.findFirst({
+    where: {
+      isActive: true,
+      OR: [{ id: sedeIdOrSlug }, { slug: sedeIdOrSlug }],
+    },
+    select: { id: true },
+  });
+  if (!sede) {
+    throw new BadRequestError('Sede inválida o inactiva');
   }
 
   const existing = await prisma.user.findUnique({ where: { email } });
@@ -57,6 +119,8 @@ export async function signup(email: string, password: string, firstName?: string
 
   const passwordHash = await bcrypt.hash(password, 12);
 
+  // Signup público NUNCA crea rol coach — los coaches se crean exclusivamente
+  // desde el panel admin (admin global o coach con canCreateCoaches).
   const user = await prisma.user.create({
     data: {
       email,
@@ -65,20 +129,17 @@ export async function signup(email: string, password: string, firstName?: string
       lastName: lastName || null,
       phoneNumber: phoneNumber || null,
       emailVerified: true,
+      sedeId: sede.id,
       roles: {
         create: { role: 'learner' },
       },
     },
   });
 
-  const authUser: AuthUser = {
-    id: user.id,
-    email: user.email,
-    firstName: user.firstName || undefined,
-    lastName: user.lastName || undefined,
-    examenFinalEnabled: user.examenFinalEnabled,
-    level2Unlocked: user.level2Unlocked,
-  };
+  const authUser = await loadAuthUser(user.id);
+  if (!authUser) {
+    throw new NotFoundError('User not found after signup');
+  }
 
   const accessToken = generateAccessToken(authUser);
   const refreshToken = generateRefreshToken(authUser);
@@ -112,14 +173,10 @@ export async function login(email: string, password: string): Promise<{
     throw new UnauthorizedError('Invalid credentials');
   }
 
-  const authUser: AuthUser = {
-    id: user.id,
-    email: user.email,
-    firstName: user.firstName || undefined,
-    lastName: user.lastName || undefined,
-    examenFinalEnabled: user.examenFinalEnabled,
-    level2Unlocked: user.level2Unlocked,
-  };
+  const authUser = await loadAuthUser(user.id);
+  if (!authUser) {
+    throw new UnauthorizedError('Invalid credentials');
+  }
 
   const accessToken = generateAccessToken(authUser);
   const refreshToken = generateRefreshToken(authUser);
@@ -150,20 +207,12 @@ export async function refreshAccessToken(refreshToken: string): Promise<string> 
     throw new UnauthorizedError('Refresh token expired or revoked');
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: storedToken.userId },
-  });
-
-  if (!user) {
+  const authUser = await loadAuthUser(storedToken.userId);
+  if (!authUser) {
     throw new NotFoundError('User not found');
   }
 
-  return generateAccessToken({
-    id: user.id,
-    email: user.email,
-    firstName: user.firstName || undefined,
-    lastName: user.lastName || undefined,
-  });
+  return generateAccessToken(authUser);
 }
 
 export async function logout(refreshToken?: string): Promise<void> {
@@ -175,20 +224,7 @@ export async function logout(refreshToken?: string): Promise<void> {
 }
 
 export async function getUserById(userId: string): Promise<AuthUser | null> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-  });
-
-  if (!user) return null;
-
-  return {
-    id: user.id,
-    email: user.email,
-    firstName: user.firstName || undefined,
-    lastName: user.lastName || undefined,
-    examenFinalEnabled: user.examenFinalEnabled,
-    level2Unlocked: user.level2Unlocked,
-  };
+  return loadAuthUser(userId);
 }
 
 export async function getUserRoles(userId: string): Promise<AppRole[]> {

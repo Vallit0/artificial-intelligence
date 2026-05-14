@@ -9,6 +9,7 @@ import * as sessionsController from '../controllers/sessions.controller.js';
 import * as progressController from '../controllers/progress.controller.js';
 import * as analyticsController from '../controllers/analytics.controller.js';
 import * as prospectingScenariosService from '../services/prospectingScenarios.service.js';
+import * as sedesService from '../services/sedes.service.js';
 import { AuthRequest } from '../types/index.js';
 import { handleError } from '../utils/errors.js';
 
@@ -52,6 +53,19 @@ export const apiRouter = Router();
  */
 apiRouter.get('/scenarios', scenariosController.getAll);
 apiRouter.get('/scenarios/:id', scenariosController.getById);
+
+// Lista pública de sedes activas — usada por el selector de sede en el
+// signup. Devuelve sólo los campos necesarios; admin global tiene un
+// endpoint separado bajo /api/admin/sedes con más detalle.
+apiRouter.get('/sedes', async (req: AuthRequest, res: Response) => {
+  try {
+    const sedes = await sedesService.listSedes();
+    res.json(sedes.map((s) => ({ id: s.id, slug: s.slug, name: s.name, country: s.country })));
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
 
 // ============================================
 // Protected Routes

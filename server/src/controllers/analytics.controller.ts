@@ -38,7 +38,7 @@ export async function getCompetencyHistory(req: AuthRequest, res: Response, next
 // ============================================
 export async function getAdminAnalytics(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const data = await analyticsService.getGroupAnalytics();
+    const data = await analyticsService.getGroupAnalytics(req.user!);
     res.json(data);
   } catch (error) {
     const appError = handleError(error);

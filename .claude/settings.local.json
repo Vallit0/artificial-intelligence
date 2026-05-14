@@ -108,7 +108,8 @@
       "Bash(echo \"exit=$?\")",
       "Bash(echo \"EXIT=$?\")",
       "Bash(Select-String -Pattern \"setOpenCard|Dialog|onClick\")",
-      "Bash(Select-Object -First 10)"
+      "Bash(Select-Object -First 10)",
+      "WebFetch(domain:centro-de-negocios.org)"
     ]
   },
   "hooks": {
