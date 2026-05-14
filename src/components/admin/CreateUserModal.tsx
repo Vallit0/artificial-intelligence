@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,10 +10,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, AlertCircle, CheckCircle, Shield } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Loader2, AlertCircle, CheckCircle, GraduationCap, Shield, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api-client";
+import { useSedes } from "@/hooks/useSedes";
 
 interface CreateUserModalProps {
   open: boolean;
@@ -21,7 +28,29 @@ interface CreateUserModalProps {
   onSuccess: () => void;
 }
 
-// Email validation regex
+type UserRole = "learner" | "coach" | "admin";
+
+const ROLE_OPTIONS: Array<{ value: UserRole; label: string; description: string; icon: React.ElementType }> = [
+  {
+    value: "learner",
+    label: "Asesor (learner)",
+    description: "Estudiante que practica con los agentes. Es el rol por defecto.",
+    icon: User,
+  },
+  {
+    value: "coach",
+    label: "Coach",
+    description: "Ve sólo datos de su sede. Permisos granulares se asignan después en la tab Coaches.",
+    icon: GraduationCap,
+  },
+  {
+    value: "admin",
+    label: "Admin global",
+    description: "Acceso total, atraviesa todas las sedes. Usar con cuidado.",
+    icon: Shield,
+  },
+];
+
 const isValidEmail = (email: string): boolean => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
@@ -33,38 +62,44 @@ export default function CreateUserModal({
   onSuccess,
 }: CreateUserModalProps) {
   const { toast } = useToast();
+  const { sedes, isLoading: sedesLoading } = useSedes();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [role, setRole] = useState<UserRole>("learner");
+  const [sedeId, setSedeId] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  // Preseleccioná la primera sede activa cuando carguen — evita que el admin
+  // tenga que abrir el dropdown sólo para confirmar la opción única en setups
+  // de una sola sede (caso típico hoy: Guatemala).
+  useEffect(() => {
+    if (!sedeId && sedes.length > 0) {
+      const firstActive = sedes.find((s) => s.isActive);
+      if (firstActive) setSedeId(firstActive.id);
+    }
+  }, [sedes, sedeId]);
 
   const resetForm = () => {
     setEmail("");
     setPassword("");
     setFirstName("");
     setLastName("");
-    setIsAdmin(false);
+    setRole("learner");
+    setSedeId(sedes.find((s) => s.isActive)?.id ?? "");
     setError(null);
     setSuccess(false);
   };
 
   const validateForm = (): string | null => {
-    if (!email.trim()) {
-      return "El email es requerido";
-    }
-    if (!isValidEmail(email.trim())) {
-      return "Formato de email inválido";
-    }
-    if (!password) {
-      return "La contraseña es requerida";
-    }
-    if (password.length < 6) {
-      return "La contraseña debe tener al menos 6 caracteres";
-    }
+    if (!email.trim()) return "El email es requerido";
+    if (!isValidEmail(email.trim())) return "Formato de email inválido";
+    if (!password) return "La contraseña es requerida";
+    if (password.length < 12) return "La contraseña debe tener al menos 12 caracteres";
+    if (!sedeId) return "Debes seleccionar una sede";
     return null;
   };
 
@@ -72,7 +107,7 @@ export default function CreateUserModal({
     e.preventDefault();
     setError(null);
     setSuccess(false);
-    
+
     const validationError = validateForm();
     if (validationError) {
       setError(validationError);
@@ -80,31 +115,30 @@ export default function CreateUserModal({
     }
 
     setIsSubmitting(true);
-
     try {
       await api.post("/api/admin/users", {
         email: email.trim().toLowerCase(),
         password,
         firstName: firstName.trim(),
         lastName: lastName.trim(),
-        isAdmin,
+        role,
+        sedeId,
       });
 
       setSuccess(true);
       toast({
         title: "Usuario creado",
-        description: `${email} ha sido creado exitosamente`,
+        description: `${email} (${role}) ha sido creado exitosamente`,
       });
 
-      // Wait a moment to show success state, then close
       setTimeout(() => {
         resetForm();
         onOpenChange(false);
         onSuccess();
       }, 1000);
-    } catch (error) {
-      console.error("Error creating user:", error);
-      const message = error instanceof Error ? error.message : "Error de conexión. Verifica tu conexión a internet.";
+    } catch (err) {
+      console.error("Error creating user:", err);
+      const message = err instanceof Error ? err.message : "Error de conexión.";
       setError(message);
     } finally {
       setIsSubmitting(false);
@@ -118,9 +152,12 @@ export default function CreateUserModal({
     onOpenChange(newOpen);
   };
 
+  const activeSedes = sedes.filter((s) => s.isActive);
+  const selectedRole = ROLE_OPTIONS.find((r) => r.value === role);
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Crear Nuevo Usuario</DialogTitle>
         </DialogHeader>
@@ -196,36 +233,78 @@ export default function CreateUserModal({
                 setPassword(e.target.value);
                 setError(null);
               }}
-              placeholder="Mínimo 6 caracteres"
-              minLength={6}
+              placeholder="Mínimo 12 caracteres"
+              minLength={12}
               required
               disabled={isSubmitting || success}
               maxLength={72}
             />
             <p className="text-xs text-muted-foreground">
-              La contraseña debe tener al menos 6 caracteres
+              La contraseña debe tener al menos 12 caracteres
             </p>
           </div>
 
-          <div className="flex items-center space-x-3 p-3 rounded-lg bg-muted/50 border border-border">
-            <Checkbox
-              id="isAdmin"
-              checked={isAdmin}
-              onCheckedChange={(checked) => setIsAdmin(checked === true)}
+          <div className="space-y-2">
+            <Label htmlFor="sede">Sede *</Label>
+            <Select
+              value={sedeId}
+              onValueChange={setSedeId}
+              disabled={isSubmitting || success || sedesLoading}
+            >
+              <SelectTrigger id="sede">
+                <SelectValue
+                  placeholder={sedesLoading ? "Cargando sedes..." : "Seleccionar sede"}
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {activeSedes.length === 0 && !sedesLoading && (
+                  <SelectItem value="__none__" disabled>
+                    No hay sedes activas — creá una primero
+                  </SelectItem>
+                )}
+                {activeSedes.map((sede) => (
+                  <SelectItem key={sede.id} value={sede.id}>
+                    {sede.name}
+                    {sede.country ? ` · ${sede.country}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="role">Rol *</Label>
+            <Select
+              value={role}
+              onValueChange={(v) => setRole(v as UserRole)}
               disabled={isSubmitting || success}
-            />
-            <div className="flex items-center gap-2">
-              <Shield className="h-4 w-4 text-primary" />
-              <Label htmlFor="isAdmin" className="text-sm font-medium cursor-pointer">
-                Permisos de Administrador
-              </Label>
-            </div>
+            >
+              <SelectTrigger id="role">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {ROLE_OPTIONS.map((opt) => {
+                  const Icon = opt.icon;
+                  return (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      <span className="flex items-center gap-2">
+                        <Icon className="w-4 h-4" />
+                        {opt.label}
+                      </span>
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+            {selectedRole && (
+              <p className="text-[11px] text-muted-foreground">{selectedRole.description}</p>
+            )}
           </div>
 
           <DialogFooter>
-            <Button 
-              type="button" 
-              variant="outline" 
+            <Button
+              type="button"
+              variant="outline"
               onClick={() => handleOpenChange(false)}
               disabled={isSubmitting}
             >

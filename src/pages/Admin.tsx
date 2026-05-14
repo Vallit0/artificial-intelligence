@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAuth } from "@/hooks/useAuth";
 import { useStudents } from "@/hooks/useStudents";
-import { Activity, Award, BarChart3, Clock, FlaskConical, Loader2, Play, Plus, Search, Shield, Target, Timer, TrendingUp, Upload, Users } from "lucide-react";
+import { Activity, Award, BarChart3, Building2, Clock, FlaskConical, GraduationCap, Loader2, Play, Plus, Search, Shield, Target, Timer, TrendingUp, Upload, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -21,6 +21,8 @@ import AbExperimentsPanel from "@/components/admin/AbExperimentsPanel";
 import AiAccessPanel from "@/components/admin/AiAccessPanel";
 import LatencyTesterPanel from "@/components/admin/LatencyTesterPanel";
 import AgentLatencyPanel from "@/components/admin/AgentLatencyPanel";
+import SedesPanel from "@/components/admin/SedesPanel";
+import CoachesPanel from "@/components/admin/CoachesPanel";
 import LeftSidebar from "@/components/scenarios/LeftSidebar";
 import MobileNavigation from "@/components/MobileNavigation";
 import { useAdminAnalytics } from "@/hooks/useAdminAnalytics";
@@ -106,6 +108,14 @@ export default function Admin() {
         <Tabs defaultValue="students" className="space-y-4">
           <TabsList className="flex-wrap h-auto">
             <TabsTrigger value="students">Estudiantes</TabsTrigger>
+            <TabsTrigger value="sedes" className="flex items-center gap-1">
+              <Building2 className="w-3.5 h-3.5" />
+              Sedes
+            </TabsTrigger>
+            <TabsTrigger value="coaches" className="flex items-center gap-1">
+              <GraduationCap className="w-3.5 h-3.5" />
+              Coaches
+            </TabsTrigger>
             <TabsTrigger value="analytics" className="flex items-center gap-1">
               <BarChart3 className="w-3.5 h-3.5" />
               Analíticas
@@ -390,6 +400,14 @@ export default function Admin() {
             ) : (
               <p className="text-center text-muted-foreground py-8">No hay datos analíticos disponibles</p>
             )}
+          </TabsContent>
+
+          <TabsContent value="sedes">
+            <SedesPanel />
+          </TabsContent>
+
+          <TabsContent value="coaches">
+            <CoachesPanel />
           </TabsContent>
 
           <TabsContent value="agents">

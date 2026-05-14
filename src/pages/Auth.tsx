@@ -1,11 +1,19 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { usePublicSedes } from "@/hooks/useSedes";
 import { z } from "zod";
-import { ArrowLeft, Eye, EyeOff, Phone } from "lucide-react";
+import { ArrowLeft, Building2, Eye, EyeOff, Phone } from "lucide-react";
 import { ForgotPasswordModal } from "@/components/auth/ForgotPasswordModal";
 import AICompanionOrb from "@/components/AICompanionOrb";
 
@@ -22,12 +30,20 @@ const Auth = () => {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [sedeId, setSedeId] = useState("");
   const [loading, setLoading] = useState(false);
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const { signIn, signUp } = useAuth();
+  const { sedes, isLoading: sedesLoading } = usePublicSedes();
+
+  useEffect(() => {
+    if (!sedeId && sedes.length > 0) {
+      setSedeId(sedes[0].id);
+    }
+  }, [sedes, sedeId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +66,23 @@ const Auth = () => {
         toast({ title: "¡Bienvenido!", description: "Sesión iniciada correctamente" });
         navigate("/practice");
       } else {
-        await signUp(email, password, firstName || undefined, lastName || undefined, phoneNumber || undefined);
+        if (!sedeId) {
+          toast({
+            variant: "destructive",
+            title: "Falta sede",
+            description: "Selecciona una sede para crear tu cuenta.",
+          });
+          setLoading(false);
+          return;
+        }
+        await signUp(
+          email,
+          password,
+          sedeId,
+          firstName || undefined,
+          lastName || undefined,
+          phoneNumber || undefined,
+        );
         toast({
           title: "¡Cuenta creada!",
           description: "Ya puedes comenzar a practicar",
@@ -136,6 +168,29 @@ const Auth = () => {
                   onChange={(e) => setPhoneNumber(e.target.value)}
                   className="h-13 bg-card border border-border rounded-xl pl-10 pr-4 text-foreground placeholder:text-muted-foreground focus:border-primary transition-colors"
                 />
+              </div>
+              <div className="relative">
+                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10 pointer-events-none" />
+                <Select value={sedeId} onValueChange={setSedeId} disabled={sedesLoading}>
+                  <SelectTrigger className="h-13 bg-card border border-border rounded-xl pl-10 pr-4 text-foreground focus:border-primary transition-colors">
+                    <SelectValue
+                      placeholder={sedesLoading ? "Cargando sedes..." : "Seleccionar sede"}
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sedes.length === 0 && !sedesLoading && (
+                      <SelectItem value="__none__" disabled>
+                        No hay sedes disponibles
+                      </SelectItem>
+                    )}
+                    {sedes.map((sede) => (
+                      <SelectItem key={sede.id} value={sede.id}>
+                        {sede.name}
+                        {sede.country ? ` · ${sede.country}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </>
           )}

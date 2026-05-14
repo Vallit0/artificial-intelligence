@@ -7,7 +7,7 @@ interface AuthContextType {
   isAdmin: boolean;
   roles: string[];
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, firstName?: string, lastName?: string, phoneNumber?: string) => Promise<void>;
+  signUp: (email: string, password: string, sede: string, firstName?: string, lastName?: string, phoneNumber?: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
   patchUser: (patch: Partial<ApiUser>) => void;
@@ -90,12 +90,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setRoles(meData.roles);
   }, []);
 
-  const signUp = useCallback(async (email: string, password: string, firstName?: string, lastName?: string, phoneNumber?: string) => {
+  const signUp = useCallback(async (email: string, password: string, sede: string, firstName?: string, lastName?: string, phoneNumber?: string) => {
     const data = await api.post<{
       user: ApiUser;
       accessToken: string;
       refreshToken: string;
-    }>("/auth/signup", { email, password, firstName, lastName, phoneNumber });
+    }>("/auth/signup", { email, password, sede, firstName, lastName, phoneNumber });
 
     api.setTokens(data.accessToken, data.refreshToken);
     setUser(data.user);
