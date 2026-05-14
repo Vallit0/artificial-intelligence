@@ -106,7 +106,9 @@
       "Bash(findstr /I \"ELEVENLABS_AGENT_EXAMEN\")",
       "Bash(timeout 20 docker logs senoriales-48152aa7-app-1 -f)",
       "Bash(echo \"exit=$?\")",
-      "Bash(echo \"EXIT=$?\")"
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(Select-String -Pattern \"setOpenCard|Dialog|onClick\")",
+      "Bash(Select-Object -First 10)"
     ]
   },
   "hooks": {
