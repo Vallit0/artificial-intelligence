@@ -8,6 +8,7 @@ export interface ProspectingScenarioConfig {
   systemPrompt: string | null;
   firstMessage: string | null;
   isActiveGlobal: boolean;
+  builderParams?: unknown | null;
 }
 
 export interface UserScenarioAccessEntry {

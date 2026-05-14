@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Check, ClipboardCheck, Copy, Loader2, MapPin, Save, Sparkles, Swords, Target, Users as UsersIcon } from "lucide-react";
+import { AlertTriangle, Check, ClipboardCheck, Copy, Loader2, MapPin, Save, Sparkles, Swords, Target, Users as UsersIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -18,6 +18,12 @@ import {
 } from "@/hooks/useProspectingScenarios";
 import { useAgentConfigs } from "@/hooks/useAgentConfigs";
 import { useStudents } from "@/hooks/useStudents";
+import {
+  BuilderParams,
+  DEFAULT_BUILDER_PARAMS,
+  buildProspectingPrompt,
+} from "@/lib/prospectingPromptBuilder";
+import ProspectingPromptBuilder from "./ProspectingPromptBuilder";
 
 const PROMPT_TEMPLATE = `Eres "Coach de Ventas Señoriales — Alvaro". Tu único rol es responder preguntas y dar tips breves sobre prospección telefónica en frío.
 IMPORTANTE:
@@ -80,6 +86,10 @@ interface RowState {
   firstMessage: string;
   isActiveGlobal: boolean;
   agentId: string;
+  builderParams: BuilderParams | null;
+  // True if the systemPrompt was edited manually after the builder generated it,
+  // so it no longer matches buildProspectingPrompt(builderParams).
+  manualEdit: boolean;
 }
 
 type SectionKey = "prospecting" | "level1" | "level2";
@@ -136,14 +146,22 @@ export default function ProspectingScenariosPanel() {
         firstMessage: "",
         isActiveGlobal: true,
         agentId: agentMap.get(s.secretName) || "",
+        builderParams: null,
+        manualEdit: false,
       };
     }
     for (const cfg of configs) {
+      const builderParams = (cfg.builderParams as BuilderParams | null | undefined) ?? null;
+      const systemPrompt = cfg.systemPrompt || "";
+      // If builderParams are present, detect if user manually edited the text after generation.
+      const manualEdit = !!builderParams && systemPrompt.trim() !== buildProspectingPrompt(builderParams).trim();
       merged[cfg.secretName] = {
-        systemPrompt: cfg.systemPrompt || "",
+        systemPrompt,
         firstMessage: cfg.firstMessage || "",
         isActiveGlobal: cfg.isActiveGlobal,
         agentId: agentMap.get(cfg.secretName) || "",
+        builderParams,
+        manualEdit,
       };
     }
     setRows(merged);
@@ -168,6 +186,7 @@ export default function ProspectingScenariosPanel() {
         systemPrompt: row.systemPrompt,
         firstMessage: row.firstMessage,
         isActiveGlobal: row.isActiveGlobal,
+        builderParams: row.builderParams ?? undefined,
       }),
       agentChanged && trimmedAgentId
         ? saveAgentConfig(secretName, trimmedAgentId, label)
@@ -222,11 +241,65 @@ export default function ProspectingScenariosPanel() {
     );
   };
 
-  const renderConfigForm = (s: { secretName: string; label: string }) => {
-    const row = rows[s.secretName] || { systemPrompt: "", firstMessage: "", isActiveGlobal: true, agentId: "" };
+  const onBuilderChange = (secretName: string, next: BuilderParams) => {
+    const generated = buildProspectingPrompt(next);
+    setRows((prev) => ({
+      ...prev,
+      [secretName]: {
+        ...prev[secretName],
+        builderParams: next,
+        systemPrompt: generated,
+        manualEdit: false,
+      },
+    }));
+  };
+
+  const onPromptTextChange = (secretName: string, text: string) => {
+    setRows((prev) => {
+      const current = prev[secretName];
+      const manual = !!current.builderParams && text.trim() !== buildProspectingPrompt(current.builderParams).trim();
+      return {
+        ...prev,
+        [secretName]: { ...current, systemPrompt: text, manualEdit: manual },
+      };
+    });
+  };
+
+  const renderConfigForm = (s: { secretName: string; label: string }, sectionKey: SectionKey) => {
+    const row =
+      rows[s.secretName] ||
+      ({ systemPrompt: "", firstMessage: "", isActiveGlobal: true, agentId: "", builderParams: null, manualEdit: false } as RowState);
     const agentConfigured = !!agentConfigs.find((c) => c.secretName === s.secretName)?.agentId;
-    return (
-      <div className="space-y-4">
+    const isProspecting = sectionKey === "prospecting";
+    const currentParams = row.builderParams ?? DEFAULT_BUILDER_PARAMS;
+
+    const promptField = (
+      <div className="space-y-1">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs">System Prompt (override)</Label>
+          {isProspecting && row.manualEdit && (
+            <span className="text-[11px] text-amber-700 dark:text-amber-400 flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3" />
+              Modificado a mano — el constructor lo sobrescribirá si lo regenerás.
+            </span>
+          )}
+        </div>
+        <Textarea
+          rows={isProspecting ? 16 : 8}
+          placeholder="Dejar vacío para usar el prompt configurado en ElevenLabs"
+          value={row.systemPrompt}
+          onChange={(e) =>
+            isProspecting
+              ? onPromptTextChange(s.secretName, e.target.value)
+              : updateRow(s.secretName, { systemPrompt: e.target.value })
+          }
+          className="text-sm font-mono"
+        />
+      </div>
+    );
+
+    const sharedHeaderAndAgentId = (
+      <>
         <div className="flex items-center justify-between gap-4">
           <p className="text-[11px] text-muted-foreground font-mono">{s.secretName}</p>
           <div className="flex items-center gap-2">
@@ -255,18 +328,11 @@ export default function ProspectingScenariosPanel() {
             className="text-sm font-mono"
           />
         </div>
+      </>
+    );
 
-        <div className="space-y-1">
-          <Label className="text-xs">System Prompt (override)</Label>
-          <Textarea
-            rows={8}
-            placeholder="Dejar vacío para usar el prompt configurado en ElevenLabs"
-            value={row.systemPrompt}
-            onChange={(e) => updateRow(s.secretName, { systemPrompt: e.target.value })}
-            className="text-sm font-mono"
-          />
-        </div>
-
+    const firstMessageAndSave = (
+      <>
         <div className="space-y-1">
           <Label className="text-xs">First Message (override)</Label>
           <Input
@@ -291,6 +357,50 @@ export default function ProspectingScenariosPanel() {
             Guardar
           </Button>
         </div>
+      </>
+    );
+
+    return (
+      <div className="space-y-4">
+        {sharedHeaderAndAgentId}
+
+        {isProspecting ? (
+          <Tabs defaultValue={row.builderParams ? "builder" : "text"} className="space-y-3">
+            <TabsList>
+              <TabsTrigger value="builder">Constructor</TabsTrigger>
+              <TabsTrigger value="text">Texto plano</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="builder" className="space-y-3">
+              {row.manualEdit && (
+                <div className="flex items-start gap-2 p-2 rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700 text-amber-900 dark:text-amber-200">
+                  <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                  <p className="text-[11px]">
+                    El texto del prompt fue editado manualmente. Si cambiás cualquier campo aquí, se regenera
+                    desde cero y se pierden las ediciones a mano.
+                  </p>
+                </div>
+              )}
+              <ProspectingPromptBuilder
+                value={currentParams}
+                onChange={(next) => onBuilderChange(s.secretName, next)}
+              />
+              {!row.builderParams && (
+                <p className="text-[11px] text-muted-foreground">
+                  Aún no se ha guardado un constructor para este escenario. Modificá cualquier campo para inicializarlo.
+                </p>
+              )}
+            </TabsContent>
+
+            <TabsContent value="text" className="space-y-3">
+              {promptField}
+            </TabsContent>
+          </Tabs>
+        ) : (
+          promptField
+        )}
+
+        {firstMessageAndSave}
       </div>
     );
   };
@@ -396,7 +506,7 @@ export default function ProspectingScenariosPanel() {
       </CardContent>
 
       <Dialog open={openCard !== null} onOpenChange={(o) => !o && setOpenCard(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           {openCard && (
             <>
               <DialogHeader>
@@ -417,7 +527,7 @@ export default function ProspectingScenariosPanel() {
                   {openCard.label}
                 </DialogTitle>
               </DialogHeader>
-              {renderConfigForm({ secretName: openCard.secretName, label: openCard.label })}
+              {renderConfigForm({ secretName: openCard.secretName, label: openCard.label }, openCard.sectionKey)}
             </>
           )}
         </DialogContent>

@@ -13,7 +13,7 @@ export async function getAllConfigs() {
 
 export async function upsertConfig(
   secretName: string,
-  data: { label?: string; systemPrompt?: string; firstMessage?: string; isActiveGlobal?: boolean }
+  data: { label?: string; systemPrompt?: string; firstMessage?: string; isActiveGlobal?: boolean; builderParams?: unknown }
 ) {
   return prisma.prospectingScenarioConfig.upsert({
     where: { secretName },
@@ -23,12 +23,14 @@ export async function upsertConfig(
       systemPrompt: data.systemPrompt ?? null,
       firstMessage: data.firstMessage ?? null,
       isActiveGlobal: data.isActiveGlobal ?? true,
+      builderParams: (data.builderParams as any) ?? undefined,
     },
     update: {
       label: data.label ?? undefined,
       systemPrompt: data.systemPrompt ?? undefined,
       firstMessage: data.firstMessage ?? undefined,
       isActiveGlobal: data.isActiveGlobal ?? undefined,
+      builderParams: data.builderParams !== undefined ? (data.builderParams as any) : undefined,
     },
   });
 }

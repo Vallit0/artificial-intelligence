@@ -254,7 +254,7 @@ adminRouter.get('/prospecting-scenarios', async (req: AuthRequest, res: Response
 
 adminRouter.put('/prospecting-scenarios', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { secretName, label, systemPrompt, firstMessage, isActiveGlobal } = req.body;
+    const { secretName, label, systemPrompt, firstMessage, isActiveGlobal, builderParams } = req.body;
     if (!secretName) {
       res.status(400).json({ error: 'secretName required' });
       return;
@@ -264,6 +264,7 @@ adminRouter.put('/prospecting-scenarios', async (req: AuthRequest, res: Response
       systemPrompt,
       firstMessage,
       isActiveGlobal,
+      builderParams,
     });
     res.json({ success: true, config });
   } catch (error) {
