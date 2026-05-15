@@ -32,8 +32,10 @@ import { ScoreLineChart } from "@/components/analytics/ScoreLineChart";
 
 export default function Admin() {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, roles } = useAuth();
   const { isAdmin, isLoading: adminLoading } = useAdmin();
+  const isCoachOnly = roles.includes("coach") && !isAdmin;
+  const canSeeProspecting = !isCoachOnly || !!user?.coachPermissions?.canEditPrompts;
   const { students, isLoading: studentsLoading, assignGrade, toggleExamenFinal, bulkToggleExamenFinal, refetch } = useStudents();
 
   const { data: adminAnalytics, isLoading: analyticsLoading } = useAdminAnalytics();
@@ -125,7 +127,9 @@ export default function Admin() {
               <FlaskConical className="w-3.5 h-3.5" />
               A/B Tests
             </TabsTrigger>
-            <TabsTrigger value="prospecting">Prospección</TabsTrigger>
+            {canSeeProspecting && (
+              <TabsTrigger value="prospecting">Prospección</TabsTrigger>
+            )}
             <TabsTrigger value="lti">LTI / Moodle</TabsTrigger>
             <TabsTrigger value="latency" className="flex items-center gap-1">
               <Activity className="w-3.5 h-3.5" />
@@ -418,9 +422,11 @@ export default function Admin() {
             <AbExperimentsPanel />
           </TabsContent>
 
-          <TabsContent value="prospecting">
-            <ProspectingScenariosPanel />
-          </TabsContent>
+          {canSeeProspecting && (
+            <TabsContent value="prospecting">
+              <ProspectingScenariosPanel />
+            </TabsContent>
+          )}
 
           <TabsContent value="lti">
             <Tabs defaultValue="platforms" className="space-y-4">

@@ -154,7 +154,7 @@ const objectionsAgentSuggestions: AgentSuggestion[] = practiceAgentSuggestions
     return next;
   });
 
-const FREE_TIER_MAX_SECONDS = 180;
+const FREE_TIER_MAX_SECONDS = 600;
 
 const Practice = () => {
   const navigate = useNavigate();

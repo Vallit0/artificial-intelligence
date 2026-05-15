@@ -13,6 +13,10 @@ export interface ApiUser {
   lastName?: string;
   examenFinalEnabled?: boolean;
   level2Unlocked?: boolean;
+  coachPermissions?: {
+    canCreateCoaches: boolean;
+    canEditPrompts: boolean;
+  };
 }
 
 class ApiClient {
