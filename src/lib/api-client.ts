@@ -106,6 +106,13 @@ class ApiClient {
   // Core Request Method
   // ============================================
 
+  // Status codes considerados transitorios — vale la pena reintentar con backoff.
+  // 429 = rate-limited por Nginx (limit_req_status), 502/503/504 = upstream
+  // o backend saturado. POST/PUT/PATCH/DELETE NO se reintentan por defecto
+  // para no duplicar mutaciones; sólo GETs.
+  private readonly TRANSIENT_STATUSES = new Set([429, 502, 503, 504]);
+  private readonly MAX_RETRIES = 2;
+
   private async request<T>(method: string, path: string, body?: unknown, retry = true): Promise<T> {
     const url = `${API_BASE}${path}`;
     const headers: Record<string, string> = {
@@ -116,11 +123,29 @@ class ApiClient {
       headers['Authorization'] = `Bearer ${this.accessToken}`;
     }
 
-    const response = await fetch(url, {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-    });
+    const isIdempotent = method === 'GET' || method === 'HEAD';
+    let response: Response;
+    let attempt = 0;
+    while (true) {
+      response = await fetch(url, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+
+      // Reintento sólo en GET (no queremos duplicar POSTs/PATCH/DELETE).
+      if (
+        isIdempotent &&
+        this.TRANSIENT_STATUSES.has(response.status) &&
+        attempt < this.MAX_RETRIES
+      ) {
+        const backoff = 200 * Math.pow(2, attempt) + Math.random() * 100;
+        await new Promise((res) => setTimeout(res, backoff));
+        attempt++;
+        continue;
+      }
+      break;
+    }
 
     // Handle 401 with token refresh
     if (response.status === 401 && retry && this.refreshToken) {

@@ -4,7 +4,7 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
-import bcrypt from 'bcryptjs';
+import { hashPassword } from '../utils/passwordHash.js';
 import * as authController from '../controllers/auth.controller.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { authLimiter, passwordResetLimiter } from '../middleware/rateLimit.js';
@@ -252,7 +252,7 @@ authRouter.post('/reset-password', passwordResetLimiter, async (req: Request, re
     }
 
     // Update password
-    const passwordHash = await bcrypt.hash(password, 12);
+    const passwordHash = await hashPassword(password);
     await prisma.user.update({
       where: { id: resetToken.userId },
       data: { passwordHash },
@@ -286,7 +286,7 @@ authRouter.post('/update-password', authMiddleware, async (req: any, res: Respon
       throw new BadRequestError('La contraseña debe tener al menos 12 caracteres');
     }
 
-    const passwordHash = await bcrypt.hash(password, 12);
+    const passwordHash = await hashPassword(password);
     await prisma.user.update({
       where: { id: req.user.id },
       data: { passwordHash },

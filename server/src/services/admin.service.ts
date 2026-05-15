@@ -2,9 +2,9 @@
 // Admin Service
 // ============================================
 
-import bcrypt from 'bcryptjs';
 import prisma from '../db/index.js';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '../utils/errors.js';
+import { hashPassword } from '../utils/passwordHash.js';
 import { AuthUser, AppRole } from '../types/index.js';
 import { canCreateCoachIn, isGlobalAdmin, getSedeScope } from '../middleware/sedeScope.js';
 
@@ -100,7 +100,7 @@ export async function createUser(input: CreateUserInput, caller: AuthUser) {
     throw new ConflictError('Este email ya está registrado');
   }
 
-  const passwordHash = await bcrypt.hash(input.password, 12);
+  const passwordHash = await hashPassword(input.password);
 
   const user = await prisma.user.create({
     data: {
@@ -188,37 +188,34 @@ export async function bulkCreateUsers(users: CreateUserInput[], caller: AuthUser
   });
   const existingEmails = new Set(existingUsers.map((u) => u.email.toLowerCase()));
 
-  const results: { email: string; success: boolean; error?: string }[] = [];
+  // Procesamos en chunks paralelos. bcrypt es CPU-bound (~60ms con rounds=10),
+  // así que chunkear evita bloquear el event loop completo. CHUNK_SIZE=5
+  // mantiene el throughput sin saturar el pool de Prisma.
+  const CHUNK_SIZE = 5;
+  const results: { email: string; success: boolean; error?: string }[] = new Array(users.length);
 
-  for (const userData of users) {
+  const processOne = async (userData: CreateUserInput) => {
+    const email = userData.email?.trim().toLowerCase();
+    if (!email || !isValidEmail(email)) {
+      return { email: email || 'desconocido', success: false, error: 'Email inválido' };
+    }
+    if (!userData.password || userData.password.length < 12) {
+      return { email, success: false, error: 'Contraseña debe tener al menos 12 caracteres' };
+    }
+    if (existingEmails.has(email)) {
+      return { email, success: false, error: 'Usuario ya existe' };
+    }
+    const ref = userData.sedeId ?? userData.sede ?? defaultSedeRef;
+    if (!ref) {
+      return { email, success: false, error: 'sedeId requerido' };
+    }
+    const resolvedSedeId = sedeIdByRef.get(ref);
+    if (!resolvedSedeId) {
+      return { email, success: false, error: 'Sede inválida o inactiva' };
+    }
+
     try {
-      const email = userData.email?.trim().toLowerCase();
-
-      if (!email || !isValidEmail(email)) {
-        results.push({ email: email || 'desconocido', success: false, error: 'Email inválido' });
-        continue;
-      }
-      if (!userData.password || userData.password.length < 12) {
-        results.push({ email, success: false, error: 'Contraseña debe tener al menos 12 caracteres' });
-        continue;
-      }
-      if (existingEmails.has(email)) {
-        results.push({ email, success: false, error: 'Usuario ya existe' });
-        continue;
-      }
-
-      const ref = userData.sedeId ?? userData.sede ?? defaultSedeRef;
-      if (!ref) {
-        results.push({ email, success: false, error: 'sedeId requerido' });
-        continue;
-      }
-      const resolvedSedeId = sedeIdByRef.get(ref);
-      if (!resolvedSedeId) {
-        results.push({ email, success: false, error: 'Sede inválida o inactiva' });
-        continue;
-      }
-
-      const passwordHash = await bcrypt.hash(userData.password, 12);
+      const passwordHash = await hashPassword(userData.password);
       await prisma.user.create({
         data: {
           email,
@@ -230,12 +227,25 @@ export async function bulkCreateUsers(users: CreateUserInput[], caller: AuthUser
           roles: { create: { role: 'learner' } },
         },
       });
-
-      existingEmails.add(email);
-      results.push({ email, success: true });
-    } catch (err) {
+      return { email, success: true };
+    } catch (err: any) {
+      // P2002 = unique constraint. Pasa cuando dos emails iguales viajan en
+      // el mismo chunk: el pre-check con existingEmails sólo detecta dups
+      // contra la DB, no entre filas del lote.
+      if (err?.code === 'P2002') {
+        return { email, success: false, error: 'Usuario ya existe' };
+      }
       const message = err instanceof Error ? err.message : 'Error desconocido';
-      results.push({ email: userData.email || 'desconocido', success: false, error: message });
+      return { email, success: false, error: message };
+    }
+  };
+
+  for (let start = 0; start < users.length; start += CHUNK_SIZE) {
+    const end = Math.min(start + CHUNK_SIZE, users.length);
+    const chunkResults = await Promise.all(users.slice(start, end).map(processOne));
+    for (let j = 0; j < chunkResults.length; j++) {
+      results[start + j] = chunkResults[j];
+      if (chunkResults[j].success) existingEmails.add(chunkResults[j].email);
     }
   }
 
@@ -290,7 +300,7 @@ export async function updateUserPassword(userId: string, newPassword: string, ca
 
   await loadUserScopedOrThrow(userId, caller);
 
-  const passwordHash = await bcrypt.hash(newPassword, 12);
+  const passwordHash = await hashPassword(newPassword);
   await prisma.user.update({
     where: { id: userId },
     data: { passwordHash },

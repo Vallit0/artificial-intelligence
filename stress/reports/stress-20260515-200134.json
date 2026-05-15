@@ -1,0 +1,1144 @@
+{
+  "runId": "20260515-200134",
+  "baseUrl": "https://centro-de-negocios.org",
+  "config": {
+    "USER_COUNT": 200,
+    "BULK_SIZE": 50,
+    "BULK_COUNT": 2,
+    "READ_SECS": 60,
+    "CONCURRENCY": 20
+  },
+  "sede": {
+    "id": "f6a9b91f-143c-4957-9a4e-624e2a56f5bc",
+    "name": "Coban"
+  },
+  "fase1": {
+    "requests": 13921,
+    "secs": 60
+  },
+  "fase2": {
+    "attempted": 200,
+    "created": 162
+  },
+  "fase3": {
+    "bulks": 2,
+    "perBulk": 50,
+    "created": 100
+  },
+  "fase4": {
+    "mutated": 162
+  },
+  "cleanup": {
+    "attempted": 262,
+    "deleted": 88,
+    "failed": 174,
+    "orphans": [
+      {
+        "id": "3c5b0d16-f9b6-4179-b339-ec79b5adab70",
+        "status": 503
+      },
+      {
+        "id": "9c0a9e21-1123-4851-b705-78bdb25ddfb8",
+        "status": 503
+      },
+      {
+        "id": "86f5c73a-ae00-488d-a9dc-465bddb29f34",
+        "status": 503
+      },
+      {
+        "id": "e540b381-7350-460e-ad30-2503049072a0",
+        "status": 503
+      },
+      {
+        "id": "0c207756-127e-4f1b-8832-dce568faa759",
+        "status": 503
+      },
+      {
+        "id": "3efe5946-9ce5-4697-8ed7-a8209453de5d",
+        "status": 503
+      },
+      {
+        "id": "22a06d45-a201-4f95-a995-6ce77a23a411",
+        "status": 503
+      },
+      {
+        "id": "8e380e4e-05af-4229-a3d8-dfbf8417b800",
+        "status": 503
+      },
+      {
+        "id": "ade1bb27-8d2f-4697-b67f-6c3bfb1fa4f2",
+        "status": 503
+      },
+      {
+        "id": "00c6475a-3446-4db3-ad6b-53c5e3b24caa",
+        "status": 503
+      },
+      {
+        "id": "79913a8c-2985-4e90-8dda-6b39fc9f8274",
+        "status": 503
+      },
+      {
+        "id": "48096df1-91aa-4466-84ce-2faa417c3eed",
+        "status": 503
+      },
+      {
+        "id": "c77bb784-1fb6-4e03-bb72-09776886bbd8",
+        "status": 503
+      },
+      {
+        "id": "a775c7b7-1b7c-4f94-8031-342e01770a4c",
+        "status": 503
+      },
+      {
+        "id": "63c90951-39c8-49e3-8824-c486ae6f1ccb",
+        "status": 503
+      },
+      {
+        "id": "e8237591-e648-4f24-be8a-ecb3506ee3e5",
+        "status": 503
+      },
+      {
+        "id": "5a799d72-d490-4b90-9075-1172be6b0b1d",
+        "status": 503
+      },
+      {
+        "id": "56aac093-40a1-4354-8d5d-3f51ecb51cc7",
+        "status": 503
+      },
+      {
+        "id": "3c4f463f-96d5-42ea-a32d-d023c2d15813",
+        "status": 503
+      },
+      {
+        "id": "7ad92154-039f-488b-b862-7ef76f79ce9a",
+        "status": 503
+      },
+      {
+        "id": "2a016256-7af9-4c0d-b573-3583fb4ac58a",
+        "status": 503
+      },
+      {
+        "id": "f4092244-f3aa-4fd4-862d-29f9c12335e1",
+        "status": 503
+      },
+      {
+        "id": "86ffb305-2b4f-496c-9919-67293da13734",
+        "status": 503
+      },
+      {
+        "id": "23e46dd0-26e1-479d-a98a-ed13072c83fc",
+        "status": 503
+      },
+      {
+        "id": "aa10a2d0-5160-43d9-ae87-ea20a528576d",
+        "status": 503
+      },
+      {
+        "id": "d81f9737-3695-4d3b-83bd-8e8531d3cdc6",
+        "status": 503
+      },
+      {
+        "id": "d098093a-d186-4499-a544-7ec4d3267ac4",
+        "status": 503
+      },
+      {
+        "id": "4e71e057-6a34-4065-a39a-c452770e872a",
+        "status": 503
+      },
+      {
+        "id": "0ea841da-319a-4f5e-a8ef-3de42ba9d2e4",
+        "status": 503
+      },
+      {
+        "id": "50418c61-f5d8-4aa2-bc9a-74ba95a731bd",
+        "status": 503
+      },
+      {
+        "id": "c49a60bb-dae6-4fd1-8aa7-26ab383a7bcf",
+        "status": 503
+      },
+      {
+        "id": "424cdeca-ff2c-4a4e-9a5e-046dc0c2a7b8",
+        "status": 503
+      },
+      {
+        "id": "bd864276-0eb2-4f0b-8661-a7d4d58eeb26",
+        "status": 503
+      },
+      {
+        "id": "05192165-8af8-4c02-aee4-8fd89d7e10ab",
+        "status": 503
+      },
+      {
+        "id": "7a1deea3-a6cd-45e2-b9bf-1f02f3502f7e",
+        "status": 503
+      },
+      {
+        "id": "76735fb2-3f72-4f65-80ef-088835c66719",
+        "status": 503
+      },
+      {
+        "id": "cfeb474d-fbf4-4485-a447-807fb329f8d5",
+        "status": 503
+      },
+      {
+        "id": "692f13ba-6156-46f2-afdd-f59d11bda7db",
+        "status": 503
+      },
+      {
+        "id": "0b3feaf9-e684-4329-947b-bda33e412e17",
+        "status": 503
+      },
+      {
+        "id": "48ba5aaa-a0d7-43bf-aa9a-e704eba06d20",
+        "status": 503
+      },
+      {
+        "id": "b13d5b47-f8d4-4690-ba99-ac8843c07808",
+        "status": 503
+      },
+      {
+        "id": "cbe635b4-35d1-4619-8f44-b5b2215b47bc",
+        "status": 503
+      },
+      {
+        "id": "5a744adb-b01f-4182-8cc7-e22b91de128d",
+        "status": 503
+      },
+      {
+        "id": "7b53fbe9-1d4c-4a5c-82b8-ab52441e748a",
+        "status": 503
+      },
+      {
+        "id": "def484aa-ae0f-486c-85b8-7d39934976ea",
+        "status": 503
+      },
+      {
+        "id": "1e2aff6e-ed7c-443f-8c12-33d483452781",
+        "status": 503
+      },
+      {
+        "id": "d8c92a2d-5fa9-4976-9caf-fed382a64dc6",
+        "status": 503
+      },
+      {
+        "id": "78bdf31d-2623-46bc-8d7a-984a16cd5d54",
+        "status": 503
+      },
+      {
+        "id": "de43f51f-a4e9-4e4d-927b-786b928213bf",
+        "status": 503
+      },
+      {
+        "id": "acfe980c-fadb-495d-b842-bbfa8df2512e",
+        "status": 503
+      },
+      {
+        "id": "e12c4789-6061-4f7a-9bde-3c2f8386f78d",
+        "status": 503
+      },
+      {
+        "id": "2fe753d2-411a-4bee-b849-7b4ccc2c1600",
+        "status": 503
+      },
+      {
+        "id": "a4f89f97-2816-4751-abe6-26a14aef88a8",
+        "status": 503
+      },
+      {
+        "id": "79cb0842-f3a6-40eb-b945-9f026f5534a8",
+        "status": 503
+      },
+      {
+        "id": "84353084-f9f8-412e-b7e0-2ef562d0c517",
+        "status": 503
+      },
+      {
+        "id": "ae357871-85d7-4eee-aee2-68feec36c0ed",
+        "status": 503
+      },
+      {
+        "id": "115cb3ae-8570-4712-9ce4-46d2bddde019",
+        "status": 503
+      },
+      {
+        "id": "8b06f91f-ba0e-4dae-bc9a-6f2252373b47",
+        "status": 503
+      },
+      {
+        "id": "4e990b41-c6af-4aa0-8baa-c7f259dc5495",
+        "status": 503
+      },
+      {
+        "id": "d580c159-3543-4b34-8b2e-57e257096da8",
+        "status": 503
+      },
+      {
+        "id": "fc00542a-b122-4685-975d-9959ab4bc69c",
+        "status": 503
+      },
+      {
+        "id": "85402237-e315-4100-bad5-ffbb09f5ad46",
+        "status": 503
+      },
+      {
+        "id": "88d0431b-7248-42ad-8b3d-4de4b0722398",
+        "status": 503
+      },
+      {
+        "id": "fe2b537f-931a-4476-99c0-b7573b993a80",
+        "status": 503
+      },
+      {
+        "id": "67ece4b1-dc63-48ea-84a0-064f7f06c024",
+        "status": 503
+      },
+      {
+        "id": "acc53b03-88ca-4a9a-994f-705c1c81a4d1",
+        "status": 503
+      },
+      {
+        "id": "331c8f46-47ec-4f92-80d5-7d3d063c5fc1",
+        "status": 503
+      },
+      {
+        "id": "8a38a819-e9bb-47b1-ac5b-39e72786fe72",
+        "status": 503
+      },
+      {
+        "id": "fdb5829a-5a20-4ddf-b609-91d9c6619586",
+        "status": 503
+      },
+      {
+        "id": "5d04dd09-3005-482c-a8bf-0d20caf80784",
+        "status": 503
+      },
+      {
+        "id": "9c38d9ab-782c-4dcd-a928-06d67664fe2b",
+        "status": 503
+      },
+      {
+        "id": "3f608174-3487-44c6-a33e-dec95ecf9228",
+        "status": 503
+      },
+      {
+        "id": "86e4a340-499f-41d0-91fb-fd13a18b3a28",
+        "status": 503
+      },
+      {
+        "id": "b83683ea-2e2f-4f8d-9cca-39d912a38ebf",
+        "status": 503
+      },
+      {
+        "id": "a94cb183-23cd-454a-b6da-84f6c80a8ba7",
+        "status": 503
+      },
+      {
+        "id": "f4971d22-3e4e-4248-b872-c2da605eca98",
+        "status": 503
+      },
+      {
+        "id": "1274aae3-da62-4720-bcda-d775da2a7a1b",
+        "status": 503
+      },
+      {
+        "id": "f72a5695-4acd-4c6f-a40b-3b8889deacd6",
+        "status": 503
+      },
+      {
+        "id": "ac4a5564-b6d2-4800-a871-9c55fdd7cd94",
+        "status": 503
+      },
+      {
+        "id": "a6d3acd9-0be1-4beb-ac4d-f3c0eed5e7b0",
+        "status": 503
+      },
+      {
+        "id": "03b95480-f2a4-4933-877c-e2ae4935f89b",
+        "status": 503
+      },
+      {
+        "id": "620b41ae-f3bd-4220-8616-2b4494ecac00",
+        "status": 503
+      },
+      {
+        "id": "3e7980b6-fcb1-41fc-9671-b8b6d3ad786a",
+        "status": 503
+      },
+      {
+        "id": "6c037394-c565-44f8-9386-fd4681758c06",
+        "status": 503
+      },
+      {
+        "id": "9280e10c-06a6-4757-92b8-f3437bede4f2",
+        "status": 503
+      },
+      {
+        "id": "b08d346f-bf56-48c3-ac05-3018e1acd7bd",
+        "status": 503
+      },
+      {
+        "id": "bb49646e-1cba-4d85-9e82-11db39bf9c09",
+        "status": 503
+      },
+      {
+        "id": "03bd6d56-f66c-43dc-91dd-37f934f127b4",
+        "status": 503
+      },
+      {
+        "id": "b7b60906-4d75-4c67-97ef-40f978ceeaaf",
+        "status": 503
+      },
+      {
+        "id": "b17694fa-23c3-4fd9-8e77-8f74d9dbebb6",
+        "status": 503
+      },
+      {
+        "id": "8e11e608-a4d8-42d0-a323-71c63968ba71",
+        "status": 503
+      },
+      {
+        "id": "23ca0e10-28f4-4b73-af81-1de73dae8de4",
+        "status": 503
+      },
+      {
+        "id": "c3334735-947d-436e-a769-98d8c2a6130a",
+        "status": 503
+      },
+      {
+        "id": "3af9e0ed-c1f0-4329-99e5-3b8488633cc1",
+        "status": 503
+      },
+      {
+        "id": "7c1dd5c1-d7e1-42bd-b420-3a25442725e9",
+        "status": 503
+      },
+      {
+        "id": "c856eda0-d250-4abc-a98d-776d7acea0b4",
+        "status": 503
+      },
+      {
+        "id": "33c399cb-0927-44de-ae69-c6b17a50c4da",
+        "status": 503
+      },
+      {
+        "id": "d97118e3-a039-44e8-91ad-ef77e48a6f5a",
+        "status": 503
+      },
+      {
+        "id": "3cfba98d-e109-4b10-af1a-68333c296630",
+        "status": 503
+      },
+      {
+        "id": "5626e8f3-41c5-4003-ab11-b79a2d4ee045",
+        "status": 503
+      },
+      {
+        "id": "42e6a428-db21-4bbc-90a0-1ef0c2a138fb",
+        "status": 503
+      },
+      {
+        "id": "53d8dbd5-9311-46b1-87bb-200f41d89fd4",
+        "status": 503
+      },
+      {
+        "id": "acd7ceb7-0eb7-4505-a393-a90575a61689",
+        "status": 503
+      },
+      {
+        "id": "be8051ea-7448-430c-a7e0-0f9a255e2cf8",
+        "status": 503
+      },
+      {
+        "id": "2419d1fd-6f31-4a23-81f2-5f760c48cb5a",
+        "status": 503
+      },
+      {
+        "id": "6db7a224-987d-4389-abbc-510a85ac7f93",
+        "status": 503
+      },
+      {
+        "id": "86861db8-bb6b-48f5-99c0-1ad399612fbc",
+        "status": 503
+      },
+      {
+        "id": "a94a0aad-7865-4828-b2e9-bed25f32dad9",
+        "status": 503
+      },
+      {
+        "id": "3dc0fd3a-5a13-41c5-9e0e-c6809edfc8d8",
+        "status": 503
+      },
+      {
+        "id": "9d321347-41b3-4dad-a666-007dbbdf159f",
+        "status": 503
+      },
+      {
+        "id": "7d14d2fc-5a3f-430b-8055-d602467b7bb8",
+        "status": 503
+      },
+      {
+        "id": "e2b802a9-242d-4c48-ad5f-7ebe3ef6f4e5",
+        "status": 503
+      },
+      {
+        "id": "c913bdff-505e-4edd-9b5f-ea5ffcfa9a8e",
+        "status": 503
+      },
+      {
+        "id": "35b1fe8b-45e9-4303-9d49-3a3b28494916",
+        "status": 503
+      },
+      {
+        "id": "79b4ecbf-c7a0-43de-9bf3-df1b99225520",
+        "status": 503
+      },
+      {
+        "id": "105f74d1-10f4-4668-9641-6319053beaf3",
+        "status": 503
+      },
+      {
+        "id": "af15d660-a930-4fbd-a775-d4b5dc676a5f",
+        "status": 503
+      },
+      {
+        "id": "2a2fb36d-3f8d-42b3-8810-cc620b63ba34",
+        "status": 503
+      },
+      {
+        "id": "1e2aafc9-0ca9-498a-88c1-eddcf3907d87",
+        "status": 503
+      },
+      {
+        "id": "93ff1064-838c-4a1e-9ac1-bc7d6218ad6e",
+        "status": 503
+      },
+      {
+        "id": "c92b6332-744d-434c-8ac4-0d404b0fd385",
+        "status": 503
+      },
+      {
+        "id": "cea3ff2a-ff9b-487b-b339-f84d46d7b6a5",
+        "status": 503
+      },
+      {
+        "id": "d56f086e-cf6e-4cea-a40d-780f90ac2bdc",
+        "status": 503
+      },
+      {
+        "id": "bdccde4b-c4e2-48ea-ac30-425e482cf39c",
+        "status": 503
+      },
+      {
+        "id": "ac85d2f9-34b3-48e4-b400-4b6622ebb9d1",
+        "status": 503
+      },
+      {
+        "id": "57d28e7d-9fc0-41d1-8424-3557bbb91525",
+        "status": 503
+      },
+      {
+        "id": "5d79b37e-8f6c-4c75-a5ab-5911388f450c",
+        "status": 503
+      },
+      {
+        "id": "e996d2fe-5f55-4908-99e9-0ffec5b574b3",
+        "status": 503
+      },
+      {
+        "id": "95e92698-abe2-488c-8929-cd4bcb4c8971",
+        "status": 503
+      },
+      {
+        "id": "c8bcd29d-855e-43e2-af1f-cd34c16d7f68",
+        "status": 503
+      },
+      {
+        "id": "9258b951-9d80-4e64-858d-1ba89526a48e",
+        "status": 503
+      },
+      {
+        "id": "f0bab5aa-c3e5-4fd8-a9f6-3c8458f83b1e",
+        "status": 503
+      },
+      {
+        "id": "9a69043b-e875-4f5b-9474-71ca3cbc2620",
+        "status": 503
+      },
+      {
+        "id": "9bb2c861-54bb-49c1-8f9a-6900ee971b49",
+        "status": 503
+      },
+      {
+        "id": "88ea0eca-3007-4c9c-b34c-92ed3cd99c2a",
+        "status": 503
+      },
+      {
+        "id": "f26a9142-9074-4499-aead-bc6b9a1d7bf9",
+        "status": 503
+      },
+      {
+        "id": "ca725e82-f092-4f85-92b6-69600edf0b7e",
+        "status": 503
+      },
+      {
+        "id": "cc8ee2b6-7e41-4372-a8cd-14047e46aab5",
+        "status": 503
+      },
+      {
+        "id": "18a389be-3c09-4516-92eb-31644937edfd",
+        "status": 503
+      },
+      {
+        "id": "96224005-0403-40b0-be68-10ea0a00b674",
+        "status": 503
+      },
+      {
+        "id": "de19f667-f526-49bb-bd06-9213404ebde0",
+        "status": 503
+      },
+      {
+        "id": "2d3e4203-ba0a-4f81-aee3-3913f5a0384d",
+        "status": 503
+      },
+      {
+        "id": "c7fbc866-7887-46e8-ab83-97f0d9666edf",
+        "status": 503
+      },
+      {
+        "id": "195636da-d2c0-43b7-8d04-d08396a69d98",
+        "status": 503
+      },
+      {
+        "id": "1271ebfa-d0de-47c3-b975-219c1acc3415",
+        "status": 503
+      },
+      {
+        "id": "a1ae5454-830d-4b4e-8b1a-83f0270fe61a",
+        "status": 503
+      },
+      {
+        "id": "4b6f5348-8a2f-49fc-9920-c047f25bc88f",
+        "status": 503
+      },
+      {
+        "id": "8066b141-3f81-40a7-8ec6-60c1e638988d",
+        "status": 503
+      },
+      {
+        "id": "06363ff0-8410-438d-bbbe-007ff64ccef9",
+        "status": 503
+      },
+      {
+        "id": "2293fb09-b265-4250-ae7d-2131142f6b28",
+        "status": 503
+      },
+      {
+        "id": "8e462712-3349-4209-bf63-14f045ff67ed",
+        "status": 503
+      },
+      {
+        "id": "4a1bf022-7693-4c50-81d0-60b54d47a321",
+        "status": 503
+      },
+      {
+        "id": "4626a75c-4328-43f5-951e-dbff4a45a49e",
+        "status": 503
+      },
+      {
+        "id": "41b241b0-7184-4fea-8f09-a3e235f214c4",
+        "status": 503
+      },
+      {
+        "id": "eb38351e-5016-44eb-9e56-cb94e99fabfb",
+        "status": 503
+      },
+      {
+        "id": "c8a72b74-40c7-4692-8141-9d6bbf298f5b",
+        "status": 503
+      },
+      {
+        "id": "a8f39687-950b-4e4d-a8d8-ed25a5c03c5b",
+        "status": 503
+      },
+      {
+        "id": "1826c5f5-a96c-430a-94bc-369dfa89c14c",
+        "status": 503
+      },
+      {
+        "id": "3af9048c-e081-4751-bc3c-ed14d907bb6e",
+        "status": 503
+      },
+      {
+        "id": "82211d14-11f3-4a88-805d-4cc10360fe9b",
+        "status": 503
+      },
+      {
+        "id": "53ce39fe-e3b0-4879-adc5-d142939e9174",
+        "status": 503
+      },
+      {
+        "id": "a78e6446-5b86-483b-a183-4b79f4bd0a65",
+        "status": 503
+      },
+      {
+        "id": "41ee31ba-cb6a-4fd6-9a4d-5f238f8372b5",
+        "status": 503
+      },
+      {
+        "id": "870abf20-2e64-4a6c-8ed2-123d0e3b1afd",
+        "status": 503
+      },
+      {
+        "id": "a55e907e-5e7b-48b0-82e7-83d956779895",
+        "status": 503
+      },
+      {
+        "id": "6c59a157-a5f9-493e-9c0b-b64c80f86a53",
+        "status": 503
+      },
+      {
+        "id": "28662b08-9846-4225-b9ef-e6c2d36237f6",
+        "status": 503
+      },
+      {
+        "id": "0871ed42-107b-41ec-9ef9-0cd470088e2f",
+        "status": 503
+      },
+      {
+        "id": "8acc2f9b-67e1-4e94-a81d-d10ba9d36ac5",
+        "status": 503
+      },
+      {
+        "id": "4efbc2c9-b0b6-43c3-8588-0a05439b4380",
+        "status": 503
+      },
+      {
+        "id": "f8809b82-2ea1-4e76-aecd-af6aeee5db82",
+        "status": 503
+      },
+      {
+        "id": "f508e485-bb75-4426-b52b-e6a246c1ea65",
+        "status": 503
+      },
+      {
+        "id": "d346d262-cdb1-446d-8c3e-397c7e74698d",
+        "status": 503
+      },
+      {
+        "id": "c1ff1ce0-bd7b-4ca5-b853-435ed67e2dba",
+        "status": 503
+      }
+    ]
+  },
+  "endpoints": {
+    "POST /auth/login (admin)": {
+      "count": 1,
+      "errors": 0,
+      "statusCounts": {
+        "200": 1
+      },
+      "avgMs": 1057,
+      "p50": 1057,
+      "p95": 1057,
+      "p99": 1057,
+      "maxMs": 1057
+    },
+    "GET /api/sedes (public)": {
+      "count": 1,
+      "errors": 0,
+      "statusCounts": {
+        "200": 1
+      },
+      "avgMs": 92,
+      "p50": 92,
+      "p95": 92,
+      "p99": 92,
+      "maxMs": 92
+    },
+    "GET /api/admin/agent-configs": {
+      "count": 707,
+      "errors": 0,
+      "statusCounts": {
+        "200": 111,
+        "503": 596
+      },
+      "avgMs": 85,
+      "p50": 83,
+      "p95": 92,
+      "p99": 100,
+      "maxMs": 393
+    },
+    "GET /api/admin/sedes": {
+      "count": 671,
+      "errors": 0,
+      "statusCounts": {
+        "200": 102,
+        "503": 569
+      },
+      "avgMs": 85,
+      "p50": 83,
+      "p95": 94,
+      "p99": 105,
+      "maxMs": 434
+    },
+    "GET /api/prospecting-scenarios/me": {
+      "count": 680,
+      "errors": 0,
+      "statusCounts": {
+        "200": 87,
+        "503": 593
+      },
+      "avgMs": 85,
+      "p50": 83,
+      "p95": 92,
+      "p99": 111,
+      "maxMs": 391
+    },
+    "GET /api/admin/lti/pending-matches": {
+      "count": 712,
+      "errors": 0,
+      "statusCounts": {
+        "200": 99,
+        "503": 613
+      },
+      "avgMs": 85,
+      "p50": 83,
+      "p95": 94,
+      "p99": 116,
+      "maxMs": 369
+    },
+    "GET /api/progress": {
+      "count": 714,
+      "errors": 0,
+      "statusCounts": {
+        "200": 94,
+        "503": 620
+      },
+      "avgMs": 86,
+      "p50": 83,
+      "p95": 92,
+      "p99": 140,
+      "maxMs": 402
+    },
+    "GET /auth/me": {
+      "count": 719,
+      "errors": 0,
+      "statusCounts": {
+        "200": 309,
+        "503": 410
+      },
+      "avgMs": 86,
+      "p50": 85,
+      "p95": 95,
+      "p99": 108,
+      "maxMs": 384
+    },
+    "GET /api/admin/agent-latency": {
+      "count": 718,
+      "errors": 0,
+      "statusCounts": {
+        "200": 104,
+        "503": 614
+      },
+      "avgMs": 86,
+      "p50": 83,
+      "p95": 93,
+      "p99": 108,
+      "maxMs": 397
+    },
+    "GET /api/admin/latency-probe/ping": {
+      "count": 709,
+      "errors": 0,
+      "statusCounts": {
+        "200": 90,
+        "503": 619
+      },
+      "avgMs": 85,
+      "p50": 83,
+      "p95": 91,
+      "p99": 101,
+      "maxMs": 398
+    },
+    "GET /api/admin/prospecting-scenarios": {
+      "count": 669,
+      "errors": 0,
+      "statusCounts": {
+        "200": 92,
+        "503": 577
+      },
+      "avgMs": 85,
+      "p50": 83,
+      "p95": 93,
+      "p99": 103,
+      "maxMs": 367
+    },
+    "GET /api/stats": {
+      "count": 702,
+      "errors": 0,
+      "statusCounts": {
+        "200": 108,
+        "503": 594
+      },
+      "avgMs": 86,
+      "p50": 83,
+      "p95": 94,
+      "p99": 128,
+      "maxMs": 341
+    },
+    "GET /api/sessions": {
+      "count": 677,
+      "errors": 0,
+      "statusCounts": {
+        "200": 99,
+        "503": 578
+      },
+      "avgMs": 86,
+      "p50": 83,
+      "p95": 95,
+      "p99": 129,
+      "maxMs": 379
+    },
+    "GET /api/admin/coaches": {
+      "count": 688,
+      "errors": 0,
+      "statusCounts": {
+        "200": 96,
+        "503": 592
+      },
+      "avgMs": 85,
+      "p50": 83,
+      "p95": 92,
+      "p99": 111,
+      "maxMs": 380
+    },
+    "GET /api/admin/lti-platforms": {
+      "count": 730,
+      "errors": 0,
+      "statusCounts": {
+        "200": 101,
+        "503": 629
+      },
+      "avgMs": 85,
+      "p50": 83,
+      "p95": 92,
+      "p99": 105,
+      "maxMs": 381
+    },
+    "GET /api/analytics/competencies": {
+      "count": 649,
+      "errors": 0,
+      "statusCounts": {
+        "200": 77,
+        "503": 572
+      },
+      "avgMs": 85,
+      "p50": 83,
+      "p95": 93,
+      "p99": 105,
+      "maxMs": 336
+    },
+    "GET /api/scenarios": {
+      "count": 726,
+      "errors": 0,
+      "statusCounts": {
+        "200": 82,
+        "503": 644
+      },
+      "avgMs": 85,
+      "p50": 83,
+      "p95": 91,
+      "p99": 103,
+      "maxMs": 359
+    },
+    "GET /api/analytics/dashboard": {
+      "count": 697,
+      "errors": 0,
+      "statusCounts": {
+        "200": 120,
+        "503": 577
+      },
+      "avgMs": 85,
+      "p50": 83,
+      "p95": 95,
+      "p99": 104,
+      "maxMs": 153
+    },
+    "GET /api/admin/students": {
+      "count": 665,
+      "errors": 0,
+      "statusCounts": {
+        "200": 104,
+        "503": 561
+      },
+      "avgMs": 88,
+      "p50": 83,
+      "p95": 106,
+      "p99": 202,
+      "maxMs": 319
+    },
+    "GET /api/admin/analytics": {
+      "count": 698,
+      "errors": 0,
+      "statusCounts": {
+        "200": 81,
+        "503": 617
+      },
+      "avgMs": 86,
+      "p50": 83,
+      "p95": 98,
+      "p99": 111,
+      "maxMs": 276
+    },
+    "GET /api/admin/lti/courses": {
+      "count": 691,
+      "errors": 0,
+      "statusCounts": {
+        "200": 98,
+        "503": 593
+      },
+      "avgMs": 84,
+      "p50": 83,
+      "p95": 92,
+      "p99": 101,
+      "maxMs": 277
+    },
+    "GET /api/sedes": {
+      "count": 699,
+      "errors": 0,
+      "statusCounts": {
+        "200": 98,
+        "503": 601
+      },
+      "avgMs": 84,
+      "p50": 83,
+      "p95": 90,
+      "p99": 99,
+      "maxMs": 127
+    },
+    "POST /api/admin/users": {
+      "count": 200,
+      "errors": 0,
+      "statusCounts": {
+        "201": 162,
+        "503": 38
+      },
+      "avgMs": 4703,
+      "p50": 5938,
+      "p95": 6247,
+      "p99": 9019,
+      "maxMs": 9374
+    },
+    "POST /api/admin/users/bulk": {
+      "count": 2,
+      "errors": 0,
+      "statusCounts": {
+        "200": 2
+      },
+      "avgMs": 14991,
+      "p50": 15091,
+      "p95": 15091,
+      "p99": 15091,
+      "maxMs": 15091
+    },
+    "PATCH /api/admin/users/:id/name": {
+      "count": 162,
+      "errors": 0,
+      "statusCounts": {
+        "200": 162
+      },
+      "avgMs": 1170,
+      "p50": 1052,
+      "p95": 2247,
+      "p99": 2346,
+      "maxMs": 2422
+    },
+    "PATCH /api/admin/users/:id/password": {
+      "count": 162,
+      "errors": 0,
+      "statusCounts": {
+        "200": 162
+      },
+      "avgMs": 2618,
+      "p50": 2300,
+      "p95": 5757,
+      "p99": 5774,
+      "maxMs": 5787
+    },
+    "PATCH /api/admin/users/:id/examen-final": {
+      "count": 162,
+      "errors": 0,
+      "statusCounts": {
+        "200": 162
+      },
+      "avgMs": 1318,
+      "p50": 1249,
+      "p95": 2991,
+      "p99": 3799,
+      "maxMs": 4818
+    },
+    "POST /api/admin/grades": {
+      "count": 162,
+      "errors": 0,
+      "statusCounts": {
+        "200": 162
+      },
+      "avgMs": 1059,
+      "p50": 1043,
+      "p95": 2420,
+      "p99": 2878,
+      "maxMs": 2974
+    },
+    "PATCH /api/admin/users/bulk/examen-final": {
+      "count": 2,
+      "errors": 0,
+      "statusCounts": {
+        "404": 2
+      },
+      "avgMs": 90,
+      "p50": 91,
+      "p95": 91,
+      "p99": 91,
+      "maxMs": 91
+    },
+    "POST /auth/login (learner)": {
+      "count": 5,
+      "errors": 0,
+      "statusCounts": {
+        "200": 3,
+        "401": 2
+      },
+      "avgMs": 268,
+      "p50": 387,
+      "p95": 391,
+      "p99": 391,
+      "maxMs": 391
+    },
+    "GET /admin/students (cleanup-list)": {
+      "count": 1,
+      "errors": 0,
+      "statusCounts": {
+        "200": 1
+      },
+      "avgMs": 198,
+      "p50": 198,
+      "p95": 198,
+      "p99": 198,
+      "maxMs": 198
+    },
+    "DELETE /api/admin/users/:id": {
+      "count": 262,
+      "errors": 0,
+      "statusCounts": {
+        "200": 88,
+        "503": 174
+      },
+      "avgMs": 98,
+      "p50": 85,
+      "p95": 172,
+      "p99": 286,
+      "maxMs": 304
+    }
+  },
+  "finishedAt": "2026-05-15T20:04:47.869Z"
+}

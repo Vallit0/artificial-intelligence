@@ -12,7 +12,11 @@ services:
       - ./server/.env
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://senoriales:senoriales@db:5432/senoriales
+      # connection_limit=20: el default de Prisma es 10, que satura con
+      # ~20 requests concurrentes y dispara errores P2024 ("timed out fetching
+      # a new connection from the pool"). 20 es seguro dentro del max_connections
+      # default de Postgres 15 (100).
+      - DATABASE_URL=postgresql://senoriales:senoriales@db:5432/senoriales?connection_limit=20&pool_timeout=30
       - CORS_ORIGIN=https://centro-de-negocios.org,https://www.centro-de-negocios.org,http://localhost,http://localhost:3000
       - JWT_SECRET=${JWT_SECRET:-senoriales-dev-secret-change-in-prod}
     ports:

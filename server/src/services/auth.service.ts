@@ -2,7 +2,7 @@
 // Authentication Service
 // ============================================
 
-import bcrypt from 'bcryptjs';
+import { hashPassword, comparePassword } from '../utils/passwordHash.js';
 import jwt from 'jsonwebtoken';
 import prisma from '../db/index.js';
 import config from '../config/index.js';
@@ -117,7 +117,7 @@ export async function signup(
     throw new ConflictError('User already exists');
   }
 
-  const passwordHash = await bcrypt.hash(password, 12);
+  const passwordHash = await hashPassword(password);
 
   // Signup público NUNCA crea rol coach — los coaches se crean exclusivamente
   // desde el panel admin (admin global o coach con canCreateCoaches).
@@ -168,7 +168,7 @@ export async function login(email: string, password: string): Promise<{
     throw new UnauthorizedError('This account uses SSO login');
   }
 
-  const validPassword = await bcrypt.compare(password, user.passwordHash);
+  const validPassword = await comparePassword(password, user.passwordHash);
   if (!validPassword) {
     throw new UnauthorizedError('Invalid credentials');
   }

@@ -109,7 +109,12 @@
       "Bash(echo \"EXIT=$?\")",
       "Bash(Select-String -Pattern \"setOpenCard|Dialog|onClick\")",
       "Bash(Select-Object -First 10)",
-      "WebFetch(domain:centro-de-negocios.org)"
+      "WebFetch(domain:centro-de-negocios.org)",
+      "PowerShell(node --version; node --check stress/stress.mjs; node --check stress/cleanup.mjs)",
+      "PowerShell($env:STRESS_ADMIN_EMAIL = \"test\"; $env:STRESS_ADMIN_PASSWORD = \"test\"; node stress/stress.mjs --dry-run)",
+      "PowerShell($env:STRESS_BASE_URL = \"https://centro-de-negocios.org\"; $env:STRESS_ADMIN_EMAIL = \"admin@gmail.com\"; $env:STRESS_ADMIN_PASSWORD = \"admin\"; node stress/stress.mjs 2>&1)",
+      "PowerShell($env:STRESS_BASE_URL = \"https://centro-de-negocios.org\"; $env:STRESS_ADMIN_EMAIL = \"admin@gmail.com\"; $env:STRESS_ADMIN_PASSWORD = \"admin\"; node stress/cleanup.mjs 2>&1)",
+      "PowerShell($env:STRESS_BASE_URL = \"https://centro-de-negocios.org\"; $env:STRESS_ADMIN_EMAIL = \"admin@gmail.com\"; $env:STRESS_ADMIN_PASSWORD = \"admin\"; node stress/cleanup.mjs --dry-run 2>&1)"
     ]
   },
   "hooks": {

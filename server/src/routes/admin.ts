@@ -126,6 +126,48 @@ adminRouter.patch('/users/:id/name', async (req: AuthRequest, res: Response, nex
   }
 });
 
+// IMPORTANT: la ruta `/users/bulk/examen-final` DEBE declararse antes que
+// `/users/:id/examen-final` — Express matchea en orden de declaración y si
+// `:id` va primero, captura "bulk" como UUID inválido y devuelve 404.
+const bulkExamenFinalSchema = z.object({
+  userIds: z.array(z.string().uuid()).min(1).max(500),
+  enabled: z.boolean(),
+});
+
+/**
+ * @openapi
+ * /api/admin/users/bulk/examen-final:
+ *   patch:
+ *     tags: [Admin]
+ *     summary: Habilita o deshabilita el examen final para varios estudiantes a la vez
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               userIds:
+ *                 type: array
+ *                 items: { type: string, format: uuid }
+ *               enabled: { type: boolean }
+ *     responses:
+ *       200: { description: Estado actualizado para N usuarios }
+ */
+adminRouter.patch('/users/bulk/examen-final', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const parsed = bulkExamenFinalSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new BadRequestError('userIds (array de UUIDs, 1-500) y enabled (boolean) requeridos');
+    }
+    const result = await adminService.bulkToggleExamenFinal(parsed.data.userIds, parsed.data.enabled, req.user!);
+    res.json({ success: true, ...result });
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
 /**
  * @openapi
  * /api/admin/users/{id}/examen-final:
@@ -152,45 +194,6 @@ adminRouter.patch('/users/:id/examen-final', async (req: AuthRequest, res: Respo
   try {
     const { enabled } = req.body;
     const result = await adminService.toggleExamenFinal(req.params.id, !!enabled, req.user!);
-    res.json({ success: true, ...result });
-  } catch (error) {
-    const appError = handleError(error);
-    res.status(appError.statusCode).json({ error: appError.message });
-  }
-});
-
-/**
- * @openapi
- * /api/admin/users/bulk/examen-final:
- *   patch:
- *     tags: [Admin]
- *     summary: Habilita o deshabilita el examen final para varios estudiantes a la vez
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               userIds:
- *                 type: array
- *                 items: { type: string, format: uuid }
- *               enabled: { type: boolean }
- *     responses:
- *       200: { description: Estado actualizado para N usuarios }
- */
-const bulkExamenFinalSchema = z.object({
-  userIds: z.array(z.string().uuid()).min(1).max(500),
-  enabled: z.boolean(),
-});
-
-adminRouter.patch('/users/bulk/examen-final', async (req: AuthRequest, res: Response, next: NextFunction) => {
-  try {
-    const parsed = bulkExamenFinalSchema.safeParse(req.body);
-    if (!parsed.success) {
-      throw new BadRequestError('userIds (array de UUIDs, 1-500) y enabled (boolean) requeridos');
-    }
-    const result = await adminService.bulkToggleExamenFinal(parsed.data.userIds, parsed.data.enabled, req.user!);
     res.json({ success: true, ...result });
   } catch (error) {
     const appError = handleError(error);
