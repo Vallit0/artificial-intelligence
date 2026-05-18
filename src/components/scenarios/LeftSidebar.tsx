@@ -25,7 +25,9 @@ interface NavItem {
 const LeftSidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { signOut, isAdmin } = useAuth();
+  const { signOut, isAdmin, roles } = useAuth();
+  const isCoach = roles.includes("coach");
+  const canSeePanel = isAdmin || isCoach;
   const { currentLevel, toggle, canSwitchLevel } = useLevelMode();
   const animateLevelChange = useDidLevelJustChange();
 
@@ -48,10 +50,10 @@ const LeftSidebar = () => {
   const baseItems = isLevel2 ? level2Items : level1Items;
   const navItems: NavItem[] = [
     ...baseItems,
-    ...(isAdmin
+    ...(canSeePanel
       ? [
           { icon: CalendarDays, label: "Coach Center", href: "/coach-center" },
-          { icon: Settings, label: "Admin", href: "/admin" },
+          { icon: Settings, label: isAdmin ? "Admin" : "Mis Alumnos", href: "/admin" },
         ]
       : []),
   ];

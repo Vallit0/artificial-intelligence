@@ -13,7 +13,9 @@ interface NavItem {
 const MobileNavigation = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, roles } = useAuth();
+  const isCoach = roles.includes("coach");
+  const canSeePanel = isAdmin || isCoach;
   const { currentLevel, toggle, canSwitchLevel } = useLevelMode();
   const animateLevelChange = useDidLevelJustChange();
 
@@ -44,10 +46,10 @@ const MobileNavigation = () => {
   const baseItems = isLevel2 ? level2Items : level1Items;
   const navItems: NavItem[] = [
     ...baseItems,
-    ...(isAdmin
+    ...(canSeePanel
       ? [
           { icon: <CalendarDays className="w-5 h-5" />, label: "Coach", href: "/coach-center" },
-          { icon: <Settings className="w-5 h-5" />, label: "Admin", href: "/admin" },
+          { icon: <Settings className="w-5 h-5" />, label: isAdmin ? "Admin" : "Alumnos", href: "/admin" },
         ]
       : []),
   ];

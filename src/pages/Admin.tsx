@@ -34,8 +34,10 @@ export default function Admin() {
   const navigate = useNavigate();
   const { user, loading: authLoading, roles } = useAuth();
   const { isAdmin, isLoading: adminLoading } = useAdmin();
-  const isCoachOnly = roles.includes("coach") && !isAdmin;
+  const isCoach = roles.includes("coach");
+  const isCoachOnly = isCoach && !isAdmin;
   const canSeeProspecting = !isCoachOnly || !!user?.coachPermissions?.canEditPrompts;
+  const canSeeCoachesTab = isAdmin || !!user?.coachPermissions?.canCreateCoaches;
   const { students, isLoading: studentsLoading, assignGrade, toggleExamenFinal, bulkToggleExamenFinal, refetch } = useStudents();
 
   const { data: adminAnalytics, isLoading: analyticsLoading } = useAdminAnalytics();
@@ -57,8 +59,9 @@ export default function Admin() {
     return <Navigate to="/auth" replace />;
   }
 
-  // Redirect if not admin
-  if (!isAdmin) {
+  // Solo admin global o coach pueden entrar. El backend ya filtra por sede;
+  // acá ocultamos los tabs admin-only más abajo.
+  if (!isAdmin && !isCoach) {
     return <Navigate to="/scenarios" replace />;
   }
 
@@ -97,48 +100,62 @@ export default function Admin() {
                   <Shield className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold text-foreground">Panel de Administrador</h1>
+                  <h1 className="text-xl font-bold text-foreground">
+                    {isAdmin ? "Panel de Administrador" : "Panel del Coach"}
+                  </h1>
                   <p className="text-sm text-muted-foreground">Gestión de estudiantes y certificados</p>
                 </div>
               </div>
             </div>
 
-            <div className="mb-6">
-              <AiAccessPanel />
-            </div>
+            {isAdmin && (
+              <div className="mb-6">
+                <AiAccessPanel />
+              </div>
+            )}
 
         <Tabs defaultValue="students" className="space-y-4">
           <TabsList className="flex-wrap h-auto">
             <TabsTrigger value="students">Estudiantes</TabsTrigger>
-            <TabsTrigger value="sedes" className="flex items-center gap-1">
-              <Building2 className="w-3.5 h-3.5" />
-              Sedes
-            </TabsTrigger>
-            <TabsTrigger value="coaches" className="flex items-center gap-1">
-              <GraduationCap className="w-3.5 h-3.5" />
-              Coaches
-            </TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger value="sedes" className="flex items-center gap-1">
+                <Building2 className="w-3.5 h-3.5" />
+                Sedes
+              </TabsTrigger>
+            )}
+            {canSeeCoachesTab && (
+              <TabsTrigger value="coaches" className="flex items-center gap-1">
+                <GraduationCap className="w-3.5 h-3.5" />
+                Coaches
+              </TabsTrigger>
+            )}
             <TabsTrigger value="analytics" className="flex items-center gap-1">
               <BarChart3 className="w-3.5 h-3.5" />
               Analíticas
             </TabsTrigger>
-            <TabsTrigger value="agents">Agentes IA</TabsTrigger>
-            <TabsTrigger value="ab-tests" className="flex items-center gap-1">
-              <FlaskConical className="w-3.5 h-3.5" />
-              A/B Tests
-            </TabsTrigger>
+            {isAdmin && <TabsTrigger value="agents">Agentes IA</TabsTrigger>}
+            {isAdmin && (
+              <TabsTrigger value="ab-tests" className="flex items-center gap-1">
+                <FlaskConical className="w-3.5 h-3.5" />
+                A/B Tests
+              </TabsTrigger>
+            )}
             {canSeeProspecting && (
               <TabsTrigger value="prospecting">Prospección</TabsTrigger>
             )}
-            <TabsTrigger value="lti">LTI / Moodle</TabsTrigger>
-            <TabsTrigger value="latency" className="flex items-center gap-1">
-              <Activity className="w-3.5 h-3.5" />
-              Latencia
-            </TabsTrigger>
-            <TabsTrigger value="agent-perf" className="flex items-center gap-1">
-              <Timer className="w-3.5 h-3.5" />
-              Performance Voz
-            </TabsTrigger>
+            {isAdmin && <TabsTrigger value="lti">LTI / Moodle</TabsTrigger>}
+            {isAdmin && (
+              <TabsTrigger value="latency" className="flex items-center gap-1">
+                <Activity className="w-3.5 h-3.5" />
+                Latencia
+              </TabsTrigger>
+            )}
+            {isAdmin && (
+              <TabsTrigger value="agent-perf" className="flex items-center gap-1">
+                <Timer className="w-3.5 h-3.5" />
+                Performance Voz
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="students">
@@ -296,14 +313,18 @@ export default function Admin() {
             <div className="flex flex-row items-center justify-between">
               <CardTitle>Estudiantes</CardTitle>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => setShowBulkModal(true)}>
-                  <Upload className="w-4 h-4 mr-2" />
-                  Carga Masiva
-                </Button>
-                <Button size="sm" onClick={() => setShowCreateModal(true)}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Nuevo Usuario
-                </Button>
+                {isAdmin && (
+                  <Button variant="outline" size="sm" onClick={() => setShowBulkModal(true)}>
+                    <Upload className="w-4 h-4 mr-2" />
+                    Carga Masiva
+                  </Button>
+                )}
+                {(isAdmin || !!user?.coachPermissions?.canCreateCoaches) && (
+                  <Button size="sm" onClick={() => setShowCreateModal(true)}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Nuevo Usuario
+                  </Button>
+                )}
               </div>
             </div>
             <div className="relative">

@@ -23,8 +23,9 @@ import WeeklyCalendar from "@/components/coach-center/WeeklyCalendar";
 import CitaFormDialog from "@/components/coach-center/CitaFormDialog";
 
 export default function CoachCenter() {
-  const { user, loading: authLoading, isAdmin } = useAuth();
+  const { user, loading: authLoading, isAdmin, roles } = useAuth();
   const { isAdmin: confirmedAdmin, isLoading: adminLoading } = useAdmin();
+  const isCoach = roles.includes("coach");
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDirector, setSelectedDirector] = useState("todos");
@@ -60,7 +61,7 @@ export default function CoachCenter() {
   }
 
   if (!user) return <Navigate to="/auth" replace />;
-  if (!confirmedAdmin) return <Navigate to="/practice" replace />;
+  if (!confirmedAdmin && !isCoach) return <Navigate to="/practice" replace />;
 
   const handleAddCita = () => {
     setEditingCita(null);
@@ -144,7 +145,7 @@ export default function CoachCenter() {
               <WeeklyCalendar
                 currentDate={currentDate}
                 citas={citas}
-                isAdmin={isAdmin}
+                isAdmin={isAdmin || isCoach}
                 onEditCita={handleEditCita}
                 onDeleteCita={handleDeleteCita}
               />
