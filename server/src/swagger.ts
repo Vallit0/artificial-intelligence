@@ -22,6 +22,12 @@ const options: swaggerJsdoc.Options = {
       { name: 'ElevenLabs', description: 'Tokens de conversación + tools del agente.' },
       { name: 'Admin', description: 'Endpoints restringidos a rol admin.' },
       { name: 'Users', description: 'Acciones del usuario autenticado sobre su propia cuenta.' },
+      { name: 'Sedes', description: 'Gestión de sedes (CRUD, admin global).' },
+      { name: 'Progress', description: 'Progreso y estadísticas del usuario.' },
+      { name: 'Analytics', description: 'Analíticas de desempeño y competencias.' },
+      { name: 'LTI', description: 'Integración LTI 1.3 con Moodle (OIDC, launch, JWKS, deep linking).' },
+      { name: 'Memory', description: 'Memoria del asesor (server tools del agente de ElevenLabs).' },
+      { name: 'Citas', description: 'Agendamiento y gestión de citas.' },
     ],
     components: {
       securitySchemes: {
@@ -121,6 +127,10 @@ const options: swaggerJsdoc.Options = {
 };
 
 const spec = swaggerJsdoc(options);
+
+/** Spec OpenAPI ya resuelto. Se exporta para generar artefactos estáticos
+ *  (JSON crudo + HTML Redoc) vía `npm run docs:openapi`. */
+export const openApiSpec = spec;
 
 export function mountSwagger(app: Express): void {
   app.get('/api/docs.json', (_req: Request, res: Response) => {

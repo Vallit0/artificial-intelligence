@@ -57,6 +57,29 @@ apiRouter.get('/scenarios/:id', scenariosController.getById);
 // Lista pública de sedes activas — usada por el selector de sede en el
 // signup. Devuelve sólo los campos necesarios; admin global tiene un
 // endpoint separado bajo /api/admin/sedes con más detalle.
+/**
+ * @openapi
+ * /api/sedes:
+ *   get:
+ *     tags: [Users]
+ *     summary: Lista pública de sedes activas
+ *     description: Usada por el selector de sede en el signup. Devuelve sólo id, slug, name y country.
+ *     security: []
+ *     responses:
+ *       200:
+ *         description: Lista de sedes activas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id: { type: string, format: uuid }
+ *                   slug: { type: string }
+ *                   name: { type: string }
+ *                   country: { type: string, nullable: true }
+ */
 apiRouter.get('/sedes', async (req: AuthRequest, res: Response) => {
   try {
     const sedes = await sedesService.listSedes();
@@ -211,13 +234,164 @@ apiRouter.post('/sessions/:id/transcript', sessionsController.saveTranscript);
 apiRouter.get('/sessions/:id/transcript', sessionsController.getTranscript);
 
 // User Progress
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     UserProgress:
+ *       type: object
+ *       properties:
+ *         id: { type: string, format: uuid }
+ *         userId: { type: string, format: uuid }
+ *         scenarioId: { type: string, format: uuid }
+ *         isUnlocked: { type: boolean }
+ *         isCompleted: { type: boolean }
+ *         bestScore: { type: integer, nullable: true }
+ *         attempts: { type: integer }
+ *         firstCompletedAt: { type: string, format: date-time, nullable: true }
+ *         lastAttemptAt: { type: string, format: date-time, nullable: true }
+ *         createdAt: { type: string, format: date-time }
+ *         updatedAt: { type: string, format: date-time }
+ *
+ * /api/progress:
+ *   get:
+ *     tags: [Progress]
+ *     summary: Devuelve el progreso por escenario del usuario autenticado
+ *     responses:
+ *       200:
+ *         description: Lista de progreso por escenario (ordenada por displayOrder del escenario)
+ *         content:
+ *           application/json:
+ *             schema: { type: array, items: { $ref: '#/components/schemas/UserProgress' } }
+ *   post:
+ *     tags: [Progress]
+ *     summary: Crea o actualiza (upsert) el progreso del usuario en un escenario
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [scenarioId]
+ *             properties:
+ *               scenarioId: { type: string, format: uuid }
+ *               isUnlocked: { type: boolean }
+ *               isCompleted: { type: boolean }
+ *               bestScore: { type: integer }
+ *               attempts: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Progreso actualizado
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/UserProgress' }
+ */
 apiRouter.get('/progress', progressController.getProgress);
 apiRouter.post('/progress', progressController.updateProgress);
 
 // User Stats
+/**
+ * @openapi
+ * /api/stats:
+ *   get:
+ *     tags: [Progress]
+ *     summary: Devuelve estadísticas agregadas del usuario autenticado
+ *     responses:
+ *       200:
+ *         description: Estadísticas del usuario
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 totalSessions: { type: integer }
+ *                 totalTime: { type: integer, description: Suma de durationSeconds }
+ *                 avgScore: { type: number }
+ *                 completedScenarios: { type: integer }
+ *                 practiceDays: { type: integer, description: Días con práctica en los últimos 30 días }
+ */
 apiRouter.get('/stats', sessionsController.getStats);
 
 // Analytics
+/**
+ * @openapi
+ * /api/analytics/dashboard:
+ *   get:
+ *     tags: [Analytics]
+ *     summary: Dashboard analítico del usuario autenticado
+ *     description: Historial de puntajes con breakdown, promedios de competencias, último breakdown y heatmap de actividad (últimos 90 días).
+ *     responses:
+ *       200:
+ *         description: Datos del dashboard
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 scoreHistory:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       date: { type: string, format: date-time }
+ *                       score: { type: integer }
+ *                       scenarioName: { type: string }
+ *                       breakdown:
+ *                         type: object
+ *                         nullable: true
+ *                         properties:
+ *                           apertura: { type: integer }
+ *                           escuchaActiva: { type: integer }
+ *                           manejoObjeciones: { type: integer }
+ *                           propuestaValor: { type: integer }
+ *                           cierre: { type: integer }
+ *                 averageBreakdown:
+ *                   type: object
+ *                   properties:
+ *                     apertura: { type: number, nullable: true }
+ *                     escuchaActiva: { type: number, nullable: true }
+ *                     manejoObjeciones: { type: number, nullable: true }
+ *                     propuestaValor: { type: number, nullable: true }
+ *                     cierre: { type: number, nullable: true }
+ *                 latestBreakdown:
+ *                   type: object
+ *                   nullable: true
+ *                   properties:
+ *                     apertura: { type: integer }
+ *                     escuchaActiva: { type: integer }
+ *                     manejoObjeciones: { type: integer }
+ *                     propuestaValor: { type: integer }
+ *                     cierre: { type: integer }
+ *                 activityHeatmap:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       date: { type: string, format: date }
+ *                       count: { type: integer }
+ *
+ * /api/analytics/competencies:
+ *   get:
+ *     tags: [Analytics]
+ *     summary: Historial de competencias por sesión (breakdown a lo largo del tiempo)
+ *     responses:
+ *       200:
+ *         description: Serie temporal de breakdowns por sesión
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   date: { type: string, format: date-time }
+ *                   score: { type: integer, nullable: true }
+ *                   apertura: { type: integer }
+ *                   escuchaActiva: { type: integer }
+ *                   manejoObjeciones: { type: integer }
+ *                   propuestaValor: { type: integer }
+ *                   cierre: { type: integer }
+ */
 apiRouter.get('/analytics/dashboard', analyticsController.getUserDashboard);
 apiRouter.get('/analytics/competencies', analyticsController.getCompetencyHistory);
 
@@ -258,6 +432,25 @@ apiRouter.post('/users/me/unlock-level2', async (req: AuthRequest, res: Response
 });
 
 // Prospecting Scenarios visible to current user
+/**
+ * @openapi
+ * /api/prospecting-scenarios/me:
+ *   get:
+ *     tags: [Scenarios]
+ *     summary: Nombres secretos de escenarios de prospección visibles para el usuario actual
+ *     description: Combina la configuración global con los overrides por usuario.
+ *     responses:
+ *       200:
+ *         description: Lista de nombres secretos visibles
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 visible:
+ *                   type: array
+ *                   items: { type: string }
+ */
 apiRouter.get('/prospecting-scenarios/me', async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id;

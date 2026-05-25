@@ -26,3 +26,8 @@ dist-ssr
 # Environment variables
 .env
 .env.*
+
+# MkDocs build output (la wiki se publica vía CI; el sitio no se versiona)
+site/
+.mkdocs-venv/
+.mkdocs-test-site/

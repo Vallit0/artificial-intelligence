@@ -104,6 +104,42 @@ function mapLTIRoles(ltiRoles: string[]): LtiRoleValue[] {
 // ============================================
 // POST /lti/initiate - OIDC Login Initiation
 // ============================================
+/**
+ * @openapi
+ * /lti/initiate:
+ *   post:
+ *     tags: [LTI]
+ *     summary: OIDC Login Initiation (LTI 1.3, paso 1)
+ *     security: []
+ *     description: >-
+ *       Lo invoca el LMS (Moodle) para iniciar el flujo OIDC. Valida que la
+ *       plataforma esté registrada, persiste un `state`+`nonce` de un solo uso
+ *       y redirige (302) al `authEndpoint` de la plataforma con los parámetros
+ *       de autenticación. No usa bearer JWT propio.
+ *     requestBody:
+ *       required: true
+ *       description: Campos enviados por el LMS (form_post o query).
+ *       content:
+ *         application/x-www-form-urlencoded:
+ *           schema:
+ *             type: object
+ *             required: [iss, login_hint, target_link_uri]
+ *             properties:
+ *               iss: { type: string, description: Issuer URL de la plataforma }
+ *               login_hint: { type: string }
+ *               target_link_uri: { type: string, format: uri }
+ *               lti_message_hint: { type: string }
+ *     responses:
+ *       302:
+ *         description: Redirección al endpoint de autenticación de la plataforma.
+ *         headers:
+ *           Location:
+ *             description: URL del authEndpoint con scope/response_type/client_id/state/nonce.
+ *             schema: { type: string, format: uri }
+ *       400: { description: Faltan parámetros requeridos, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+ *       403: { description: Plataforma no registrada o inactiva, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+ *       500: { description: Error interno, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+ */
 ltiRouter.post('/initiate', async (req: Request, res: Response) => {
   try {
     const issuer = req.body.iss;
@@ -167,6 +203,49 @@ ltiRouter.post('/initiate', async (req: Request, res: Response) => {
 // ============================================
 // POST /lti/launch - LTI Launch (receives id_token)
 // ============================================
+/**
+ * @openapi
+ * /lti/launch:
+ *   post:
+ *     tags: [LTI]
+ *     summary: LTI Launch (LTI 1.3, paso 2 — recibe el id_token firmado)
+ *     security: []
+ *     description: >-
+ *       Endpoint `target_link_uri` al que el LMS hace form_post con el
+ *       `id_token` y el `state` emitido en `/lti/initiate`. Verifica firma
+ *       (JWKS de la plataforma), `state`/`nonce`, `exp` y `aud`, y luego
+ *       ramifica según `message_type`:
+ *       (a) `LtiDeepLinkingRequest` → crea un estado de deep linking y redirige
+ *       (302) a la página del picker (`/lti/deep-linking/select?state=...`);
+ *       (b) `LtiResourceLinkRequest` → hace JIT-provisioning del usuario, emite
+ *       access/refresh tokens propios y redirige (302) a la SPA con los tokens
+ *       en query (`access_token`, `refresh_token`, opcional `scenario`).
+ *       No usa bearer JWT propio.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/x-www-form-urlencoded:
+ *           schema:
+ *             type: object
+ *             required: [id_token, state]
+ *             properties:
+ *               id_token: { type: string, description: JWT firmado por la plataforma (LTI 1.3). }
+ *               state: { type: string, description: Valor emitido en /lti/initiate (un solo uso). }
+ *     responses:
+ *       302:
+ *         description: >-
+ *           Redirección a la SPA. En launch de recurso, a la app con
+ *           `access_token`/`refresh_token` (y opcional `scenario`) en query;
+ *           en deep linking, al picker con `state` en query.
+ *         headers:
+ *           Location:
+ *             schema: { type: string, format: uri }
+ *       400: { description: id_token/state ausente, JWT mal formado, settings de deep linking inválidos, o email requerido para usuario nuevo, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+ *       401: { description: State desconocido/expirado/de otra plataforma, nonce mismatch, firma o audience inválida, o token expirado, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+ *       403: { description: Plataforma no encontrada o inactiva, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+ *       500: { description: No se pudo obtener la clave pública o error interno, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+ *       503: { description: No hay sede configurada para el JIT-provisioning, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+ */
 ltiRouter.post('/launch', async (req: Request, res: Response) => {
   try {
     const idToken = req.body.id_token;
@@ -495,6 +574,41 @@ ltiRouter.post('/launch', async (req: Request, res: Response) => {
 // ============================================
 // GET /lti/info - Platform Registration Info
 // ============================================
+/**
+ * @openapi
+ * /lti/info:
+ *   get:
+ *     tags: [LTI]
+ *     summary: Datos de registro de la herramienta (para configurar en el LMS)
+ *     security: []
+ *     description: >-
+ *       Devuelve metadatos estáticos del tool LTI 1.3 (URLs de initiate/launch,
+ *       JWKS, redirect_uris, mensajes soportados) para registrarlo manualmente
+ *       en Moodle. No usa bearer JWT propio.
+ *     responses:
+ *       200:
+ *         description: Información de registro del tool.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 tool_name: { type: string }
+ *                 description: { type: string }
+ *                 lti_version: { type: string, example: '1.3.0' }
+ *                 initiate_login_url: { type: string, format: uri }
+ *                 target_link_uri: { type: string, format: uri }
+ *                 redirect_uris: { type: array, items: { type: string, format: uri } }
+ *                 oidc_initiation_url: { type: string, format: uri }
+ *                 public_jwks_url: { type: string, format: uri }
+ *                 messages:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       type: { type: string, example: LtiResourceLinkRequest }
+ *                       target_link_uri: { type: string, format: uri }
+ */
 ltiRouter.get('/info', (req: Request, res: Response) => {
   res.json({
     tool_name: 'Corporación Señoriales - Práctica de Ventas',
@@ -521,6 +635,42 @@ ltiRouter.get('/info', (req: Request, res: Response) => {
 // JWTs we send to their token endpoint, and Deep Linking responses we
 // post back. Cache for 10 minutes — long enough to avoid hammering on
 // every token call, short enough that key rotation propagates quickly.
+/**
+ * @openapi
+ * /lti/jwks:
+ *   get:
+ *     tags: [LTI]
+ *     summary: JWKS público del tool (claves RSA de firma)
+ *     security: []
+ *     description: >-
+ *       Set de claves públicas (JWKS) que el LMS consulta para verificar los
+ *       `client_assertion` JWT y las respuestas de Deep Linking firmadas por
+ *       el tool. Durante una rotación puede devolver más de una clave activa.
+ *       Responde con `Cache-Control: public, max-age=600`. No usa bearer JWT propio.
+ *     responses:
+ *       200:
+ *         description: Conjunto de claves públicas en formato JWKS.
+ *         headers:
+ *           Cache-Control:
+ *             schema: { type: string, example: 'public, max-age=600' }
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 keys:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       kty: { type: string, example: RSA }
+ *                       use: { type: string, example: sig }
+ *                       alg: { type: string, example: RS256 }
+ *                       kid: { type: string }
+ *                       n: { type: string, description: Módulo RSA (base64url) }
+ *                       e: { type: string, description: Exponente público (base64url) }
+ *       500: { description: No se pudo construir el JWKS, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+ */
 ltiRouter.get('/jwks', async (_req: Request, res: Response) => {
   try {
     const jwks = await getPublicJwks();
@@ -541,6 +691,47 @@ ltiRouter.get('/jwks', async (_req: Request, res: Response) => {
 // the teacher arrived from Moodle and likely has no Señoriales account yet.
 
 // GET state + scenario list so the picker can render the form.
+/**
+ * @openapi
+ * /lti/deep-linking/state/{id}:
+ *   get:
+ *     tags: [LTI]
+ *     summary: Bootstrap del picker de Deep Linking (estado + escenarios)
+ *     security: []
+ *     description: >-
+ *       Lo consume la SPA del picker (`/lti/deep-linking/select`) para renderizar
+ *       el formulario. La posesión del `id` (generado en el launch, de un solo
+ *       uso, expira a los 30 min) funciona como credencial; no usa bearer JWT propio.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *         description: Id del estado de Deep Linking emitido en /lti/launch.
+ *     responses:
+ *       200:
+ *         description: Estado válido + lista de escenarios activos.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 stateId: { type: string, format: uuid }
+ *                 platformName: { type: string }
+ *                 contextTitle: { type: string, nullable: true }
+ *                 scenarios:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id: { type: string, format: uuid }
+ *                       name: { type: string }
+ *                       description: { type: string, nullable: true }
+ *                       displayOrder: { type: integer }
+ *       404: { description: Estado de Deep Linking no encontrado, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+ *       410: { description: Estado ya usado o expirado, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+ *       500: { description: Error interno, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+ */
 ltiRouter.get('/deep-linking/state/:id', async (req: Request, res: Response) => {
   try {
     const state = await prisma.ltiDeepLinkingState.findUnique({
@@ -591,6 +782,46 @@ const submitSchema = z.object({
   includeMenuLink: z.boolean().optional().default(false),
 });
 
+/**
+ * @openapi
+ * /lti/deep-linking/submit:
+ *   post:
+ *     tags: [LTI]
+ *     summary: Envía la selección del picker y devuelve el form de auto-submit a Moodle
+ *     security: []
+ *     description: >-
+ *       Lo invoca la SPA del picker con los escenarios elegidos. Firma un
+ *       `LtiDeepLinkingResponse` JWT, marca el estado como consumido y devuelve
+ *       una página `text/html` con un formulario de auto-submit que el navegador
+ *       postea a `deep_link_return_url` de la plataforma. Si no se elige nada (o
+ *       `includeMenuLink`), agrega un link al menú de práctica. No usa bearer JWT propio.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [stateId]
+ *             properties:
+ *               stateId: { type: string, format: uuid }
+ *               scenarioIds:
+ *                 type: array
+ *                 items: { type: string, format: uuid }
+ *                 description: Vacío significa "mostrar el menú completo".
+ *               includeMenuLink: { type: boolean, default: false }
+ *     responses:
+ *       200:
+ *         description: >-
+ *           HTML con formulario de auto-submit (JWT `LtiDeepLinkingResponse`)
+ *           que el navegador postea de vuelta a la plataforma.
+ *         content:
+ *           text/html:
+ *             schema: { type: string }
+ *       400: { description: Body inválido (Zod) — incluye `issues`, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+ *       404: { description: Estado de Deep Linking no encontrado, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+ *       410: { description: Estado ya usado o expirado, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+ *       500: { description: Error interno, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+ */
 ltiRouter.post('/deep-linking/submit', async (req: Request, res: Response) => {
   try {
     const parsed = submitSchema.parse(req.body);

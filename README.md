@@ -96,7 +96,9 @@ senoriales/
 
 ## Despliegue en Producción
 
-Ver [server/DEPLOYMENT.md](server/DEPLOYMENT.md) para instrucciones detalladas de despliegue en Huawei Cloud o cualquier infraestructura con Docker.
+Ver [docs/deployment.md](docs/deployment.md) para instrucciones detalladas de despliegue en Huawei Cloud o cualquier infraestructura con Docker.
+
+> 📚 La documentación completa vive en `docs/` como una wiki MkDocs. Levántala con `mkdocs serve` (ver [docs/index.md](docs/index.md)).
 
 ## Comandos Útiles
 
