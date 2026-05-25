@@ -114,7 +114,9 @@
       "PowerShell($env:STRESS_ADMIN_EMAIL = \"test\"; $env:STRESS_ADMIN_PASSWORD = \"test\"; node stress/stress.mjs --dry-run)",
       "PowerShell($env:STRESS_BASE_URL = \"https://centro-de-negocios.org\"; $env:STRESS_ADMIN_EMAIL = \"admin@gmail.com\"; $env:STRESS_ADMIN_PASSWORD = \"admin\"; node stress/stress.mjs 2>&1)",
       "PowerShell($env:STRESS_BASE_URL = \"https://centro-de-negocios.org\"; $env:STRESS_ADMIN_EMAIL = \"admin@gmail.com\"; $env:STRESS_ADMIN_PASSWORD = \"admin\"; node stress/cleanup.mjs 2>&1)",
-      "PowerShell($env:STRESS_BASE_URL = \"https://centro-de-negocios.org\"; $env:STRESS_ADMIN_EMAIL = \"admin@gmail.com\"; $env:STRESS_ADMIN_PASSWORD = \"admin\"; node stress/cleanup.mjs --dry-run 2>&1)"
+      "PowerShell($env:STRESS_BASE_URL = \"https://centro-de-negocios.org\"; $env:STRESS_ADMIN_EMAIL = \"admin@gmail.com\"; $env:STRESS_ADMIN_PASSWORD = \"admin\"; node stress/cleanup.mjs --dry-run 2>&1)",
+      "Bash(npx tsx -e ' *)",
+      "Bash(npx tsx *)"
     ]
   },
   "hooks": {
