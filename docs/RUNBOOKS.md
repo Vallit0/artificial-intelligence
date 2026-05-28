@@ -676,7 +676,7 @@ Mantener HTTPS válido; los certificados Let's Encrypt expiran cada 90 días y d
 
 ### Precondiciones
 
-- Cron de renovación configurado (`setup-cron.sh` ejecutado en el host).
+- Cron de renovación configurado (`scripts/setup-cron.sh` ejecutado en el host — ver `scripts/README.md` si se reubicaron los scripts).
 - Puerto 80 abierto hacia el mundo (requerido por el challenge HTTP-01).
 
 ### Renovación automática (funcionamiento normal)
