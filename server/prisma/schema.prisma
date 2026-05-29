@@ -39,6 +39,19 @@ enum ExperimentStatus {
   completed
 }
 
+enum PricingService {
+  elevenlabs
+  openai
+  infra
+}
+
+enum PricingUnit {
+  per_minute
+  per_token_input
+  per_token_output
+  monthly
+}
+
 // ============================================
 // Sedes (Branches / Locations)
 // ============================================
@@ -645,4 +658,31 @@ model AbAssignment {
   @@unique([experimentId, userId])
   @@index([userId])
   @@map("ab_assignments")
+}
+
+// ============================================
+// Pricing Rates (cost analytics)
+// ============================================
+
+// Tarifas de servicios externos para estimar costos en el panel de Analíticas.
+// Historial inmutable: cuando se actualiza una tarifa se inserta una fila nueva
+// con effectiveFrom=now() y se cierra la anterior con effectiveTo=now(). La
+// tarifa "vigente" es la fila con isActive=true cuyo rango cubre el instante.
+model PricingRate {
+  id            String         @id @default(uuid())
+  service       PricingService
+  unit          PricingUnit
+  unitPriceUsd  Decimal        @map("unit_price_usd") @db.Decimal(12, 6)
+  currency      String         @default("USD")
+  effectiveFrom DateTime       @default(now()) @map("effective_from")
+  effectiveTo   DateTime?      @map("effective_to")
+  isActive      Boolean        @default(true) @map("is_active")
+  notes         String?
+  createdBy     String?        @map("created_by")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at")
+
+  @@index([service, unit, isActive])
+  @@index([effectiveFrom])
+  @@map("pricing_rates")
 }

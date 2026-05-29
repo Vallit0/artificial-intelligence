@@ -131,7 +131,47 @@ async function main() {
     console.log('Demo user already exists, skipping');
   }
 
+  await seedInitialPricingRates();
+
   console.log('Seed complete!');
+}
+
+async function seedInitialPricingRates() {
+  const existing = await prisma.pricingRate.count();
+  if (existing > 0) {
+    console.log(`Pricing rates already exist (${existing}), skipping`);
+    return;
+  }
+
+  await prisma.pricingRate.createMany({
+    data: [
+      {
+        service: 'elevenlabs',
+        unit: 'per_minute',
+        unitPriceUsd: '0.15',
+        notes: 'PLACEHOLDER — ajustar al plan real de ElevenLabs Conversational AI antes de mostrar el panel a usuarios.',
+      },
+      {
+        service: 'openai',
+        unit: 'per_token_input',
+        unitPriceUsd: '0.000003',
+        notes: 'PLACEHOLDER — equivale a gpt-4o input ($3 / 1M tokens). Ajustar si se cambia de modelo.',
+      },
+      {
+        service: 'openai',
+        unit: 'per_token_output',
+        unitPriceUsd: '0.000010',
+        notes: 'PLACEHOLDER — equivale a gpt-4o output ($10 / 1M tokens).',
+      },
+      {
+        service: 'infra',
+        unit: 'monthly',
+        unitPriceUsd: '120.00',
+        notes: 'PLACEHOLDER — costo fijo mensual estimado (Huawei ECS + RDS + bandwidth). Ajustar a factura real.',
+      },
+    ],
+  });
+  console.log('Seeded 4 placeholder pricing rates (revisar antes de mostrar en UI)');
 }
 
 main()
