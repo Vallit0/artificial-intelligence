@@ -145,7 +145,7 @@ const objectionsAgentSuggestions: AgentSuggestion[] = practiceAgentSuggestions
   .map((agent) => {
     const next: AgentSuggestion = {
       ...agent,
-      description: agent.description.replace(/Álvaro/g, "Nelson"),
+      description: agent.description.replace(/Álvaro/g, "Alvaro"),
       orbGradient: LEVEL2_ORB_GRADIENT,
     };
     if (agent.agentSecretName) {
@@ -709,7 +709,7 @@ const Practice = () => {
                   className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.25em] text-muted-foreground/70"
                   style={{ fontFamily: "'Nunito', 'DIN Rounded', -apple-system, sans-serif" }}
                 >
-                  Personaje · {currentLevel === 1 ? "Álvaro" : "Nelson"}
+                  Personaje · {currentLevel === 1 ? "Álvaro" : "Alvaro"}
                 </p>
               )}
               {/* Agent label */}

@@ -119,7 +119,15 @@
       "Bash(npx tsx *)",
       "Bash(gh --version)",
       "Bash(gh pr *)",
-      "Bash(DATABASE_URL=\"postgresql://dummy:dummy@localhost:5432/dummy\" npx prisma generate)"
+      "Bash(DATABASE_URL=\"postgresql://dummy:dummy@localhost:5432/dummy\" npx prisma generate)",
+      "Bash(npm ci *)",
+      "Bash(gh run *)",
+      "Bash(pip install *)",
+      "Bash(python -m mkdocs build --strict)",
+      "Bash(gh api *)",
+      "Bash(gh repo *)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); [print\\(r['name'],'|',r['event'],'|',r['conclusion'],'|',r['headBranch']\\) for r in d if 'doc' in r['name'].lower\\(\\) or 'mkdoc' in r['name'].lower\\(\\) or 'page' in r['name'].lower\\(\\)]\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('build_type:', d.get\\('build_type'\\)\\); print\\('status   :', d.get\\('status'\\)\\); print\\('html_url :', d.get\\('html_url'\\)\\)\")"
     ]
   },
   "hooks": {

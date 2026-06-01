@@ -1224,6 +1224,22 @@ adminRouter.put('/ai-access', requireGlobalAdmin, (req: AuthRequest, res: Respon
  */
 adminRouter.get('/analytics', analyticsController.getAdminAnalytics);
 
+/**
+ * @openapi
+ * /api/admin/analytics/usage:
+ *   get:
+ *     tags: [Admin]
+ *     summary: Analíticas de uso por sede (tiempo, sesiones, estudiantes activos)
+ *     description: >-
+ *       Métricas de USO agregadas por sede — tiempo total de práctica, número de
+ *       sesiones y estudiantes activos. No incluye calificaciones ni competencias.
+ *       Sede-aware: admin global ve todas las sedes; un coach/instructor sólo la suya.
+ *     responses:
+ *       200: { description: Analíticas de uso por sede }
+ *       403: { description: Acceso denegado }
+ */
+adminRouter.get('/analytics/usage', analyticsController.getAdminUsage);
+
 // ============================================
 // Cost Analytics
 // ============================================

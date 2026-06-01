@@ -224,7 +224,6 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
               Sesiones <SortIcon column="sessions" />
             </TableHead>
             <TableHead className="text-center">Tiempo Total</TableHead>
-            <TableHead className="text-center">Promedio IA</TableHead>
             <TableHead className="text-center">Examen Final</TableHead>
             <TableHead className="text-center">Nivel</TableHead>
             <TableHead
@@ -262,17 +261,6 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
                   <Clock className="w-4 h-4" />
                   {formatDuration(student.totalDuration)}
                 </div>
-              </TableCell>
-              <TableCell className="text-center">
-                {student.averageScore !== null ? (
-                  <Badge
-                    variant={student.averageScore >= 75 ? "default" : "destructive"}
-                  >
-                    {Math.round(student.averageScore)}%
-                  </Badge>
-                ) : (
-                  <span className="text-muted-foreground">-</span>
-                )}
               </TableCell>
               <TableCell className="text-center">
                 <Button
