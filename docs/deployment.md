@@ -4,6 +4,20 @@
 
 Plataforma de entrenamiento de ventas con IA conversacional. Arquitectura monolítica Node.js/Express con PostgreSQL.
 
+```mermaid
+flowchart LR
+    U["Usuario"] -->|443| ECS
+    subgraph ECS["ECS - Ubuntu 22.04 - Docker"]
+        ng["nginx"] --> app["app :3000"]
+    end
+    app -->|"5432 SSL"| RDS[("RDS PostgreSQL 15")]
+    app -->|443| EL["api.elevenlabs.io"]
+    app -->|443| OAI["api.openai.com"]
+```
+
+Para el detalle de la arquitectura de contenedores (Dockerfiles y los tres
+`docker-compose`), ver [Docker y contenedores](./docker.md).
+
 ---
 
 ## 1. Requisitos de Infraestructura
@@ -124,6 +138,22 @@ cd /opt/senoriales
 ```
 
 ### 4.2 Despliegue con Docker
+
+El flujo completo desde el código hasta el contenedor sano:
+
+```mermaid
+sequenceDiagram
+    actor Dev
+    participant ECS
+    participant App as Contenedor app
+    participant DB as Postgres/RDS
+    Dev->>ECS: git pull / copiar archivos
+    Dev->>ECS: docker compose up -d --build
+    ECS->>App: build imagen (multi-stage)
+    App->>DB: prisma db push + seed
+    App->>App: node dist/index.js
+    App-->>Dev: /health 200
+```
 
 ```bash
 # 1. Copiar archivos del proyecto al servidor

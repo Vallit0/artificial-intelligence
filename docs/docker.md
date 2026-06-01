@@ -2,13 +2,13 @@
 
 Este documento describe **cómo está contenerizada** la aplicación Señoriales: los
 Dockerfiles, los tres archivos `docker-compose` que existen en el repo y para qué
-sirve cada uno. Para el **procedimiento de despliegue** paso a paso ver
-[`deployment.md`](./deployment.md).
+sirve cada uno. Para el **procedimiento de despliegue** paso a paso en Huawei Cloud
+ver [`deployment.md`](./deployment.md).
 
-> **TL;DR**
-> - **Producción** → `docker-compose.yml` (raíz) + `Dockerfile` (raíz). Stack completo: app unificada (frontend+backend) + Postgres + Nginx + Promtail.
-> - **Backend aislado / dev** → `server/docker-compose.yml` + `server/Dockerfile`. Solo API + Postgres, sin Nginx ni frontend empaquetado.
-> - **Tests** → `server/docker-compose.test.yml`. Solo un Postgres efímero en memoria para la suite de Vitest.
+!!! abstract "TL;DR"
+    - **Producción** → `docker-compose.yml` (raíz) + `Dockerfile` (raíz). Stack completo: app unificada (frontend+backend) + Postgres + Nginx + Promtail.
+    - **Backend aislado / dev** → `server/docker-compose.yml` + `server/Dockerfile`. Solo API + Postgres, sin Nginx ni frontend empaquetado.
+    - **Tests** → `server/docker-compose.test.yml`. Solo un Postgres efímero en memoria para la suite de Vitest.
 
 ---
 
@@ -16,23 +16,32 @@ sirve cada uno. Para el **procedimiento de despliegue** paso a paso ver
 
 La app es un **monolito**: un solo proceso Node/Express sirve la API **y** el
 frontend React ya compilado (archivos estáticos). No hay contenedor separado para
-el frontend en producción — Vite compila a estáticos que Express entrega.
+el frontend en producción — Vite compila a estáticos que Express entrega desde
+`client/dist`.
 
+```mermaid
+flowchart LR
+    U["Usuario / navegador"]
+    subgraph net["red bridge: senoriales-network"]
+        N["nginx<br/>:80 / :443<br/>TLS + rate-limit"]
+        A["app<br/>:3000<br/>API + SPA"]
+        D[("db<br/>postgres:15")]
+        P["promtail"]
+    end
+    L[("Loki<br/>10.4.6.20:3100")]
+    U -->|HTTPS| N
+    N -->|"proxy_pass app:3000"| A
+    A -->|"SQL pool=20"| D
+    P -.->|"lee docker.sock"| A
+    P -->|"envía logs"| L
 ```
-Internet
-   │  :80 / :443
-   ▼
-┌─────────────┐      ┌──────────────────────────┐      ┌─────────────┐
-│   Nginx     │ ───► │  app (Node/Express)       │ ───► │  Postgres   │
-│ reverse     │ :3000│  - API  /api /auth /lti   │ 5432 │  (db)       │
-│ proxy + TLS │      │  - sirve client/dist (SPA)│      │             │
-└─────────────┘      └──────────────────────────┘      └─────────────┘
-                            ▲
-                            │ logs (docker.sock)
-                     ┌──────────────┐
-                     │  Promtail    │ ──► Loki 10.4.6.20:3100
-                     └──────────────┘
-```
+
+| Contenedor | Imagen | Responsabilidad |
+|------------|--------|-----------------|
+| `nginx` | `nginx:alpine` | Frente HTTP/HTTPS, TLS, rate-limit, reverse proxy |
+| `app` | build local (unificada) | API Express + servir el SPA compilado |
+| `db` | `postgres:15-alpine` | Persistencia |
+| `promtail` | `grafana/promtail` | Recolección de logs hacia Loki |
 
 ---
 
@@ -40,7 +49,25 @@ Internet
 
 ### 2.1 `Dockerfile` (raíz) — imagen unificada de producción
 
-Build **multi-stage** de 3 etapas que produce una sola imagen con backend + frontend:
+Build **multi-stage** de 3 etapas que produce una sola imagen con backend + frontend.
+Cada etapa compila por separado y la imagen final solo se queda con los artefactos
+necesarios (imagen más pequeña, sin toolchain de build):
+
+```mermaid
+flowchart LR
+    subgraph s1["Stage 1 · frontend-builder"]
+        F1["npm install"] --> F2["npm run build (Vite)"] --> FO["/app/client/dist"]
+    end
+    subgraph s2["Stage 2 · backend-builder"]
+        B1["npm install"] --> B2["prisma generate"] --> B3["npm run build (tsc)"] --> BO["/app/server/dist"]
+    end
+    subgraph s3["Stage 3 · production"]
+        P1["deps prod + tsx"] --> P2["prisma generate"]
+    end
+    FO -->|"COPY client/dist"| s3
+    BO -->|"COPY dist"| s3
+    s3 --> IMG["Imagen final node:20-alpine"]
+```
 
 | Stage | Base | Qué hace |
 |-------|------|----------|
@@ -48,15 +75,28 @@ Build **multi-stage** de 3 etapas que produce una sola imagen con backend + fron
 | `backend-builder` | `node:20-alpine` | Instala deps del backend, `npx prisma generate`, `npm run build` (tsc → `/app/server/dist`). |
 | `production` | `node:20-alpine` | Deps de producción + `tsx`, regenera Prisma Client, copia `dist` del backend, copia `client/dist` del frontend, copia `public/audio`. |
 
-**Arranque del contenedor** (`CMD`):
+**Arranque del contenedor** (`CMD`): no arranca el servidor directamente, primero
+sincroniza el schema y siembra datos:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Contenedor app
+    participant DB as Postgres
+    C->>DB: prisma db push (schema)
+    C->>DB: tsx prisma/seed.ts
+    C->>C: node dist/index.js
+    Note over C: Express sirve API + client/dist
+    loop cada 30s
+        C->>C: HEALTHCHECK /health
+    end
+```
 
 ```sh
 npx prisma db push --skip-generate --accept-data-loss \
   && tsx prisma/seed.ts \
   && node dist/index.js
 ```
-
-Es decir: sincroniza el schema con la DB → ejecuta el seed → arranca el servidor.
 
 - Expone el puerto **3000**.
 - `HEALTHCHECK` golpea `http://localhost:3000/health` cada 30 s.
@@ -73,6 +113,25 @@ Se usa con `server/docker-compose.yml`. Arranca con `node dist/index.js`.
 ---
 
 ## 3. Los tres `docker-compose`
+
+Cada archivo levanta una topología distinta para una etapa distinta del ciclo de vida:
+
+```mermaid
+flowchart LR
+    subgraph prod["PRODUCCIÓN · docker-compose.yml (raíz)"]
+        direction TB
+        pn["nginx"] --> pa["app"] --> pd[("db")]
+        pp["promtail"]
+    end
+    subgraph dev["DEV · server/docker-compose.yml"]
+        direction TB
+        da["app"] --> dd[("db :5432")]
+    end
+    subgraph test["TESTS · server/docker-compose.test.yml"]
+        direction TB
+        td[("db-test :5433 · tmpfs")]
+    end
+```
 
 ### 3.1 `docker-compose.yml` (raíz) — PRODUCCIÓN
 
@@ -116,7 +175,7 @@ desarrollo del API o pruebas manuales sin Nginx ni frontend empaquetado.
 Diferencias clave vs. producción:
 
 - **No** hay Nginx ni Promtail.
-- Postgres **sí** expone `5432` al host.
+- Postgres **sí** expone `5432` al host (para conectarse con DBeaver, psql, Prisma Studio…).
 - El schema se carga al iniciar montando `./src/db/schema.sql` en
   `/docker-entrypoint-initdb.d/` (relativo a `server/`, es decir `server/src/db/schema.sql`).
 - `DATABASE_URL` sin tuning de pool.
@@ -169,7 +228,18 @@ Ver [`testing.md`](./testing.md) para el flujo completo de pruebas.
 
 ## 5. Nginx (reverse proxy de producción)
 
-`nginx/nginx.conf` define el frente HTTP/HTTPS:
+`nginx/nginx.conf` define el frente HTTP/HTTPS. Por ruta aplica políticas distintas
+antes de pasar todo a `app:3000`:
+
+```mermaid
+flowchart TD
+    R["request -> nginx :443"]
+    R -->|"/auth/"| AU["limit 5 r/s -> app:3000"]
+    R -->|"/api/"| AP["limit 100 r/s · read 120s -> app:3000"]
+    R -->|"/lti/"| LT["-> app:3000"]
+    R -->|"/health"| HE["-> app:3000"]
+    R -->|"/ resto"| SPA["SPA fallback -> app:3000"]
+```
 
 - **HTTP (80):** sirve el challenge de Certbot (`/.well-known/acme-challenge/`) y
   redirige todo lo demás a HTTPS (301).
