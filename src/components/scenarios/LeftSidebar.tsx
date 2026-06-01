@@ -101,7 +101,7 @@ const LeftSidebar = () => {
               : undefined,
           }}
         >
-          Nivel {currentLevel} · {currentLevel === 1 ? "Álvaro" : "Nelson"}
+          Nivel {currentLevel} · {currentLevel === 1 ? "Álvaro" : "Alvaro"}
         </div>
       </div>
 

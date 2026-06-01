@@ -45,3 +45,16 @@ export async function getAdminAnalytics(req: AuthRequest, res: Response, next: N
     res.status(appError.statusCode).json({ error: appError.message });
   }
 }
+
+// ============================================
+// GET /api/admin/analytics/usage
+// ============================================
+export async function getAdminUsage(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const data = await analyticsService.getUsageAnalytics(req.user!);
+    res.json(data);
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+}

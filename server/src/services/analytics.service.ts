@@ -192,6 +192,105 @@ async function getPerStudentAverages(caller: AuthUser) {
   }).sort((a, b) => b.avgScore - a.avgScore);
 }
 
+// ============================================
+// Usage Analytics (por sede) — métricas de USO, sin calificaciones
+// ============================================
+//
+// Agrega tiempo total, sesiones y estudiantes activos por sede. Respeta el
+// alcance de sede: admin global ve todas las sedes; un coach/instructor sólo
+// la suya. No incluye ningún dato de puntajes/competencias por diseño.
+
+export async function getUsageAnalytics(caller: AuthUser) {
+  const scope = getSedeScope(caller);
+  const userSedeWhere = scope.scope === 'sede' ? { sedeId: scope.sedeId } : {};
+  const sessionSedeWhere = scope.scope === 'sede' ? { user: { sedeId: scope.sedeId } } : {};
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+  const [sedes, learners, sessions] = await Promise.all([
+    prisma.sede.findMany({
+      where: scope.scope === 'sede' ? { id: scope.sedeId } : { isActive: true },
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' },
+    }),
+    prisma.user.findMany({
+      where: { roles: { some: { role: 'learner' } }, ...userSedeWhere },
+      select: { id: true, sedeId: true },
+    }),
+    prisma.practiceSession.findMany({
+      where: { user: { roles: { some: { role: 'learner' } } }, ...sessionSedeWhere },
+      select: { durationSeconds: true, userId: true, createdAt: true },
+    }),
+  ]);
+
+  // userId -> sedeId, para imputar cada sesión a una sede.
+  const userSede = new Map(learners.map(l => [l.id, l.sedeId]));
+
+  type SedeAcc = {
+    sedeId: string;
+    sedeName: string;
+    totalTimeSeconds: number;
+    totalSessions: number;
+    activeStudentIds: Set<string>;
+    totalStudents: number;
+  };
+  const bySedeMap = new Map<string, SedeAcc>();
+  for (const s of sedes) {
+    bySedeMap.set(s.id, {
+      sedeId: s.id,
+      sedeName: s.name,
+      totalTimeSeconds: 0,
+      totalSessions: 0,
+      activeStudentIds: new Set(),
+      totalStudents: 0,
+    });
+  }
+
+  for (const l of learners) {
+    if (l.sedeId && bySedeMap.has(l.sedeId)) {
+      bySedeMap.get(l.sedeId)!.totalStudents++;
+    }
+  }
+
+  const dailyCounts: Record<string, number> = {};
+  for (const sess of sessions) {
+    const sedeId = userSede.get(sess.userId);
+    if (sedeId && bySedeMap.has(sedeId)) {
+      const acc = bySedeMap.get(sedeId)!;
+      acc.totalTimeSeconds += sess.durationSeconds;
+      acc.totalSessions++;
+      acc.activeStudentIds.add(sess.userId);
+    }
+    if (sess.createdAt >= thirtyDaysAgo) {
+      const dateKey = sess.createdAt.toISOString().split('T')[0];
+      dailyCounts[dateKey] = (dailyCounts[dateKey] || 0) + 1;
+    }
+  }
+
+  const bySede = Array.from(bySedeMap.values())
+    .map(a => ({
+      sedeId: a.sedeId,
+      sedeName: a.sedeName,
+      totalTimeSeconds: a.totalTimeSeconds,
+      totalSessions: a.totalSessions,
+      activeStudents: a.activeStudentIds.size,
+      totalStudents: a.totalStudents,
+    }))
+    .sort((a, b) => b.totalTimeSeconds - a.totalTimeSeconds);
+
+  const totals = {
+    totalTimeSeconds: bySede.reduce((s, x) => s + x.totalTimeSeconds, 0),
+    totalSessions: bySede.reduce((s, x) => s + x.totalSessions, 0),
+    activeStudents: bySede.reduce((s, x) => s + x.activeStudents, 0),
+    totalStudents: bySede.reduce((s, x) => s + x.totalStudents, 0),
+  };
+
+  const activityTrend = Object.entries(dailyCounts)
+    .map(([date, count]) => ({ date, count }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  return { totals, bySede, activityTrend };
+}
+
 async function getActivityTrend(caller: AuthUser) {
   const scope = getSedeScope(caller);
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);

@@ -18,6 +18,8 @@ import * as analyticsController from '../controllers/analytics.controller.js';
 import * as abTestingController from '../controllers/abTesting.controller.js';
 import * as aiAccessService from '../services/aiAccess.service.js';
 import * as latencyProbeService from '../services/latencyProbe.service.js';
+import * as costsService from '../services/costs.service.js';
+import * as pricingService from '../services/pricing.service.js';
 import { submitScoreForUser } from '../services/ags.service.js';
 import { syncCourse, resolvePendingMatch, dismissPendingMatch } from '../services/ltiSync.service.js';
 import { runNrpsSyncTick } from '../services/ltiSyncCron.service.js';
@@ -1221,6 +1223,170 @@ adminRouter.put('/ai-access', requireGlobalAdmin, (req: AuthRequest, res: Respon
  *       200: { description: Analíticas del grupo }
  */
 adminRouter.get('/analytics', analyticsController.getAdminAnalytics);
+
+/**
+ * @openapi
+ * /api/admin/analytics/usage:
+ *   get:
+ *     tags: [Admin]
+ *     summary: Analíticas de uso por sede (tiempo, sesiones, estudiantes activos)
+ *     description: >-
+ *       Métricas de USO agregadas por sede — tiempo total de práctica, número de
+ *       sesiones y estudiantes activos. No incluye calificaciones ni competencias.
+ *       Sede-aware: admin global ve todas las sedes; un coach/instructor sólo la suya.
+ *     responses:
+ *       200: { description: Analíticas de uso por sede }
+ *       403: { description: Acceso denegado }
+ */
+adminRouter.get('/analytics/usage', analyticsController.getAdminUsage);
+
+// ============================================
+// Cost Analytics
+// ============================================
+/**
+ * @openapi
+ * /api/admin/analytics/costs:
+ *   get:
+ *     tags: [Admin]
+ *     summary: Estimación de costos del periodo agrupada por sede/usuario/escenario
+ *     description: >-
+ *       Calcula costos de ElevenLabs (por minutos de voz) e infraestructura
+ *       (prorrateado del costo fijo mensual). El costo de OpenAI queda en 0
+ *       hasta que se instrumente tracking de tokens por evaluación.
+ *       Coaches sólo ven su propia sede; admin global ve todas.
+ *     parameters:
+ *       - in: query
+ *         name: from
+ *         required: true
+ *         schema: { type: string, format: date-time }
+ *       - in: query
+ *         name: to
+ *         required: true
+ *         schema: { type: string, format: date-time }
+ *       - in: query
+ *         name: groupBy
+ *         schema: { type: string, enum: [sede, user, scenario], default: sede }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+ *       - in: query
+ *         name: sedeId
+ *         description: Sólo admin global — filtra a una sede específica
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200: { description: Estimación de costos }
+ *       400: { description: Parámetros inválidos }
+ *       403: { description: Acceso denegado }
+ */
+adminRouter.get('/analytics/costs', async (req: AuthRequest, res: Response) => {
+  try {
+    const query = costsService.parseCostsQuery(req.query as Record<string, string>);
+    const data = await costsService.getCostBreakdown(query, req.user!);
+    res.json(data);
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
+// ============================================
+// Pricing Rates (admin global only)
+// ============================================
+/**
+ * @openapi
+ * /api/admin/pricing-rates:
+ *   get:
+ *     tags: [Admin]
+ *     summary: Lista tarifas vigentes (o todas si includeHistory=true)
+ *     parameters:
+ *       - in: query
+ *         name: includeHistory
+ *         schema: { type: boolean, default: false }
+ *     responses:
+ *       200: { description: Tarifas }
+ *       403: { description: No es admin global }
+ */
+adminRouter.get('/pricing-rates', requireGlobalAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const includeHistory = String(req.query.includeHistory ?? '').toLowerCase() === 'true';
+    const data = includeHistory
+      ? await pricingService.listAllRates()
+      : await pricingService.listActiveRates();
+    res.json(data);
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
+const createPricingRateSchema = z.object({
+  service: z.enum(['elevenlabs', 'openai', 'infra']),
+  unit: z.enum(['per_minute', 'per_token_input', 'per_token_output', 'monthly']),
+  unitPriceUsd: z.union([z.string(), z.number()]).transform((v) => String(v)),
+  notes: z.string().max(500).optional().nullable(),
+});
+
+/**
+ * @openapi
+ * /api/admin/pricing-rates:
+ *   post:
+ *     tags: [Admin]
+ *     summary: Crea una tarifa nueva (cierra la anterior activa preservando historial)
+ *     responses:
+ *       201: { description: Tarifa creada }
+ *       400: { description: Body inválido }
+ *       403: { description: No es admin global }
+ */
+adminRouter.post('/pricing-rates', requireGlobalAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const parsed = createPricingRateSchema.parse(req.body);
+    const rate = await pricingService.createNewRate({
+      service: parsed.service,
+      unit: parsed.unit,
+      unitPriceUsd: parsed.unitPriceUsd,
+      notes: parsed.notes ?? null,
+      createdBy: req.user!.id,
+    });
+    res.status(201).json(rate);
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
+const updatePricingRateSchema = z.object({
+  notes: z.string().max(500).optional().nullable(),
+  isActive: z.boolean().optional(),
+});
+
+/**
+ * @openapi
+ * /api/admin/pricing-rates/{id}:
+ *   patch:
+ *     tags: [Admin]
+ *     summary: Actualiza metadata de una tarifa (notes / isActive). No toca el precio.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200: { description: Tarifa actualizada }
+ *       404: { description: No encontrada }
+ */
+adminRouter.patch('/pricing-rates/:id', requireGlobalAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const parsed = updatePricingRateSchema.parse(req.body);
+    const updated = await pricingService.updateRateMetadata(req.params.id, {
+      notes: parsed.notes ?? undefined,
+      isActive: parsed.isActive,
+    });
+    res.json(updated);
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
 
 // ============================================
 // A/B Testing Experiments (admin global only)

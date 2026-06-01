@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAuth } from "@/hooks/useAuth";
 import { useStudents } from "@/hooks/useStudents";
-import { Activity, Award, BarChart3, Building2, Clock, FlaskConical, GraduationCap, Loader2, Play, Plus, Search, Shield, Target, Timer, TrendingUp, Upload, Users } from "lucide-react";
+import { Activity, BarChart3, Building2, Clock, Download, FlaskConical, GraduationCap, Loader2, Play, Plus, Search, Shield, Timer, Upload, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -25,10 +25,9 @@ import SedesPanel from "@/components/admin/SedesPanel";
 import CoachesPanel from "@/components/admin/CoachesPanel";
 import LeftSidebar from "@/components/scenarios/LeftSidebar";
 import MobileNavigation from "@/components/MobileNavigation";
-import { useAdminAnalytics } from "@/hooks/useAdminAnalytics";
-import { CompetencyRadar } from "@/components/analytics/CompetencyRadar";
-import { GroupComparisonChart } from "@/components/analytics/GroupComparisonChart";
-import { ScoreLineChart } from "@/components/analytics/ScoreLineChart";
+import { useAdminUsage } from "@/hooks/useAdminUsage";
+import { UsageAnalytics } from "@/components/analytics/UsageAnalytics";
+import { exportStudentsToExcel } from "@/lib/export-students";
 
 export default function Admin() {
   const navigate = useNavigate();
@@ -40,7 +39,7 @@ export default function Admin() {
   const canSeeCoachesTab = isAdmin || !!user?.coachPermissions?.canCreateCoaches;
   const { students, isLoading: studentsLoading, assignGrade, toggleExamenFinal, bulkToggleExamenFinal, refetch } = useStudents();
 
-  const { data: adminAnalytics, isLoading: analyticsLoading } = useAdminAnalytics();
+  const { data: usageData, isLoading: usageLoading } = useAdminUsage();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -68,23 +67,12 @@ export default function Admin() {
   // Calculate summary stats
   const totalStudents = students.length;
   const studentsWithSessions = students.filter((s) => s.totalSessions > 0).length;
-  const gradedStudents = students.filter((s) => s.finalGrade !== null).length;
-  
+
   // Estadísticas agregadas
   const totalSessions = students.reduce((sum, s) => sum + s.totalSessions, 0);
   const totalDurationSeconds = students.reduce((sum, s) => sum + s.totalDuration, 0);
   const totalHours = Math.floor(totalDurationSeconds / 3600);
   const totalMinutes = Math.floor((totalDurationSeconds % 3600) / 60);
-  
-  const studentsWithScores = students.filter((s) => s.averageScore !== null);
-  const averageAIScore = studentsWithScores.length > 0
-    ? Math.round(studentsWithScores.reduce((sum, s) => sum + (s.averageScore || 0), 0) / studentsWithScores.length)
-    : null;
-  
-  const studentsWithGrades = students.filter((s) => s.finalGrade !== null);
-  const averageFinalGrade = studentsWithGrades.length > 0
-    ? Math.round(studentsWithGrades.reduce((sum, s) => sum + (s.finalGrade || 0), 0) / studentsWithGrades.length)
-    : null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -160,7 +148,7 @@ export default function Admin() {
 
           <TabsContent value="students">
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -200,48 +188,6 @@ export default function Admin() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Target className="w-4 h-4" />
-                Promedio IA
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-foreground">
-                {averageAIScore !== null ? `${averageAIScore}%` : '-'}
-              </p>
-              <p className="text-xs text-muted-foreground">calificación IA</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Award className="w-4 h-4" />
-                Calificados
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-foreground">{gradedStudents}</p>
-              <p className="text-xs text-muted-foreground">de {totalStudents}</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <TrendingUp className="w-4 h-4" />
-                Nota Promedio
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-foreground">
-                {averageFinalGrade !== null ? averageFinalGrade : '-'}
-              </p>
-              <p className="text-xs text-muted-foreground">nota final</p>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Practice Minutes by Advisor */}
@@ -313,6 +259,15 @@ export default function Admin() {
             <div className="flex flex-row items-center justify-between">
               <CardTitle>Estudiantes</CardTitle>
               <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => exportStudentsToExcel(students)}
+                  disabled={students.length === 0}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Exportar Excel
+                </Button>
                 {isAdmin && (
                   <Button variant="outline" size="sm" onClick={() => setShowBulkModal(true)}>
                     <Upload className="w-4 h-4 mr-2" />
@@ -365,63 +320,12 @@ export default function Admin() {
           </TabsContent>
 
           <TabsContent value="analytics">
-            {analyticsLoading ? (
+            {usageLoading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="w-6 h-6 animate-spin text-primary" />
               </div>
-            ) : adminAnalytics ? (
-              <div className="space-y-6">
-                {/* Group Competency Radar */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Target className="w-5 h-5 text-primary" />
-                      Competencias Promedio del Grupo
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <CompetencyRadar
-                      latest={adminAnalytics.overallBreakdown}
-                      average={null}
-                    />
-                  </CardContent>
-                </Card>
-
-                {/* Student Comparison */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Users className="w-5 h-5 text-secondary" />
-                      Ranking de Asesores por Puntaje
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <GroupComparisonChart students={adminAnalytics.studentStats} />
-                  </CardContent>
-                </Card>
-
-                {/* Activity Trend */}
-                {adminAnalytics.activityTrend.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <TrendingUp className="w-5 h-5 text-primary" />
-                        Tendencia de Actividad (30 días)
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ScoreLineChart
-                        data={adminAnalytics.activityTrend.map(d => ({
-                          date: d.date,
-                          score: d.count,
-                          scenarioName: `${d.count} sesiones`,
-                          breakdown: null,
-                        }))}
-                      />
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
+            ) : usageData ? (
+              <UsageAnalytics data={usageData} />
             ) : (
               <p className="text-center text-muted-foreground py-8">No hay datos analíticos disponibles</p>
             )}
