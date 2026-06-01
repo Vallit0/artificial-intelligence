@@ -4,7 +4,7 @@ name: Publicar documentación (MkDocs)
 # Requisito una sola vez: en Settings → Pages, fijar "Source: GitHub Actions".
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
     paths:
       - 'docs/**'
       - 'mkdocs.yml'
