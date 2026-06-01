@@ -9,7 +9,8 @@
 | Fecha | 2026-04-21 |
 | Repositorio | `senoriales-48152aa7` (branch principal: `main`, desarrollo: `develop`) |
 | Licencia | Propietario — Capillas Señoriales |
-| Alcance | Componentes de aplicación, datos, integraciones, despliegue y operación |
+| Alcance | Componentes de aplicación, datos, 
+integraciones, despliegue y operación |
 
 ---
 

@@ -116,7 +116,10 @@
       "PowerShell($env:STRESS_BASE_URL = \"https://centro-de-negocios.org\"; $env:STRESS_ADMIN_EMAIL = \"admin@gmail.com\"; $env:STRESS_ADMIN_PASSWORD = \"admin\"; node stress/cleanup.mjs 2>&1)",
       "PowerShell($env:STRESS_BASE_URL = \"https://centro-de-negocios.org\"; $env:STRESS_ADMIN_EMAIL = \"admin@gmail.com\"; $env:STRESS_ADMIN_PASSWORD = \"admin\"; node stress/cleanup.mjs --dry-run 2>&1)",
       "Bash(npx tsx -e ' *)",
-      "Bash(npx tsx *)"
+      "Bash(npx tsx *)",
+      "Bash(gh --version)",
+      "Bash(gh pr *)",
+      "Bash(DATABASE_URL=\"postgresql://dummy:dummy@localhost:5432/dummy\" npx prisma generate)"
     ]
   },
   "hooks": {
