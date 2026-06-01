@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAuth } from "@/hooks/useAuth";
 import { useStudents } from "@/hooks/useStudents";
-import { Activity, Award, BarChart3, Building2, Clock, Download, FlaskConical, GraduationCap, Loader2, Play, Plus, Search, Shield, Target, Timer, TrendingUp, Upload, Users } from "lucide-react";
+import { Activity, BarChart3, Building2, Clock, Download, FlaskConical, GraduationCap, Loader2, Play, Plus, Search, Shield, Timer, Upload, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -67,23 +67,12 @@ export default function Admin() {
   // Calculate summary stats
   const totalStudents = students.length;
   const studentsWithSessions = students.filter((s) => s.totalSessions > 0).length;
-  const gradedStudents = students.filter((s) => s.finalGrade !== null).length;
-  
+
   // Estadísticas agregadas
   const totalSessions = students.reduce((sum, s) => sum + s.totalSessions, 0);
   const totalDurationSeconds = students.reduce((sum, s) => sum + s.totalDuration, 0);
   const totalHours = Math.floor(totalDurationSeconds / 3600);
   const totalMinutes = Math.floor((totalDurationSeconds % 3600) / 60);
-  
-  const studentsWithScores = students.filter((s) => s.averageScore !== null);
-  const averageAIScore = studentsWithScores.length > 0
-    ? Math.round(studentsWithScores.reduce((sum, s) => sum + (s.averageScore || 0), 0) / studentsWithScores.length)
-    : null;
-  
-  const studentsWithGrades = students.filter((s) => s.finalGrade !== null);
-  const averageFinalGrade = studentsWithGrades.length > 0
-    ? Math.round(studentsWithGrades.reduce((sum, s) => sum + (s.finalGrade || 0), 0) / studentsWithGrades.length)
-    : null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -159,7 +148,7 @@ export default function Admin() {
 
           <TabsContent value="students">
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -199,48 +188,6 @@ export default function Admin() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Target className="w-4 h-4" />
-                Promedio IA
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-foreground">
-                {averageAIScore !== null ? `${averageAIScore}%` : '-'}
-              </p>
-              <p className="text-xs text-muted-foreground">calificación IA</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Award className="w-4 h-4" />
-                Calificados
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-foreground">{gradedStudents}</p>
-              <p className="text-xs text-muted-foreground">de {totalStudents}</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <TrendingUp className="w-4 h-4" />
-                Nota Promedio
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-foreground">
-                {averageFinalGrade !== null ? averageFinalGrade : '-'}
-              </p>
-              <p className="text-xs text-muted-foreground">nota final</p>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Practice Minutes by Advisor */}
