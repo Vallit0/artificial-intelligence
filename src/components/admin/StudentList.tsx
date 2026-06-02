@@ -11,6 +11,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { type Coach, coachDisplayName } from "@/hooks/useCoaches";
 import { Award, Check, ChevronDown, ChevronUp, Clock, Eye, FileText, KeyRound, Lock, Pencil, Trash2, Unlock, UserPen } from "lucide-react";
 import StudentDetailModal from "./StudentDetailModal";
 import GradeModal from "./GradeModal";
@@ -26,7 +34,12 @@ interface StudentListProps {
   onToggleExamenFinal: (userId: string, enabled: boolean) => Promise<boolean>;
   onBulkToggleExamenFinal: (userIds: string[], enabled: boolean) => Promise<number | null>;
   onRefetch: () => Promise<void>;
+  coaches: Coach[];
+  canAssignCoach: boolean;
+  onAssignCoach: (userId: string, coachId: string | null) => Promise<boolean>;
 }
+
+const NO_COACH = "__none__";
 
 const formatDuration = (seconds: number): string => {
   const hours = Math.floor(seconds / 3600);
@@ -37,8 +50,9 @@ const formatDuration = (seconds: number): string => {
   return `${minutes}m`;
 };
 
-export default function StudentList({ students, onAssignGrade, onToggleExamenFinal, onBulkToggleExamenFinal, onRefetch }: StudentListProps) {
+export default function StudentList({ students, onAssignGrade, onToggleExamenFinal, onBulkToggleExamenFinal, onRefetch, coaches, canAssignCoach, onAssignCoach }: StudentListProps) {
   const { toast } = useToast();
+  const [assigningCoachId, setAssigningCoachId] = useState<string | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [gradeStudent, setGradeStudent] = useState<Student | null>(null);
   const [certificateStudent, setCertificateStudent] = useState<Student | null>(null);
@@ -99,6 +113,61 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
         variant: "destructive",
       });
     }
+  };
+
+  const handleCoachChange = async (student: Student, value: string) => {
+    const coachId = value === NO_COACH ? null : value;
+    if (coachId === (student.coachId ?? null)) return;
+    setAssigningCoachId(student.id);
+    const ok = await onAssignCoach(student.id, coachId);
+    setAssigningCoachId(null);
+    toast(
+      ok
+        ? {
+            title: "Coach actualizado",
+            description: coachId
+              ? "Se asignó el coach al estudiante."
+              : "Se quitó el coach del estudiante.",
+          }
+        : {
+            title: "Error",
+            description: "No se pudo actualizar el coach.",
+            variant: "destructive",
+          },
+    );
+  };
+
+  const renderCoachCell = (student: Student) => {
+    if (!canAssignCoach) {
+      return <span className="text-sm text-muted-foreground">{student.coachName ?? "—"}</span>;
+    }
+    const sedeCoaches = coaches.filter((c) => c.sede?.id && c.sede.id === student.sedeId);
+    // Si el coach actual no está en la lista filtrada (lista aún cargando, o
+    // dato inconsistente), lo agregamos como opción para no perder el valor.
+    const currentMissing =
+      !!student.coachId && !sedeCoaches.some((c) => c.id === student.coachId);
+    return (
+      <Select
+        value={student.coachId ?? NO_COACH}
+        onValueChange={(v) => handleCoachChange(student, v)}
+        disabled={assigningCoachId === student.id || !student.sedeId}
+      >
+        <SelectTrigger className="h-8 w-[160px] mx-auto text-xs">
+          <SelectValue placeholder="Sin coach" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={NO_COACH}>Sin coach</SelectItem>
+          {currentMissing && student.coachId && (
+            <SelectItem value={student.coachId}>{student.coachName ?? "Coach actual"}</SelectItem>
+          )}
+          {sedeCoaches.map((c) => (
+            <SelectItem key={c.id} value={c.id}>
+              {coachDisplayName(c)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    );
   };
 
   const handleSort = (column: "name" | "sessions" | "grade") => {
@@ -223,6 +292,7 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
             >
               Sesiones <SortIcon column="sessions" />
             </TableHead>
+            <TableHead className="text-center">Coach</TableHead>
             <TableHead className="text-center">Tiempo Total</TableHead>
             <TableHead className="text-center">Examen Final</TableHead>
             <TableHead className="text-center">Nivel</TableHead>
@@ -256,6 +326,7 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
               <TableCell className="text-center">
                 <Badge variant="secondary">{student.totalSessions}</Badge>
               </TableCell>
+              <TableCell className="text-center">{renderCoachCell(student)}</TableCell>
               <TableCell className="text-center">
                 <div className="flex items-center justify-center gap-1 text-muted-foreground">
                   <Clock className="w-4 h-4" />

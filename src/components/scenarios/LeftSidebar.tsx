@@ -6,10 +6,10 @@ import {
   TrendingUp,
   Users,
   Settings,
-  BookOpen,
-  CalendarDays,
   Lock,
   ArrowRightLeft,
+  Building2,
+  GraduationCap,
 } from "lucide-react";
 import logoSenoriales from "@/assets/logo-senoriales.png";
 import { useAuth } from "@/hooks/useAuth";
@@ -25,8 +25,9 @@ interface NavItem {
 const LeftSidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { signOut, isAdmin, roles } = useAuth();
+  const { signOut, isAdmin, roles, user } = useAuth();
   const isCoach = roles.includes("coach");
+  const isLearner = roles.includes("learner");
   const canSeePanel = isAdmin || isCoach;
   const { currentLevel, toggle, canSwitchLevel } = useLevelMode();
   const animateLevelChange = useDidLevelJustChange();
@@ -36,7 +37,6 @@ const LeftSidebar = () => {
   const level1Items: NavItem[] = [
     { icon: Users, label: "Prospeccion", href: "/prospecting" },
     { icon: Phone, label: "Llamada", href: "/practice" },
-    { icon: BookOpen, label: "Legado de Vida", href: "/legado" },
     { icon: Lock, label: "Examen Final", href: "/quests" },
     { icon: TrendingUp, label: "Mi Progreso", href: "/progress" },
   ];
@@ -52,7 +52,6 @@ const LeftSidebar = () => {
     ...baseItems,
     ...(canSeePanel
       ? [
-          { icon: CalendarDays, label: "Coach Center", href: "/coach-center" },
           { icon: Settings, label: isAdmin ? "Admin" : "Mis Alumnos", href: "/admin" },
         ]
       : []),
@@ -188,6 +187,35 @@ const LeftSidebar = () => {
           );
         })}
       </nav>
+
+      {/* Sede + coach asignado */}
+      {user && (user.sede || isLearner || user.coach) && (
+        <div
+          className="px-4 pt-3 space-y-1.5"
+          style={{ borderTop: "1px solid hsl(var(--sidebar-border))" }}
+        >
+          {user.sede && (
+            <div
+              className="flex items-center gap-2 text-xs"
+              style={{ color: "hsl(var(--sidebar-foreground) / 0.65)" }}
+            >
+              <Building2 className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate font-medium">{user.sede.name}</span>
+            </div>
+          )}
+          {(user.coach || isLearner) && (
+            <div
+              className="flex items-center gap-2 text-xs"
+              style={{ color: "hsl(var(--sidebar-foreground) / 0.65)" }}
+            >
+              <GraduationCap className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">
+                {user.coach ? user.coach.name : "Sin coach asignado"}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Logout */}
       <div className="px-3 pb-3" style={{ borderTop: "1px solid hsl(var(--sidebar-border))" }}>

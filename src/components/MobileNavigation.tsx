@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { Users, Phone, TrendingUp, Settings, BookOpen, CalendarDays, Lock, ArrowRightLeft } from "lucide-react";
+import { Users, Phone, TrendingUp, Settings, Lock, ArrowRightLeft, Building2, GraduationCap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useLevelMode, useDidLevelJustChange } from "@/hooks/useLevelMode";
@@ -15,6 +15,7 @@ const MobileNavigation = () => {
   const navigate = useNavigate();
   const { user, isAdmin, roles } = useAuth();
   const isCoach = roles.includes("coach");
+  const isLearner = roles.includes("learner");
   const canSeePanel = isAdmin || isCoach;
   const { currentLevel, toggle, canSwitchLevel } = useLevelMode();
   const animateLevelChange = useDidLevelJustChange();
@@ -26,7 +27,6 @@ const MobileNavigation = () => {
     { icon: <Phone className="w-5 h-5" />, label: "Llamada", href: "/practice" },
     ...(user
       ? [
-          { icon: <BookOpen className="w-5 h-5" />, label: "Legado", href: "/legado" },
           { icon: <Lock className="w-5 h-5" />, label: "Examen", href: "/quests" },
           { icon: <TrendingUp className="w-5 h-5" />, label: "Progreso", href: "/progress" },
         ]
@@ -48,7 +48,6 @@ const MobileNavigation = () => {
     ...baseItems,
     ...(canSeePanel
       ? [
-          { icon: <CalendarDays className="w-5 h-5" />, label: "Coach", href: "/coach-center" },
           { icon: <Settings className="w-5 h-5" />, label: isAdmin ? "Admin" : "Alumnos", href: "/admin" },
         ]
       : []),
@@ -68,6 +67,22 @@ const MobileNavigation = () => {
         borderTop: "1px solid rgba(0,0,0,0.06)",
       }}
     >
+      {user && (user.sede || user.coach || isLearner) && (
+        <div className="flex items-center justify-center gap-3 pb-1.5 text-[11px] text-muted-foreground">
+          {user.sede && (
+            <span className="flex items-center gap-1 truncate max-w-[45%]">
+              <Building2 className="w-3 h-3 shrink-0" />
+              <span className="truncate font-medium">{user.sede.name}</span>
+            </span>
+          )}
+          {(user.coach || isLearner) && (
+            <span className="flex items-center gap-1 truncate max-w-[45%]">
+              <GraduationCap className="w-3 h-3 shrink-0" />
+              <span className="truncate">{user.coach ? user.coach.name : "Sin coach"}</span>
+            </span>
+          )}
+        </div>
+      )}
       <div key={`mobile-nav-${currentLevel}`} className="flex items-center justify-around">
         {navItems.map((item, i) => {
           const isActive = location.pathname === item.href;

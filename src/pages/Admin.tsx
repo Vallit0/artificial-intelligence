@@ -26,8 +26,10 @@ import CoachesPanel from "@/components/admin/CoachesPanel";
 import LeftSidebar from "@/components/scenarios/LeftSidebar";
 import MobileNavigation from "@/components/MobileNavigation";
 import { useAdminUsage } from "@/hooks/useAdminUsage";
+import { useCoaches } from "@/hooks/useCoaches";
 import { UsageAnalytics } from "@/components/analytics/UsageAnalytics";
 import { exportStudentsToExcel } from "@/lib/export-students";
+import { exportUsageToCsv } from "@/lib/export-usage";
 
 export default function Admin() {
   const navigate = useNavigate();
@@ -37,7 +39,10 @@ export default function Admin() {
   const isCoachOnly = isCoach && !isAdmin;
   const canSeeProspecting = !isCoachOnly || !!user?.coachPermissions?.canEditPrompts;
   const canSeeCoachesTab = isAdmin || !!user?.coachPermissions?.canCreateCoaches;
-  const { students, isLoading: studentsLoading, assignGrade, toggleExamenFinal, bulkToggleExamenFinal, refetch } = useStudents();
+  const { students, isLoading: studentsLoading, assignGrade, toggleExamenFinal, bulkToggleExamenFinal, assignCoach, refetch } = useStudents();
+  // Sólo admin global puede asignar coaches; gateamos el fetch para no
+  // disparar un 403 en coaches sin permiso de listado.
+  const { coaches } = useCoaches(isAdmin);
 
   const { data: usageData, isLoading: usageLoading } = useAdminUsage();
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -312,6 +317,9 @@ export default function Admin() {
                   onToggleExamenFinal={toggleExamenFinal}
                   onBulkToggleExamenFinal={bulkToggleExamenFinal}
                   onRefetch={refetch}
+                  coaches={coaches}
+                  canAssignCoach={isAdmin}
+                  onAssignCoach={assignCoach}
                 />
               )}
             </ScrollArea>
@@ -325,7 +333,19 @@ export default function Admin() {
                 <Loader2 className="w-6 h-6 animate-spin text-primary" />
               </div>
             ) : usageData ? (
-              <UsageAnalytics data={usageData} />
+              <div className="space-y-4">
+                <div className="flex justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => exportUsageToCsv(usageData, students)}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Exportar CSV
+                  </Button>
+                </div>
+                <UsageAnalytics data={usageData} />
+              </div>
             ) : (
               <p className="text-center text-muted-foreground py-8">No hay datos analíticos disponibles</p>
             )}

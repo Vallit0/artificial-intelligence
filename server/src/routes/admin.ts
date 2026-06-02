@@ -63,6 +63,56 @@ adminRouter.get('/students', async (req: AuthRequest, res: Response, next: NextF
 });
 
 // ============================================
+// PATCH /api/admin/users/:id/coach - Asignar/desasignar coach (admin global)
+// ============================================
+const assignCoachSchema = z.object({
+  coachId: z.string().uuid().nullable(),
+});
+/**
+ * @openapi
+ * /api/admin/users/{id}/coach:
+ *   patch:
+ *     tags: [Admin]
+ *     summary: Asigna o desasigna el coach de un estudiante (sólo admin global)
+ *     description: >-
+ *       `coachId: null` desasigna. El coach debe tener rol coach y pertenecer a
+ *       la misma sede que el estudiante (aislamiento duro entre sedes).
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [coachId]
+ *             properties:
+ *               coachId: { type: string, format: uuid, nullable: true }
+ *     responses:
+ *       200: { description: Coach asignado/desasignado }
+ *       400: { description: Coach inválido o de otra sede, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+ *       403: { description: No es admin global, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+ *       404: { description: Usuario no encontrado, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+ */
+adminRouter.patch('/users/:id/coach', requireGlobalAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const parsed = assignCoachSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'coachId debe ser un UUID o null' });
+      return;
+    }
+    const result = await adminService.assignCoach(req.params.id, parsed.data.coachId, req.user!);
+    res.json(result);
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
+// ============================================
 // POST /api/admin/users - Create single user
 // ============================================
 /**

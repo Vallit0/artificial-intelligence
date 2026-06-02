@@ -27,6 +27,13 @@ dist-ssr
 .env
 .env.*
 
+# SSH keys (nunca versionar llaves privadas)
+conexion
+conexion.pub
+*.pem
+id_ed25519*
+id_rsa*
+
 # MkDocs build output (la wiki se publica vía CI; el sitio no se versiona)
 site/
 .mkdocs-venv/

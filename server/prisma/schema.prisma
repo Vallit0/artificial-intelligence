@@ -98,10 +98,16 @@ model User {
   examenFinalEnabled Boolean  @default(false) @map("examen_final_enabled")
   level2Unlocked     Boolean  @default(false) @map("level2_unlocked")
   sedeId             String?  @map("sede_id")
+  // Coach asignado (auto-relación). Sólo lo asigna un admin global y debe ser
+  // un usuario con rol coach de la MISMA sede que el learner; al borrar el
+  // coach, onDelete: SetNull desasigna a sus alumnos en lugar de bloquear.
+  coachId            String?  @map("coach_id")
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @default(now()) @updatedAt @map("updated_at")
 
   sede                Sede?                  @relation(fields: [sedeId], references: [id], onDelete: Restrict)
+  coach               User?                  @relation("CoachLearners", fields: [coachId], references: [id], onDelete: SetNull)
+  learners            User[]                 @relation("CoachLearners")
   coachPermissions    CoachPermission?
   roles               UserRole[]
   refreshTokens       RefreshToken[]
@@ -118,6 +124,7 @@ model User {
 
   @@index([email])
   @@index([sedeId])
+  @@index([coachId])
   @@map("users")
 }
 

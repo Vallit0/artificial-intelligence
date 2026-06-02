@@ -4,6 +4,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import * as authService from '../services/auth.service.js';
+import prisma from '../db/index.js';
 import { AuthRequest } from '../types/index.js';
 import { handleError } from '../utils/errors.js';
 
@@ -84,9 +85,27 @@ export async function logout(req: Request, res: Response, next: NextFunction): P
 export async function getMe(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const roles = await authService.getUserRoles(req.user!.id);
-    
+
+    // Datos de display (sede + coach asignado) sólo para /auth/me — no se
+    // cargan en loadAuthUser para no meter joins en el hot path de cada request.
+    const profile = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+      select: {
+        sede: { select: { id: true, name: true } },
+        coach: { select: { id: true, firstName: true, lastName: true, email: true } },
+      },
+    });
+    const coach = profile?.coach
+      ? {
+          id: profile.coach.id,
+          name:
+            [profile.coach.firstName, profile.coach.lastName].filter(Boolean).join(' ') ||
+            profile.coach.email,
+        }
+      : null;
+
     res.json({
-      user: req.user,
+      user: { ...req.user, sede: profile?.sede ?? null, coach },
       roles,
     });
   } catch (error) {

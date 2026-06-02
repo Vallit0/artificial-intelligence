@@ -27,12 +27,16 @@ export interface UpdateCoachPermissionsInput {
   canEditPrompts?: boolean;
 }
 
-export const useCoaches = () => {
+export const coachDisplayName = (c: Pick<Coach, "firstName" | "lastName" | "email">): string =>
+  [c.firstName, c.lastName].filter(Boolean).join(" ") || c.email;
+
+export const useCoaches = (enabled = true) => {
   const [coaches, setCoaches] = useState<Coach[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
 
   const fetchCoaches = useCallback(async () => {
+    if (!enabled) return;
     try {
       setIsLoading(true);
       setError(null);
@@ -44,7 +48,7 @@ export const useCoaches = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [enabled]);
 
   const updatePermissions = async (
     coachId: string,

@@ -28,6 +28,10 @@ export interface Student {
   examenFinalEnabled: boolean;
   level2Unlocked: boolean;
   phoneNumber: string | null;
+  sedeId: string | null;
+  sedeName: string | null;
+  coachId: string | null;
+  coachName: string | null;
 }
 
 interface UseStudentsReturn {
@@ -38,6 +42,7 @@ interface UseStudentsReturn {
   assignGrade: (userId: string, grade: number, notes?: string) => Promise<boolean>;
   toggleExamenFinal: (userId: string, enabled: boolean) => Promise<boolean>;
   bulkToggleExamenFinal: (userIds: string[], enabled: boolean) => Promise<number | null>;
+  assignCoach: (userId: string, coachId: string | null) => Promise<boolean>;
 }
 
 export const useStudents = (): UseStudentsReturn => {
@@ -69,6 +74,10 @@ export const useStudents = (): UseStudentsReturn => {
         examenFinalEnabled: s.examenFinalEnabled ?? false,
         level2Unlocked: s.level2Unlocked ?? false,
         phoneNumber: s.phoneNumber ?? null,
+        sedeId: s.sedeId ?? null,
+        sedeName: s.sedeName ?? null,
+        coachId: s.coachId ?? null,
+        coachName: s.coachName ?? null,
       }));
 
       setStudents(studentsWithData);
@@ -123,9 +132,20 @@ export const useStudents = (): UseStudentsReturn => {
     }
   };
 
+  const assignCoach = async (userId: string, coachId: string | null): Promise<boolean> => {
+    try {
+      await api.patch(`/api/admin/users/${userId}/coach`, { coachId });
+      await fetchStudents();
+      return true;
+    } catch (err) {
+      console.error("Error assigning coach:", err);
+      return false;
+    }
+  };
+
   useEffect(() => {
     fetchStudents();
   }, [fetchStudents]);
 
-  return { students, isLoading, error, refetch: fetchStudents, assignGrade, toggleExamenFinal, bulkToggleExamenFinal };
+  return { students, isLoading, error, refetch: fetchStudents, assignGrade, toggleExamenFinal, bulkToggleExamenFinal, assignCoach };
 };

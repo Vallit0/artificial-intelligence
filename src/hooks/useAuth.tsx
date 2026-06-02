@@ -85,8 +85,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     api.setTokens(data.accessToken, data.refreshToken);
     setUser(data.user);
 
-    // Fetch roles
+    // Fetch roles + perfil enriquecido (sede/coach sólo vienen en /auth/me).
     const meData = await api.get<{ user: ApiUser; roles: string[] }>("/auth/me");
+    setUser(meData.user);
     setRoles(meData.roles);
   }, []);
 

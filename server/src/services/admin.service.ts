@@ -40,6 +40,10 @@ interface StudentWithStats {
   gradeNotes: string | null;
   examenFinalEnabled: boolean;
   phoneNumber: string | null;
+  sedeId: string | null;
+  sedeName: string | null;
+  coachId: string | null;
+  coachName: string | null;
 }
 
 // ============================================
@@ -334,6 +338,12 @@ export async function getAllStudents(caller: AuthUser): Promise<StudentWithStats
       studentGrade: {
         select: { finalGrade: true, gradedBy: true, notes: true },
       },
+      coach: {
+        select: { id: true, firstName: true, lastName: true, email: true },
+      },
+      sede: {
+        select: { id: true, name: true },
+      },
     },
     orderBy: { createdAt: 'desc' },
   });
@@ -363,8 +373,64 @@ export async function getAllStudents(caller: AuthUser): Promise<StudentWithStats
       examenFinalEnabled: user.examenFinalEnabled,
       level2Unlocked: user.level2Unlocked,
       phoneNumber: user.phoneNumber,
+      sedeId: user.sedeId,
+      sedeName: user.sede?.name ?? null,
+      coachId: user.coachId,
+      coachName: user.coach
+        ? [user.coach.firstName, user.coach.lastName].filter(Boolean).join(' ') || user.coach.email
+        : null,
     };
   });
+}
+
+// ============================================
+// Asignación de coach (admin global only)
+// ============================================
+// Asigna (o desasigna con coachId=null) el coach de un learner. El coach debe
+// tener rol coach y pertenecer a la MISMA sede que el learner — refuerza el
+// aislamiento duro entre sedes. Sólo admin global puede invocarla.
+export async function assignCoach(learnerId: string, coachId: string | null, caller: AuthUser) {
+  if (!isGlobalAdmin(caller)) {
+    throw new ForbiddenError('Sólo admin global puede asignar coaches');
+  }
+
+  const learner = await prisma.user.findUnique({
+    where: { id: learnerId },
+    select: { id: true, sedeId: true },
+  });
+  if (!learner) {
+    throw new NotFoundError('Usuario no encontrado');
+  }
+
+  if (coachId !== null) {
+    const coach = await prisma.user.findUnique({
+      where: { id: coachId },
+      select: { id: true, sedeId: true, roles: { select: { role: true } } },
+    });
+    if (!coach || !coach.roles.some((r) => r.role === 'coach')) {
+      throw new BadRequestError('El coach indicado no existe o no tiene rol coach');
+    }
+    if (!learner.sedeId || coach.sedeId !== learner.sedeId) {
+      throw new BadRequestError('El coach debe pertenecer a la misma sede que el estudiante');
+    }
+  }
+
+  const updated = await prisma.user.update({
+    where: { id: learnerId },
+    data: { coachId },
+    select: {
+      id: true,
+      coach: { select: { id: true, firstName: true, lastName: true, email: true } },
+    },
+  });
+
+  return {
+    id: updated.id,
+    coachId: updated.coach?.id ?? null,
+    coachName: updated.coach
+      ? [updated.coach.firstName, updated.coach.lastName].filter(Boolean).join(' ') || updated.coach.email
+      : null,
+  };
 }
 
 export async function toggleExamenFinal(userId: string, enabled: boolean, caller: AuthUser) {
