@@ -26,37 +26,52 @@ integraciones, despliegue y operación |
 
 ### 2.1 Diagrama lógico
 
-```
-                          ┌───────────────────────┐
-                          │   Navegador (Cliente) │
-                          │   React SPA + WS      │
-                          └──────────┬────────────┘
-                                     │ HTTPS / WSS
-                                     ▼
-                     ┌───────────────────────────────┐
-                     │   Nginx (reverse proxy + SSL) │
-                     │   80 → 443, WebSocket ready   │
-                     └───────────┬───────────────────┘
-                                 │
-                                 ▼
-       ┌───────────────────────────────────────────────┐
-       │  Docker container: app (Node.js 20 + Express) │
-       │  ┌─────────────────────────────────────────┐  │
-       │  │  Routers → Controllers → Services → DB  │  │
-       │  │  /auth  /lti  /api/*  /health           │  │
-       │  │  + React build estático (dist/)         │  │
-       │  └─────────────────────────────────────────┘  │
-       └───────────┬────────────────────────┬──────────┘
-                   │                        │
-                   ▼                        ▼
-        ┌──────────────────┐     ┌────────────────────┐
-        │ PostgreSQL 15    │     │  APIs externas     │
-        │ (Docker o RDS)   │     │  ElevenLabs        │
-        │ Prisma ORM       │     │  OpenAI            │
-        └──────────────────┘     │  WHAPI (WhatsApp)  │
-                                 │  Resend (email)    │
-                                 │  Moodle LTI 1.3    │
-                                 └────────────────────┘
+```mermaid
+flowchart TB
+    subgraph client["Cliente"]
+        B["Navegador<br/>React SPA + WebSocket de voz"]
+    end
+
+    subgraph edge["Capa de borde"]
+        direction LR
+        NG["Nginx<br/>reverse proxy · TLS · WSS<br/>80 → 443"]
+        CB["Certbot<br/>Let's Encrypt"]
+        CB -. renueva .-> NG
+    end
+
+    subgraph ecs["Huawei Cloud ECS · Docker"]
+        subgraph app["Contenedor app · Node 20 + Express"]
+            direction TB
+            R["Routers<br/>/auth · /lti · /api/* · /health"]
+            C["Controllers"]
+            S["Services<br/>(lógica de negocio)"]
+            P["Prisma Client"]
+            SPA["React build estático<br/>(dist/)"]
+            R --> C --> S --> P
+            R --> SPA
+        end
+    end
+
+    subgraph data["Datos"]
+        DB[("PostgreSQL 15<br/>Docker o RDS")]
+    end
+
+    subgraph ext["APIs externas (HTTPS salida)"]
+        EL["ElevenLabs<br/>Conversational AI"]
+        OAI["OpenAI<br/>evaluación de sesiones"]
+        WH["WHAPI<br/>WhatsApp"]
+        RS["Resend<br/>email transaccional"]
+        MO["Moodle<br/>LTI 1.3 · NRPS · AGS"]
+    end
+
+    B -->|HTTPS / WSS| NG
+    NG -->|proxy :3000| R
+    P -->|5432 · SSL| DB
+    S --> EL
+    S --> OAI
+    S --> WH
+    S --> RS
+    MO <-->|launch / roster sync / grades| R
 ```
 
 ### 2.2 Decisiones arquitectónicas clave
@@ -171,7 +186,8 @@ Route → Controller → Service → Prisma → PostgreSQL
 
 | Dominio | Entidades principales |
 |---|---|
-| **Usuarios y autenticación** | `User`, `UserRole`, `RefreshToken`, `PasswordResetToken` |
+| **Sedes (multi-tenant)** | `Sede`, `CoachPermission` — ver [Multi-sede](multi-sede.md) |
+| **Usuarios y autenticación** | `User` (con `sedeId`, `coachId`), `UserRole`, `RefreshToken`, `PasswordResetToken` |
 | **Integración LTI / Moodle** | `LtiPlatform`, `LtiSession` |
 | **Escenarios y práctica** | `Scenario`, `PracticeSession`, `EvaluationBreakdown`, `UserScenarioProgress` |
 | **Calificaciones** | `StudentGrade` |
@@ -180,24 +196,242 @@ Route → Controller → Service → Prisma → PostgreSQL
 | **Configuración de agentes** | `AgentConfig`, `ProspectingScenarioConfig`, `UserScenarioAccess` |
 | **A/B Testing** | `AbExperiment`, `AbVariant`, `AbAssignment` |
 
-### 5.2 Diagrama ER simplificado
+### 5.2 Diagrama ER
 
+> Fuente de verdad: `server/prisma/schema.prisma`. Los diagramas siguientes
+> agrupan las entidades por dominio y muestran sólo los atributos clave
+> (PK / UK / FK y campos representativos) para mantener la legibilidad.
+
+#### 5.2.1 Identidad, sedes y acceso
+
+```mermaid
+erDiagram
+    SEDE ||--o{ USER : "agrupa · sedeId"
+    USER ||--o{ USER : "coachId · CoachLearners"
+    USER ||--o| COACH_PERMISSION : "permisos (sólo coach)"
+    USER ||--o{ USER_ROLE : "roles"
+    USER ||--o{ REFRESH_TOKEN : "sesiones"
+    USER ||--o{ PASSWORD_RESET_TOKEN : "resets"
+
+    SEDE {
+        uuid id PK
+        string slug UK
+        string name UK
+        string country
+        boolean isActive
+    }
+    USER {
+        uuid id PK
+        string email UK
+        string sedeId FK "nullable en DB, obligatorio en la app"
+        string coachId FK "self-relation"
+        boolean examenFinalEnabled
+        boolean level2Unlocked
+    }
+    COACH_PERMISSION {
+        uuid id PK
+        string userId FK,UK
+        boolean canCreateCoaches
+        boolean canEditPrompts
+        string grantedBy
+    }
+    USER_ROLE {
+        uuid id PK
+        string userId FK
+        enum role "AppRole"
+    }
+    REFRESH_TOKEN {
+        uuid id PK
+        string userId FK
+        string token UK
+        datetime expiresAt
+    }
+    PASSWORD_RESET_TOKEN {
+        uuid id PK
+        string userId FK
+        string token UK
+        datetime usedAt
+    }
 ```
-User ─┬─ UserRole                      LtiPlatform ─ LtiSession ─ User
-      ├─ RefreshToken
-      ├─ PasswordResetToken             Scenario ─┬─ PracticeSession ─ EvaluationBreakdown
-      ├─ LtiSession                               ├─ UserScenarioProgress
-      ├─ PracticeSession ──────────────────────  ─┘
-      ├─ UserScenarioProgress           PracticeSession ─ SessionSummary
-      ├─ StudentGrade
-      ├─ AdvisorMemory                  AbExperiment ─ AbVariant ─ AbAssignment ─ User
-      ├─ SessionSummary
-      └─ Cita (asesor | creador)
+
+#### 5.2.2 Integración LTI / Moodle
+
+```mermaid
+erDiagram
+    LTI_PLATFORM ||--o{ LTI_SESSION : ""
+    LTI_PLATFORM ||--o{ LTI_COURSE_SYNC : ""
+    LTI_PLATFORM ||--o{ LTI_DEEP_LINKING_STATE : ""
+    LTI_PLATFORM ||--o{ LTI_LAUNCH_STATE : ""
+    LTI_COURSE_SYNC ||--o{ LTI_PENDING_MATCH : ""
+    SEDE ||--o{ LTI_COURSE_SYNC : "defaultSedeId"
+    USER ||--o{ LTI_SESSION : ""
+
+    LTI_PLATFORM {
+        uuid id PK
+        string issuerUrl UK
+        string clientId
+        string deploymentId
+        boolean isActive
+    }
+    LTI_SESSION {
+        uuid id PK
+        string userId FK
+        string platformId FK
+        string ltiUserId
+        string contextId
+        enum roles "LtiRole[]"
+    }
+    LTI_COURSE_SYNC {
+        uuid id PK
+        string platformId FK
+        string contextId
+        string defaultSedeId FK
+        string membershipsUrl
+        boolean isActive
+    }
+    LTI_PENDING_MATCH {
+        uuid id PK
+        string courseSyncId FK
+        string ltiUserId
+        string reason
+        datetime resolvedAt
+    }
+    LTI_DEEP_LINKING_STATE {
+        uuid id PK
+        string platformId FK
+        string returnUrl
+        datetime consumedAt
+    }
+    LTI_LAUNCH_STATE {
+        string state PK
+        string nonce
+        string platformId
+        datetime expiresAt
+    }
 ```
+
+!!! note "Tabla sin relaciones FK"
+    `ToolKey` (par de llaves RSA del tool LTI, expuesto en `/lti/jwks`) es
+    independiente: no tiene relaciones con otras entidades.
+
+#### 5.2.3 Escenarios, práctica, evaluación y memoria
+
+```mermaid
+erDiagram
+    USER ||--o{ PRACTICE_SESSION : ""
+    USER ||--o{ USER_SCENARIO_PROGRESS : ""
+    USER ||--o{ ADVISOR_MEMORY : ""
+    USER ||--o{ SESSION_SUMMARY : ""
+    USER ||--o| STUDENT_GRADE : "calificado"
+    USER ||--o{ STUDENT_GRADE : "califica · gradedBy"
+    SCENARIO ||--o{ PRACTICE_SESSION : ""
+    SCENARIO ||--o{ USER_SCENARIO_PROGRESS : ""
+    SCENARIO ||--o{ SESSION_SUMMARY : ""
+    PRACTICE_SESSION ||--o| EVALUATION_BREAKDOWN : "1:1"
+    PRACTICE_SESSION ||--o| SESSION_SUMMARY : "1:1"
+
+    SCENARIO {
+        uuid id PK
+        string name
+        string objection
+        string difficulty
+        boolean isActive
+    }
+    PRACTICE_SESSION {
+        uuid id PK
+        string userId FK
+        string scenarioId FK
+        int score
+        boolean passed
+        string abVariantId
+    }
+    EVALUATION_BREAKDOWN {
+        uuid id PK
+        string sessionId FK,UK
+        int apertura
+        int escuchaActiva
+        int cierre
+    }
+    USER_SCENARIO_PROGRESS {
+        uuid id PK
+        string userId FK
+        string scenarioId FK
+        boolean isUnlocked
+        boolean isCompleted
+        int bestScore
+    }
+    SESSION_SUMMARY {
+        uuid id PK
+        string userId FK
+        string sessionId FK,UK
+        string scenarioId FK
+        int score
+    }
+    ADVISOR_MEMORY {
+        uuid id PK
+        string userId FK
+        string content
+        enum category "MemoryCategory"
+        int importance
+    }
+    STUDENT_GRADE {
+        uuid id PK
+        string userId FK,UK
+        string gradedBy FK
+        decimal finalGrade
+        datetime certificateGeneratedAt
+    }
+```
+
+#### 5.2.4 Coach Center, agentes y A/B Testing
+
+```mermaid
+erDiagram
+    USER ||--o{ CITA : "asesor · asesorId"
+    USER ||--o{ CITA : "creador · createdBy"
+    AB_EXPERIMENT ||--o{ AB_VARIANT : ""
+    AB_EXPERIMENT ||--o{ AB_ASSIGNMENT : ""
+    AB_VARIANT ||--o{ AB_ASSIGNMENT : ""
+    USER ||--o{ AB_ASSIGNMENT : ""
+
+    CITA {
+        uuid id PK
+        string asesorId FK
+        string createdBy FK
+        string cliente
+        datetime fecha
+        enum tipo "CitaTipo"
+        enum prioridad "CitaPrioridad"
+    }
+    AB_EXPERIMENT {
+        uuid id PK
+        string name
+        string agentSecretName
+        enum status "ExperimentStatus"
+    }
+    AB_VARIANT {
+        uuid id PK
+        string experimentId FK
+        string name
+        int weight
+    }
+    AB_ASSIGNMENT {
+        uuid id PK
+        string experimentId FK
+        string variantId FK
+        string userId FK
+    }
+```
+
+!!! note "Tablas de configuración sin relaciones FK"
+    `AgentConfig`, `ProspectingScenarioConfig`, `UserScenarioAccess` y
+    `PricingRate` no declaran relaciones Prisma: son tablas de configuración /
+    catálogo que se consultan por `secretName`, `userId` o `service` sin FK.
+    `PricingRate` alimenta el panel de costos en `/admin/analytics`.
 
 ### 5.3 Enums principales
 
-- `AppRole`: `admin`, `instructor`, `learner`
+- `AppRole`: `admin`, `instructor`, `learner`, `coach`
 - `LtiRole`: `instructor`, `learner`, `admin`, `content_developer`
 - `MemoryCategory`: `debilidad`, `fortaleza`, `expresion`, `comportamiento`, `progreso`
 - `ExperimentStatus`: `draft`, `active`, `completed`

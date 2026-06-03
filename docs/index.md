@@ -19,6 +19,9 @@ Plataforma de entrenamiento de ventas con **IA conversacional** (ElevenLabs) int
 - :material-file-document: **[Manual técnico](MANUAL-TECNICO.md)**
   Arquitectura lógica, modelo de datos, integraciones y operación.
 
+- :material-office-building-marker: **[Multi-sede (aislamiento)](multi-sede.md)**
+  Modelo de tenancy por sede, rol `coach` y reglas de aislamiento de datos.
+
 - :material-puzzle: **[Integraciones externas](integraciones.md)**
   ElevenLabs, OpenAI, Moodle (LTI 1.3), WhatsApp (WHAPI), Resend.
 

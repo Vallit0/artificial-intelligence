@@ -65,6 +65,7 @@ nav:
   - Arquitectura:
       - Stack tecnológico: stack.md
       - Manual técnico: MANUAL-TECNICO.md
+      - Multi-sede (aislamiento): multi-sede.md
       - Integraciones externas: integraciones.md
   - API:
       - Referencia OpenAPI: api.md

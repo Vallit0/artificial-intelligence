@@ -6,13 +6,33 @@ Plataforma de entrenamiento de ventas con IA conversacional. Arquitectura monol�
 
 ```mermaid
 flowchart LR
-    U["Usuario"] -->|443| ECS
-    subgraph ECS["ECS - Ubuntu 22.04 - Docker"]
-        ng["nginx"] --> app["app :3000"]
+    U["Usuario<br/>navegador"]
+
+    subgraph ECS["ECS · Ubuntu 22.04 · Docker"]
+        direction TB
+        ng["nginx<br/>TLS · 80→443 · WSS"]
+        app["app :3000<br/>Node 20 + Express + SPA"]
+        cb["certbot<br/>Let's Encrypt"]
+        ng --> app
+        cb -. renueva .-> ng
     end
-    app -->|"5432 SSL"| RDS[("RDS PostgreSQL 15")]
-    app -->|443| EL["api.elevenlabs.io"]
-    app -->|443| OAI["api.openai.com"]
+
+    subgraph EXT["APIs externas (443 salida)"]
+        direction TB
+        EL["api.elevenlabs.io"]
+        OAI["api.openai.com"]
+        WH["gate.whapi.cloud"]
+        RS["api.resend.com"]
+        MO["Moodle · LTI 1.3"]
+    end
+
+    U -->|443 HTTPS / WSS| ng
+    app -->|"5432 · SSL"| RDS[("RDS PostgreSQL 15")]
+    app --> EL
+    app --> OAI
+    app --> WH
+    app --> RS
+    MO <-->|launch / NRPS / AGS| app
 ```
 
 Para el detalle de la arquitectura de contenedores (Dockerfiles y los tres

@@ -70,8 +70,28 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # .env.test está gitignored, así que no existe tras el checkout. Lo
+      # generamos con la DATABASE_URL del servicio postgres (puerto 5433) para
+      # que tanto `prisma generate` (que carga prisma.config.ts y exige la var)
+      # como `npm test` (dotenv -e .env.test) la encuentren.
+      - name: Create .env.test for CI
+        run: |
+          cat > .env.test <<'EOF'
+          NODE_ENV=test
+          PORT=3001
+          APP_URL=http://localhost:3001
+          CORS_ORIGIN=*
+          DATABASE_URL=postgresql://senoriales_test:senoriales_test@localhost:5433/senoriales_test
+          JWT_SECRET=test-secret-do-not-use-in-production-0123456789
+          ELEVENLABS_API_KEY=
+          ELEVENLABS_AGENT_ID=
+          OPENAI_API_KEY=
+          WHAPI_TOKEN=
+          RESEND_API_KEY=
+          EOF
+
       - name: Generate Prisma client
-        run: npx prisma generate
+        run: npx dotenv -e .env.test -- prisma generate
 
       - name: Run test suite
         run: npm test
