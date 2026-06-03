@@ -2,9 +2,8 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import PracticeTimer from "@/components/PracticeTimer";
 import CelebrationModal from "@/components/CelebrationModal";
-import { Award, Clock, TrendingUp, Flame, Calendar, Star, Trophy, Target, Zap, Phone, Crown, Sparkles, CheckCircle2, Lock, Play, BarChart3, LineChart as LineChartIcon } from "lucide-react";
+import { Award, Clock, TrendingUp, Flame, Calendar, Star, Trophy, Target, Zap, Phone, Crown, Sparkles, CheckCircle2, Lock, Play } from "lucide-react";
 import { usePracticeSessions } from "@/hooks/usePracticeSessions";
-import { useAnalytics } from "@/hooks/useAnalytics";
 import { formatDistanceToNow, startOfWeek, endOfWeek, isWithinInterval, startOfDay, differenceInCalendarDays } from "date-fns";
 import { es } from "date-fns/locale";
 import LeftSidebar from "@/components/scenarios/LeftSidebar";
@@ -13,10 +12,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress as ProgressBar } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CompetencyRadar } from "@/components/analytics/CompetencyRadar";
-import { ScoreLineChart } from "@/components/analytics/ScoreLineChart";
-import { CompetencyBarChart } from "@/components/analytics/CompetencyBarChart";
-import { ActivityHeatmap } from "@/components/analytics/ActivityHeatmap";
 import { SessionReplayModal } from "@/components/replay/SessionReplayModal";
 
 const TARGET_TIME = 1500; // 25 minutes in seconds
@@ -24,7 +19,6 @@ const TARGET_TIME = 1500; // 25 minutes in seconds
 const Progress = () => {
   const navigate = useNavigate();
   const { sessions, totalPracticeTime, isLoading } = usePracticeSessions();
-  const { data: analytics, isLoading: analyticsLoading } = useAnalytics();
   const [showCelebration, setShowCelebration] = useState(false);
   const [hasSeenCelebration, setHasSeenCelebration] = useState(false);
   const [replaySessionId, setReplaySessionId] = useState<string | null>(null);
@@ -227,18 +221,10 @@ const Progress = () => {
               </div>
             ) : (
               <Tabs defaultValue="resumen" className="space-y-6">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-1">
                   <TabsTrigger value="resumen" className="flex items-center gap-1.5">
                     <Award className="h-4 w-4" />
                     Resumen
-                  </TabsTrigger>
-                  <TabsTrigger value="competencias" className="flex items-center gap-1.5">
-                    <BarChart3 className="h-4 w-4" />
-                    Competencias
-                  </TabsTrigger>
-                  <TabsTrigger value="historial" className="flex items-center gap-1.5">
-                    <LineChartIcon className="h-4 w-4" />
-                    Historial
                   </TabsTrigger>
                 </TabsList>
 
@@ -446,100 +432,6 @@ const Progress = () => {
                       )}
                     </CardContent>
                   </Card>
-                </TabsContent>
-
-                {/* ============================================ */}
-                {/* Tab 2: Competencias */}
-                {/* ============================================ */}
-                <TabsContent value="competencias" className="space-y-6">
-                  {analyticsLoading ? (
-                    <div className="space-y-6">
-                      {[1, 2].map((i) => (
-                        <div key={i} className="h-80 bg-muted rounded-2xl animate-pulse" />
-                      ))}
-                    </div>
-                  ) : (
-                    <>
-                      {/* Radar Chart */}
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="flex items-center gap-2">
-                            <Target className="w-5 h-5 text-primary" />
-                            Perfil de Competencias
-                          </CardTitle>
-                          <p className="text-sm text-muted-foreground">
-                            Última sesión vs promedio histórico
-                          </p>
-                        </CardHeader>
-                        <CardContent>
-                          <CompetencyRadar
-                            latest={analytics?.latestBreakdown || null}
-                            average={analytics?.averageBreakdown || null}
-                          />
-                        </CardContent>
-                      </Card>
-
-                      {/* Bar Chart */}
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="flex items-center gap-2">
-                            <BarChart3 className="w-5 h-5 text-secondary" />
-                            Promedio por Competencia
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <CompetencyBarChart breakdown={analytics?.averageBreakdown || null} />
-                        </CardContent>
-                      </Card>
-                    </>
-                  )}
-                </TabsContent>
-
-                {/* ============================================ */}
-                {/* Tab 3: Historial */}
-                {/* ============================================ */}
-                <TabsContent value="historial" className="space-y-6">
-                  {analyticsLoading ? (
-                    <div className="space-y-6">
-                      {[1, 2].map((i) => (
-                        <div key={i} className="h-80 bg-muted rounded-2xl animate-pulse" />
-                      ))}
-                    </div>
-                  ) : (
-                    <>
-                      {/* Score Line Chart */}
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="flex items-center gap-2">
-                            <LineChartIcon className="w-5 h-5 text-primary" />
-                            Progresión de Puntaje
-                          </CardTitle>
-                          <p className="text-sm text-muted-foreground">
-                            Evolución de tu puntaje a lo largo del tiempo
-                          </p>
-                        </CardHeader>
-                        <CardContent>
-                          <ScoreLineChart data={analytics?.scoreHistory || []} />
-                        </CardContent>
-                      </Card>
-
-                      {/* Activity Heatmap */}
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="flex items-center gap-2">
-                            <Calendar className="w-5 h-5 text-secondary" />
-                            Actividad de Práctica
-                          </CardTitle>
-                          <p className="text-sm text-muted-foreground">
-                            Últimos 90 días
-                          </p>
-                        </CardHeader>
-                        <CardContent>
-                          <ActivityHeatmap data={analytics?.activityHeatmap || []} />
-                        </CardContent>
-                      </Card>
-                    </>
-                  )}
                 </TabsContent>
               </Tabs>
             )}
