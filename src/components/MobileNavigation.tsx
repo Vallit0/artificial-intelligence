@@ -37,7 +37,6 @@ const MobileNavigation = () => {
     { icon: <Phone className="w-5 h-5" />, label: "Llamada", href: "/practice" },
     ...(user
       ? [
-          { icon: <Lock className="w-5 h-5" />, label: "Examen", href: "/quests" },
           { icon: <TrendingUp className="w-5 h-5" />, label: "Progreso", href: "/progress" },
         ]
       : []),

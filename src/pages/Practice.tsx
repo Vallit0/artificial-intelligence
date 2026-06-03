@@ -131,13 +131,14 @@ const practiceAgentSuggestions: AgentSuggestion[] = [
   },
 ];
 
-const LEVEL2_HIDDEN_IDS = new Set(["prospeccion-fisica", "legado-vida"]);
+const LEVEL2_HIDDEN_IDS = new Set(["prospeccion-fisica", "legado-vida", "examen"]);
 const LEVEL2_ORB_GRADIENT =
   "linear-gradient(135deg, #7c3aed 0%, #a855f7 40%, #c084fc 70%, #7c3aed 100%)";
 
 const objectionsAgentSuggestions: AgentSuggestion[] = practiceAgentSuggestions
-  // Nivel 2 oculta los atajos a Prospección y Legado pero mantiene Examen
-  // Final. Conserva los modos de práctica de llamada (Coach, Roleplay) y los
+  // Nivel 2 oculta los atajos a Prospección, Legado y Examen Final (el examen
+  // es la compuerta que desbloquea este nivel, así que no se repite dentro de
+  // él). Conserva los modos de práctica de llamada (Coach, Roleplay) y los
   // enruta a agentes ElevenLabs distintos vía secret name (sufijo _NIVEL2).
   // También sustituye el persona "Álvaro" por "Nelson" en las descripciones y
   // unifica el orbe a un tono morado para diferenciar visualmente el nivel.
