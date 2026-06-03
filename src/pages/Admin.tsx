@@ -23,6 +23,7 @@ import LatencyTesterPanel from "@/components/admin/LatencyTesterPanel";
 import AgentLatencyPanel from "@/components/admin/AgentLatencyPanel";
 import SedesPanel from "@/components/admin/SedesPanel";
 import CoachesPanel from "@/components/admin/CoachesPanel";
+import CoachStudentsPanel from "@/components/admin/CoachStudentsPanel";
 import LeftSidebar from "@/components/scenarios/LeftSidebar";
 import MobileNavigation from "@/components/MobileNavigation";
 import { useAdminUsage } from "@/hooks/useAdminUsage";
@@ -122,6 +123,10 @@ export default function Admin() {
                 Coaches
               </TabsTrigger>
             )}
+            <TabsTrigger value="coach-students" className="flex items-center gap-1">
+              <Users className="w-3.5 h-3.5" />
+              Coach / Estudiantes
+            </TabsTrigger>
             <TabsTrigger value="analytics" className="flex items-center gap-1">
               <BarChart3 className="w-3.5 h-3.5" />
               Analíticas
@@ -349,6 +354,10 @@ export default function Admin() {
             ) : (
               <p className="text-center text-muted-foreground py-8">No hay datos analíticos disponibles</p>
             )}
+          </TabsContent>
+
+          <TabsContent value="coach-students">
+            <CoachStudentsPanel canListCoaches={isAdmin} />
           </TabsContent>
 
           <TabsContent value="sedes">
