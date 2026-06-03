@@ -4,27 +4,40 @@ Plataforma de entrenamiento de ventas con IA conversacional.
 
 ## Arquitectura
 
+```mermaid
+flowchart TB
+    U["Navegador<br/>React SPA + voz (WebSocket)"]
+
+    subgraph docker["Docker · Node.js 20 + Express"]
+        direction TB
+        SPA["/ · React SPA (build estático)"]
+        AUTH["/auth/* · Autenticación JWT"]
+        API["/api/* · Escenarios · Sesiones · Progreso<br/>Memoria · Citas · Admin"]
+        ELT["/api/elevenlabs/* · Tokens de voz"]
+        LTI["/lti/* · Integración Moodle"]
+    end
+
+    DB[("PostgreSQL 15<br/>Prisma ORM")]
+
+    subgraph ext["APIs externas"]
+        direction TB
+        ELV["ElevenLabs<br/>Conversational AI"]
+        OAI["OpenAI · evaluación"]
+        WH["WHAPI · WhatsApp"]
+        RS["Resend · email"]
+        MO["Moodle · LTI 1.3"]
+    end
+
+    U -->|HTTPS / WSS| docker
+    docker --> DB
+    ELT --> ELV
+    API --> OAI
+    API --> WH
+    API --> RS
+    LTI <--> MO
 ```
-┌─────────────────────────────────────────────────────┐
-│                   Docker Container                   │
-│  ┌───────────────────────────────────────────────┐  │
-│  │              Node.js / Express                 │  │
-│  │  ├─ /                 → React SPA (static)    │  │
-│  │  ├─ /auth/*           → Autenticación JWT     │  │
-│  │  ├─ /api/scenarios    → Escenarios            │  │
-│  │  ├─ /api/sessions     → Sesiones de práctica  │  │
-│  │  ├─ /api/progress     → Progreso del usuario  │  │
-│  │  ├─ /api/elevenlabs/* → Tokens ElevenLabs     │  │
-│  │  └─ /lti/*            → Integración Moodle    │  │
-│  └───────────────────────────────────────────────┘  │
-│                         ↓                            │
-│  ┌───────────────────────────────────────────────┐  │
-│  │              PostgreSQL 15                     │  │
-│  └───────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────┘
-                          ↓
-            APIs Externas: ElevenLabs, OpenAI
-```
+
+> La arquitectura detallada (diagrama lógico, modelo de datos y despliegue) vive en la [wiki MkDocs](docs/index.md).
 
 ## Inicio Rápido
 
