@@ -28,7 +28,6 @@ import {
   Swords,
   UserCheck,
   MapPin,
-  BookOpen,
   GraduationCap,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -112,15 +111,6 @@ const practiceAgentSuggestions: AgentSuggestion[] = [
     redirectTo: "/prospecting",
   },
   {
-    id: "legado-vida",
-    label: "Legado de Vida",
-    description: "Practica cómo presentar y entregar el Legado de Vida",
-    icon: BookOpen,
-    color: "from-yellow-500/15 to-yellow-500/5 border-yellow-500/30 hover:border-yellow-500/60",
-    orbGradient: "linear-gradient(135deg, #ca8a04 0%, #eab308 40%, #facc15 70%, #ca8a04 100%)",
-    redirectTo: "/legado",
-  },
-  {
     id: "examen",
     label: "Examen Final",
     description: "Evaluación completa de todas tus habilidades",
@@ -131,7 +121,7 @@ const practiceAgentSuggestions: AgentSuggestion[] = [
   },
 ];
 
-const LEVEL2_HIDDEN_IDS = new Set(["prospeccion-fisica", "legado-vida", "examen"]);
+const LEVEL2_HIDDEN_IDS = new Set(["prospeccion-fisica", "examen"]);
 const LEVEL2_ORB_GRADIENT =
   "linear-gradient(135deg, #7c3aed 0%, #a855f7 40%, #c084fc 70%, #7c3aed 100%)";
 
