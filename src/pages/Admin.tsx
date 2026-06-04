@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAuth } from "@/hooks/useAuth";
 import { useStudents } from "@/hooks/useStudents";
-import { Activity, BarChart3, Building2, Clock, Download, FlaskConical, GraduationCap, Loader2, Play, Plus, Search, Shield, Timer, Upload, Users } from "lucide-react";
+import { Activity, BarChart3, Building2, Clock, Download, GraduationCap, Loader2, Play, Plus, Search, Shield, Timer, Upload, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -17,7 +17,6 @@ import ProspectingScenariosPanel from "@/components/admin/ProspectingScenariosPa
 import LtiPlatformPanel from "@/components/admin/LtiPlatformPanel";
 import LtiCourseSyncPanel from "@/components/admin/LtiCourseSyncPanel";
 import LtiPendingMatchesPanel from "@/components/admin/LtiPendingMatchesPanel";
-import AbExperimentsPanel from "@/components/admin/AbExperimentsPanel";
 import AiAccessPanel from "@/components/admin/AiAccessPanel";
 import LatencyTesterPanel from "@/components/admin/LatencyTesterPanel";
 import AgentLatencyPanel from "@/components/admin/AgentLatencyPanel";
@@ -132,12 +131,6 @@ export default function Admin() {
               Analíticas
             </TabsTrigger>
             {isAdmin && <TabsTrigger value="agents">Agentes IA</TabsTrigger>}
-            {isAdmin && (
-              <TabsTrigger value="ab-tests" className="flex items-center gap-1">
-                <FlaskConical className="w-3.5 h-3.5" />
-                A/B Tests
-              </TabsTrigger>
-            )}
             {canSeeProspecting && (
               <TabsTrigger value="prospecting">Prospección</TabsTrigger>
             )}
@@ -370,10 +363,6 @@ export default function Admin() {
 
           <TabsContent value="agents">
             <AgentConfigPanel />
-          </TabsContent>
-
-          <TabsContent value="ab-tests">
-            <AbExperimentsPanel />
           </TabsContent>
 
           {canSeeProspecting && (
