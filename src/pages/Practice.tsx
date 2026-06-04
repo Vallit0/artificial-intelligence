@@ -619,11 +619,15 @@ const Practice = () => {
             >
               {agentSuggestions.map((agent, i) => {
                 const Icon = agent.icon;
+                // Si es la última tarjeta y queda sola en su fila (lista impar),
+                // la centramos ocupando ambas columnas pero limitando su ancho.
+                const isLoneLast =
+                  i === agentSuggestions.length - 1 && agentSuggestions.length % 2 === 1;
                 return (
                   <button
                     key={agent.id}
                     onClick={() => agent.redirectTo ? navigate(agent.redirectTo) : handleStart(agent)}
-                    className={`group flex items-start gap-3 p-4 rounded-2xl border-2 bg-gradient-to-br text-left transition-all duration-200 hover:scale-[1.03] hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.97] shadow-md ${agent.color}`}
+                    className={`group flex items-start gap-3 p-4 rounded-2xl border-2 bg-gradient-to-br text-left transition-all duration-200 hover:scale-[1.03] hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.97] shadow-md ${agent.color} ${isLoneLast ? "sm:col-span-2 sm:mx-auto sm:w-[calc(50%-0.375rem)]" : ""}`}
                     style={
                       animateLevelChange
                         ? { animation: `cardPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) ${i * 0.06}s both` }
