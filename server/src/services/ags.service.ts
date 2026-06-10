@@ -25,6 +25,14 @@ const CONTENT_TYPE_LINEITEM = 'application/vnd.ims.lis.v2.lineitem+json';
 
 const DEFAULT_LINEITEM_LABEL = 'Práctica Señoriales';
 
+// Cuando hay que auto-crear el lineitem (el launch no trajo uno fijo), el
+// label/tag dependen de qué examen produjo la nota, así el examen final y el
+// de objeciones quedan en columnas separadas del gradebook.
+const EXAM_LINEITEM: Record<'prospeccion' | 'objeciones', { label: string; tag: string }> = {
+  prospeccion: { label: 'Examen Prospección Señoriales', tag: 'senoriales-examen-prospeccion' },
+  objeciones: { label: 'Examen Objeciones Señoriales', tag: 'senoriales-examen-objeciones' },
+};
+
 export type GradingProgress = 'FullyGraded' | 'Pending' | 'PendingManual' | 'Failed' | 'NotReady';
 export type ActivityProgress = 'Initialized' | 'Started' | 'InProgress' | 'Submitted' | 'Completed';
 
@@ -35,6 +43,7 @@ export interface SubmitScoreParams {
   feedback?: string;
   gradingProgress: GradingProgress;
   activityProgress?: ActivityProgress;
+  examType?: 'prospeccion' | 'objeciones' | null;
 }
 
 export type SubmitScoreOutcome =
@@ -55,6 +64,8 @@ async function ensureLineitem(
   scopes: string[],
   resourceLinkId: string | null,
   scoreMaximum: number,
+  label: string,
+  tag: string,
 ): Promise<string> {
   const canCreate = scopes.includes(SCOPE_LINEITEM);
   if (!canCreate) {
@@ -66,9 +77,9 @@ async function ensureLineitem(
   const token = await getPlatformAccessToken(platformId, [SCOPE_LINEITEM]);
   const body = {
     scoreMaximum,
-    label: DEFAULT_LINEITEM_LABEL,
+    label,
     ...(resourceLinkId ? { resourceLinkId } : {}),
-    tag: 'senoriales-practice',
+    tag,
   };
 
   const res = await fetch(lineitemsUrl, {
@@ -114,6 +125,10 @@ export async function submitScoreForUser(params: SubmitScoreParams): Promise<Sub
     return { status: 'skipped', reason: 'platform did not grant score scope' };
   }
 
+  const lineitemMeta = params.examType
+    ? EXAM_LINEITEM[params.examType]
+    : { label: DEFAULT_LINEITEM_LABEL, tag: 'senoriales-practice' };
+
   let lineitemUrl = ltiSession.agsLineitemUrl;
   if (!lineitemUrl) {
     try {
@@ -123,6 +138,8 @@ export async function submitScoreForUser(params: SubmitScoreParams): Promise<Sub
         ltiSession.agsScopes,
         ltiSession.resourceLinkId,
         scoreMaximum,
+        lineitemMeta.label,
+        lineitemMeta.tag,
       );
       // Cache the resolved lineitem so subsequent submissions skip the
       // create round-trip even if the platform did not return one in the

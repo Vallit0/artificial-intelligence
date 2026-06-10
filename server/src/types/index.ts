@@ -102,9 +102,15 @@ export interface PracticeSession {
   aiFeedback?: string;
   transcript?: TranscriptMessage[];
   abVariantId?: string;
+  examType?: ExamType;
   breakdown?: EvaluationBreakdown;
   createdAt: Date;
 }
+
+// Marca qué examen produjo la sesión. null/undefined = práctica normal.
+// 'prospeccion' = Examen Final del módulo de Prospección (Nivel 1);
+// 'objeciones' = Examen Final del módulo de Manejo de Objeciones (Nivel 2).
+export type ExamType = 'prospeccion' | 'objeciones';
 
 // 'real' = LLM produced a valid evaluation
 // 'too_short' = transcript below MIN_TURNS_FOR_REAL_EVAL — score is 0
@@ -135,6 +141,7 @@ export interface CreateSessionInput {
   durationSeconds?: number;
   rating?: number | null;
   abVariantId?: string | null;
+  examType?: ExamType | null;
 }
 
 export interface UpdateSessionInput {

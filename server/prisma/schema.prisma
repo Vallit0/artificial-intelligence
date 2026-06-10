@@ -409,6 +409,11 @@ model PracticeSession {
   id              String   @id @default(uuid())
   userId          String   @map("user_id")
   scenarioId      String?  @map("scenario_id")
+  // null = práctica normal; 'prospeccion' = Examen Final de Prospección
+  // (Nivel 1); 'objeciones' = Examen Final de Manejo de Objeciones (Nivel 2).
+  // Distingue los dos exámenes, que ambos corren con scenarioId == null, para
+  // gradear/trackear/reportar a Moodle por separado.
+  examType        String?  @map("exam_type")
   durationSeconds Int      @default(0) @map("duration_seconds")
   score           Int?
   passed          Boolean  @default(false)

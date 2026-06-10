@@ -42,7 +42,8 @@ interface UsePracticeSessionsReturn {
     durationSeconds: number,
     rating?: number,
     scenarioId?: string,
-    abVariantId?: string
+    abVariantId?: string,
+    examType?: "prospeccion" | "objeciones"
   ) => Promise<string | null>;
   evaluateSession: (
     sessionId: string,
@@ -97,7 +98,7 @@ export const usePracticeSessions = (): UsePracticeSessionsReturn => {
   }, [fetchSessions]);
 
   const savePracticeSession = useCallback(
-    async (durationSeconds: number, rating?: number, scenarioId?: string, abVariantId?: string): Promise<string | null> => {
+    async (durationSeconds: number, rating?: number, scenarioId?: string, abVariantId?: string, examType?: "prospeccion" | "objeciones"): Promise<string | null> => {
       if (!user) return null;
 
       try {
@@ -106,6 +107,7 @@ export const usePracticeSessions = (): UsePracticeSessionsReturn => {
           rating: rating || null,
           scenarioId: scenarioId || null,
           abVariantId: abVariantId || null,
+          examType: examType || null,
         });
         return data?.id || null;
       } catch (error) {

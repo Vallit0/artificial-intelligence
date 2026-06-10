@@ -3,7 +3,7 @@
 // ============================================
 
 import prisma from '../db/index.js';
-import { PracticeSession, CreateSessionInput, UpdateSessionInput, SessionEvaluation, UserStats, EvaluationStatus } from '../types/index.js';
+import { PracticeSession, CreateSessionInput, UpdateSessionInput, SessionEvaluation, UserStats, EvaluationStatus, ExamType } from '../types/index.js';
 import { NotFoundError } from '../utils/errors.js';
 import { submitScoreForUser, GradingProgress } from './ags.service.js';
 import { getLogger } from '../utils/logger.js';
@@ -49,6 +49,7 @@ export async function createSession(userId: string, input: CreateSessionInput): 
     data: {
       userId,
       scenarioId: input.scenarioId || null,
+      examType: input.examType || null,
       durationSeconds: input.durationSeconds || 0,
       passed: false,
       rating: input.rating || null,
@@ -140,12 +141,18 @@ export async function saveEvaluation(
   // don't block the user's response on a third-party round-trip, and don't
   // fail the whole evaluation persistence if Moodle is unreachable. The
   // service itself returns 'skipped' when the user did not arrive via LTI.
+  //
+  // examType selecciona el label del lineitem cuando hay que auto-crearlo, de
+  // modo que el examen final y el de objeciones caigan en columnas distintas
+  // del gradebook. Si el launch ya trajo un lineitem fijo (cada actividad LTI
+  // de Moodle tiene el suyo), ese tiene prioridad y la separación es natural.
   void submitScoreForUser({
     userId,
     score: evaluation.score,
     scoreMaximum: 100,
     feedback: evaluation.feedback,
     gradingProgress: gradingProgressFor(evaluation.evaluationStatus),
+    examType: session.examType as ExamType | null,
   })
     .then((outcome) => {
       if (outcome.status === 'failed') {
@@ -359,6 +366,7 @@ function mapToSession(row: any): PracticeSession {
     aiFeedback: row.aiFeedback || undefined,
     transcript: row.transcript || undefined,
     abVariantId: row.abVariantId || undefined,
+    examType: row.examType || undefined,
     breakdown: row.evaluationBreakdown ? {
       apertura: row.evaluationBreakdown.apertura,
       escuchaActiva: row.evaluationBreakdown.escuchaActiva,

@@ -107,7 +107,7 @@ export default function ExamenFinalObjeciones() {
     setTranscriptMessages([]);
     setEvaluation(null);
 
-    const sessionId = await savePracticeSession(0);
+    const sessionId = await savePracticeSession(0, undefined, undefined, undefined, "objeciones");
     setCurrentSessionId(sessionId);
 
     setExamState("active");

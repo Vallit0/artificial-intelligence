@@ -17,6 +17,10 @@ const createSessionSchema = z.object({
   durationSeconds: z.number().int().min(0).max(60 * 60 * 4).optional(),
   rating: z.number().int().min(1).max(5).nullable().optional(),
   abVariantId: z.string().uuid().nullable().optional(),
+  // examType solo selecciona qué columna del gradebook recibe la nota y
+  // permite separar los dos exámenes en analítica. No influye en score/passed,
+  // que se computan server-side desde el breakdown.
+  examType: z.enum(['prospeccion', 'objeciones']).nullable().optional(),
 });
 
 const updateSessionSchema = z.object({

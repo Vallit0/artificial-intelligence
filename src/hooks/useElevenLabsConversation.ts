@@ -144,6 +144,78 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     setLatencyStats({ connectMs: null, lastTtfaMs: null, avgTtfaMs: null, ttfaSamples: 0 });
   }, []);
 
+  // Mecanismo compartido por ambos exámenes: a partir de la forma de 5 rúbricas
+  // recomputa score/passed (ignorando lo que afirme el agente), persiste la
+  // nota en /api/elevenlabs/agent-evaluation y notifica a la página que el
+  // examen terminó. Es el "qué pasa cuando se recibe la nota": idéntico para
+  // Prospección y Objeciones, pero cada tool entra por su propio handler.
+  const persistRubricEvaluation = useCallback((parameters: Record<string, unknown>): void => {
+    const p = parameters as {
+      score?: number;
+      passed?: boolean;
+      feedback?: string;
+      apertura?: number;
+      escucha_activa?: number;
+      manejo_objeciones?: number;
+      propuesta_valor?: number;
+      cierre?: number;
+      breakdown?: {
+        apertura?: number;
+        escucha_activa?: number;
+        manejo_objeciones?: number;
+        propuesta_valor?: number;
+        cierre?: number;
+      };
+    };
+    // Defensive clamp to 0–20 per rubric: the server validates this range
+    // with zod (elevenlabs.controller.ts) and rejects anything else with a
+    // 400, which would silently break the unlock flow downstream. Some
+    // agent variants send 0–100 per rubric; clamping keeps both sides in
+    // agreement instead of letting the request bounce on validation.
+    const clamp = (n: number) => Math.max(0, Math.min(20, Math.round(n)));
+    const breakdown = {
+      apertura: clamp(p.breakdown?.apertura ?? p.apertura ?? 0),
+      escucha_activa: clamp(p.breakdown?.escucha_activa ?? p.escucha_activa ?? 0),
+      manejo_objeciones: clamp(p.breakdown?.manejo_objeciones ?? p.manejo_objeciones ?? 0),
+      propuesta_valor: clamp(p.breakdown?.propuesta_valor ?? p.propuesta_valor ?? 0),
+      cierre: clamp(p.breakdown?.cierre ?? p.cierre ?? 0),
+    };
+    // Mirror the server-side recompute (elevenlabs.controller.ts:124-132):
+    // score/passed are derived from the breakdown, ignoring whatever the
+    // agent claims. Trusting `p.passed` here was the bug that surfaced
+    // "Avanzar de nivel" while the DB row still had passed:false → 403 on
+    // /api/users/me/unlock-level2.
+    const score =
+      breakdown.apertura +
+      breakdown.escucha_activa +
+      breakdown.manejo_objeciones +
+      breakdown.propuesta_valor +
+      breakdown.cierre;
+    const passed = score >= 75;
+    const evaluation: EvaluationResult = {
+      score,
+      passed,
+      feedback: (p.feedback ?? "").trim() || "Sin comentarios del agente.",
+      breakdown,
+    };
+
+    if (sessionIdRef.current) {
+      const persist = api.post("/api/elevenlabs/agent-evaluation", {
+        sessionId: sessionIdRef.current,
+        ...evaluation,
+      });
+      evaluationPersistRef.current = persist;
+      persist
+        .then((res) => console.log("[DEBUG][EVAL] POST /agent-evaluation OK", res))
+        .catch((err) => console.error("[DEBUG][EVAL] POST /agent-evaluation ERROR", err));
+    } else {
+      console.warn("[DEBUG][EVAL] sessionId is null — evaluation will NOT be persisted");
+    }
+
+    onEvaluationRef.current?.(evaluation);
+  }, []);
+
+  // Tool del examen de Prospección (Nivel 1) + checklist de Legado de Vida.
   const handleSubmitEvaluation = useCallback((parameters: Record<string, unknown>): void => {
     console.log("[DEBUG][EVAL] submit_evaluation invoked via clientTools:", parameters);
 
@@ -162,69 +234,7 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
       "pide_cita_ok" in parameters;
 
     if (hasLegacyShape) {
-      const p = parameters as {
-        score?: number;
-        passed?: boolean;
-        feedback?: string;
-        apertura?: number;
-        escucha_activa?: number;
-        manejo_objeciones?: number;
-        propuesta_valor?: number;
-        cierre?: number;
-        breakdown?: {
-          apertura?: number;
-          escucha_activa?: number;
-          manejo_objeciones?: number;
-          propuesta_valor?: number;
-          cierre?: number;
-        };
-      };
-      // Defensive clamp to 0–20 per rubric: the server validates this range
-      // with zod (elevenlabs.controller.ts) and rejects anything else with a
-      // 400, which would silently break the unlock flow downstream. Some
-      // agent variants send 0–100 per rubric; clamping keeps both sides in
-      // agreement instead of letting the request bounce on validation.
-      const clamp = (n: number) => Math.max(0, Math.min(20, Math.round(n)));
-      const breakdown = {
-        apertura: clamp(p.breakdown?.apertura ?? p.apertura ?? 0),
-        escucha_activa: clamp(p.breakdown?.escucha_activa ?? p.escucha_activa ?? 0),
-        manejo_objeciones: clamp(p.breakdown?.manejo_objeciones ?? p.manejo_objeciones ?? 0),
-        propuesta_valor: clamp(p.breakdown?.propuesta_valor ?? p.propuesta_valor ?? 0),
-        cierre: clamp(p.breakdown?.cierre ?? p.cierre ?? 0),
-      };
-      // Mirror the server-side recompute (elevenlabs.controller.ts:124-132):
-      // score/passed are derived from the breakdown, ignoring whatever the
-      // agent claims. Trusting `p.passed` here was the bug that surfaced
-      // "Avanzar de nivel" while the DB row still had passed:false → 403 on
-      // /api/users/me/unlock-level2.
-      const score =
-        breakdown.apertura +
-        breakdown.escucha_activa +
-        breakdown.manejo_objeciones +
-        breakdown.propuesta_valor +
-        breakdown.cierre;
-      const passed = score >= 75;
-      const evaluation: EvaluationResult = {
-        score,
-        passed,
-        feedback: (p.feedback ?? "").trim() || "Sin comentarios del agente.",
-        breakdown,
-      };
-
-      if (sessionIdRef.current) {
-        const persist = api.post("/api/elevenlabs/agent-evaluation", {
-          sessionId: sessionIdRef.current,
-          ...evaluation,
-        });
-        evaluationPersistRef.current = persist;
-        persist
-          .then((res) => console.log("[DEBUG][EVAL] POST /agent-evaluation OK", res))
-          .catch((err) => console.error("[DEBUG][EVAL] POST /agent-evaluation ERROR", err));
-      } else {
-        console.warn("[DEBUG][EVAL] sessionId is null — evaluation will NOT be persisted");
-      }
-
-      onEvaluationRef.current?.(evaluation);
+      persistRubricEvaluation(parameters);
       return;
     }
 
@@ -252,12 +262,27 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     }
 
     console.warn("[DEBUG][EVAL] submit_evaluation: schema desconocido", parameters);
-  }, []);
+  }, [persistRubricEvaluation]);
+
+  // Tool del examen de Manejo de Objeciones (Nivel 2). Handler propio, pero
+  // reusa el mismo mecanismo de recepción de nota que Prospección. A
+  // diferencia de aquél, este examen solo emite la forma de 5 rúbricas (no usa
+  // el checklist de Legado), así que va directo al helper sin discriminar.
+  const handleSubmitObjecionesEvaluation = useCallback((parameters: Record<string, unknown>): void => {
+    console.log("[DEBUG][EVAL] submit_evaluation_objeciones invoked via clientTools:", parameters);
+    persistRubricEvaluation(parameters);
+  }, [persistRubricEvaluation]);
 
   const conversation = useConversation({
     micMuted: isMuted,
     clientTools: {
+      // El examen de Prospección (Nivel 1) llama submit_evaluation; el de
+      // Objeciones (Nivel 2) llama submit_evaluation_objeciones. Cada uno entra
+      // por su propio handler, pero ambos comparten persistRubricEvaluation:
+      // postean a /api/elevenlabs/agent-evaluation con el sessionId de la
+      // conversación, cuya fila ya trae el examType correcto para el passback.
       submit_evaluation: handleSubmitEvaluation,
+      submit_evaluation_objeciones: handleSubmitObjecionesEvaluation,
     },
     onConnect: () => {
       console.log("Connected to ElevenLabs agent");

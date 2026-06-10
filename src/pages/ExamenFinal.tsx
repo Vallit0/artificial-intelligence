@@ -106,7 +106,7 @@ export default function ExamenFinal() {
     setTranscriptMessages([]);
     setEvaluation(null);
 
-    const sessionId = await savePracticeSession(0);
+    const sessionId = await savePracticeSession(0, undefined, undefined, undefined, "prospeccion");
     setCurrentSessionId(sessionId);
 
     setExamState("active");
