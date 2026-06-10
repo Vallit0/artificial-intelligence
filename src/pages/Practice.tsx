@@ -121,17 +121,17 @@ const practiceAgentSuggestions: AgentSuggestion[] = [
   },
 ];
 
-const LEVEL2_HIDDEN_IDS = new Set(["prospeccion-fisica", "examen"]);
+const LEVEL2_HIDDEN_IDS = new Set(["prospeccion-fisica"]);
 const LEVEL2_ORB_GRADIENT =
   "linear-gradient(135deg, #7c3aed 0%, #a855f7 40%, #c084fc 70%, #7c3aed 100%)";
 
 const objectionsAgentSuggestions: AgentSuggestion[] = practiceAgentSuggestions
-  // Nivel 2 oculta los atajos a Prospección, Legado y Examen Final (el examen
-  // es la compuerta que desbloquea este nivel, así que no se repite dentro de
-  // él). Conserva los modos de práctica de llamada (Coach, Roleplay) y los
-  // enruta a agentes ElevenLabs distintos vía secret name (sufijo _NIVEL2).
-  // También sustituye el persona "Álvaro" por "Nelson" en las descripciones y
-  // unifica el orbe a un tono morado para diferenciar visualmente el nivel.
+  // Nivel 2 oculta el atajo a Prospección. Conserva los modos de práctica de
+  // llamada (Coach, Roleplay) y los enruta a agentes ElevenLabs distintos vía
+  // secret name (sufijo _NIVEL2). El Examen Final se conserva pero apunta a su
+  // propia página de objeciones (no a la compuerta del Nivel 1). También
+  // sustituye el persona "Álvaro" por "Alvaro" en las descripciones y unifica
+  // el orbe a un tono morado para diferenciar visualmente el nivel.
   .filter((agent) => !LEVEL2_HIDDEN_IDS.has(agent.id))
   .map((agent) => {
     const next: AgentSuggestion = {
@@ -141,6 +141,12 @@ const objectionsAgentSuggestions: AgentSuggestion[] = practiceAgentSuggestions
     };
     if (agent.agentSecretName) {
       next.agentSecretName = `${agent.agentSecretName}_NIVEL2`;
+    }
+    // El Examen Final del Nivel 2 evalúa el manejo de objeciones y entrega el
+    // certificado de finalización del programa, así que apunta a su propia ruta.
+    if (agent.id === "examen") {
+      next.redirectTo = "/examen-objeciones";
+      next.description = "Evaluación de manejo de objeciones y certificado final";
     }
     return next;
   });
