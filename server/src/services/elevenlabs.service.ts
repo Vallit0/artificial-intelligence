@@ -46,13 +46,18 @@ function setCachedUrl(agentId: string, signedUrl: string): void {
  * 3. Default ELEVENLABS_AGENT_ID
  */
 async function resolveAgentId(agentSecretName?: string | null): Promise<string> {
+  const log = getLogger({ component: 'elevenlabs', op: 'resolve-agent' });
+
   if (agentSecretName) {
     // 1. Check DB first (admin-configured)
     try {
       const dbAgentId = await agentConfigService.resolve(agentSecretName);
-      if (dbAgentId) return dbAgentId;
+      if (dbAgentId) {
+        log.info({ agentSecretName, source: 'db', resolvedAgentId: dbAgentId }, 'agent resolved');
+        return dbAgentId;
+      }
     } catch (error) {
-      getLogger({ component: 'elevenlabs', op: 'resolve-agent' }).warn(
+      log.warn(
         { err: error, agentSecretName },
         'Failed to resolve agent from DB, falling back to env var',
       );
@@ -60,11 +65,18 @@ async function resolveAgentId(agentSecretName?: string | null): Promise<string> 
 
     // 2. Fallback to environment variable
     const envAgentId = process.env[agentSecretName];
-    if (envAgentId) return envAgentId;
+    if (envAgentId) {
+      log.info({ agentSecretName, source: 'env', resolvedAgentId: envAgentId }, 'agent resolved');
+      return envAgentId;
+    }
 
-    getLogger({ component: 'elevenlabs', op: 'resolve-agent' }).warn(
-      { agentSecretName },
-      'Agent not found in DB or env, falling back to default',
+    // 3. Requested a specific agent but it isn't in DB or env. Routing to the
+    // default agent here connects the user to the WRONG agent (the Coach) while
+    // the controller still injects the override prompt resolved for the
+    // requested secretName → "se inyecta un prompt incorrecto". Surfaced loudly.
+    log.warn(
+      { agentSecretName, source: 'fallback-default', resolvedAgentId: config.elevenlabs.agentId },
+      'MISROUTE: agent not found in DB or env, falling back to DEFAULT agent',
     );
   }
 

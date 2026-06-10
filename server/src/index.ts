@@ -203,7 +203,17 @@ if (process.env.NODE_ENV !== 'test') {
     .then(() => {
       // NRPS roster sync. Opt-in via LTI_NRPS_CRON_ENABLED so dev/test never
       // hit real Moodle instances without explicit configuration.
-      startNrpsCron();
+      //
+      // RUN_CRONS gate: in production we run multiple stateless `app` replicas
+      // behind nginx plus a single dedicated `worker` replica. Only the worker
+      // sets RUN_CRONS=true, so scheduled jobs fire exactly once instead of
+      // N times (one per replica). When RUN_CRONS is unset (single-process /
+      // dev), default to running crons so local behaviour is unchanged.
+      if (process.env.RUN_CRONS !== 'false') {
+        startNrpsCron();
+      } else {
+        rootLogger.info('RUN_CRONS=false — skipping scheduled jobs on this replica');
+      }
 
       app.listen(config.port, () => {
         rootLogger.info(

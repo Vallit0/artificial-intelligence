@@ -131,7 +131,14 @@
       "Bash(Select-Object -First 30)",
       "Bash(Write-Output \"EXIT_DONE\")",
       "mcp__claude_ai_Mermaid_Chart__validate_and_render_mermaid_diagram",
-      "Bash(python -c ' *)"
+      "Bash(python -c ' *)",
+      "Bash(grep -rin \"websocket\\\\|new WebSocket\\\\|ws://\\\\|wss://\\\\|socket.io\\\\|express-ws\\\\|signed_url\\\\|get-signed-url\\\\|conversation_token\" server/src --include=*.ts)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\estua\\\\Documents\\\\ai\\\\senoriales-48152aa7\" -Directory -ErrorAction SilentlyContinue)",
+      "Bash(Select-Object Name)",
+      "Bash(cd *)",
+      "Bash(DATABASE_URL=\"postgresql://senoriales:senoriales@localhost:5432/senoriales\" node /tmp/diag.mjs)",
+      "Bash(cp /tmp/diag.mjs ./diag.mjs)",
+      "Bash(DATABASE_URL=\"postgresql://senoriales:senoriales@localhost:5432/senoriales\" node ./diag.mjs)"
     ]
   },
   "hooks": {

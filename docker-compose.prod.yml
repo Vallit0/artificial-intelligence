@@ -1,0 +1,168 @@
+# =============================================================================
+# Producción — CONSOLIDADO en capa_01 (12 vCPU / 30 GB), caja compartida con
+# los 3 Moodles + n8n. Señoriales corre aquí DETRÁS DEL NGINX DEL HOST (no se
+# levanta un nginx en Docker: el host ya escucha 80/443 y enruta por dominio).
+#
+#   nginx del HOST (centro-de-negocios.org)  →  127.0.0.1:4001..4004 (app1..4)
+#                                                     │
+#                                                pgbouncer (:6432, interno)
+#                                                     │
+#                                                db (Postgres 15, interno)
+#   worker (1 réplica)  →  crons LTI/NRPS (RUN_CRONS=true)
+#   migrate (one-shot)  →  prisma migrate deploy + seed idempotente
+#   promtail            →  Loki YA existente en capa_01 (10.4.6.20:3100)
+#
+# Levantar:   docker compose -f docker-compose.prod.yml up -d --build
+# Front:      añadir el vhost de infra/nginx-host/ al nginx del host (ver RUNBOOK).
+#
+# Requiere ./server/.env con POSTGRES_PASSWORD, JWT_SECRET, ELEVENLABS_*, etc.
+# =============================================================================
+
+x-app-base: &app-base
+  build:
+    context: .
+    dockerfile: Dockerfile
+  image: senoriales-app:latest
+  env_file:
+    - ./server/.env
+  environment: &app-env
+    NODE_ENV: production
+    PORT: "3000"
+    DATABASE_URL: "postgresql://senoriales:${POSTGRES_PASSWORD}@pgbouncer:6432/senoriales?pgbouncer=true&connection_limit=15&pool_timeout=30"
+    CORS_ORIGIN: "https://centro-de-negocios.org,https://www.centro-de-negocios.org"
+    JWT_SECRET: "${JWT_SECRET}"
+    RUN_CRONS: "false"
+  depends_on:
+    migrate:
+      condition: service_completed_successfully
+    pgbouncer:
+      condition: service_started
+  restart: unless-stopped
+  networks:
+    - senoriales-network
+  logging: &default-logging
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  # Migraciones + seed (one-shot). Apunta directo a Postgres (no a PgBouncer).
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: senoriales-app:latest
+    command: sh -c "npx prisma migrate deploy && tsx prisma/seed.ts"
+    env_file:
+      - ./server/.env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: "postgresql://senoriales:${POSTGRES_PASSWORD}@db:5432/senoriales"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    networks:
+      - senoriales-network
+    logging: *default-logging
+
+  # Réplicas de aplicación. Publicadas SOLO en loopback (127.0.0.1) para que el
+  # nginx del host las alcance; nunca expuestas a la red pública directamente.
+  # (3001 ya está ocupado en capa_01 → usamos 4001-4004.)
+  app1:
+    <<: *app-base
+    ports:
+      - "127.0.0.1:4001:3000"
+  app2:
+    <<: *app-base
+    ports:
+      - "127.0.0.1:4002:3000"
+  app3:
+    <<: *app-base
+    ports:
+      - "127.0.0.1:4003:3000"
+  app4:
+    <<: *app-base
+    ports:
+      - "127.0.0.1:4004:3000"
+
+  # Worker: única réplica que dispara crons. No expone HTTP.
+  worker:
+    <<: *app-base
+    environment:
+      <<: *app-env
+      RUN_CRONS: "true"
+      LTI_NRPS_CRON_ENABLED: "true"
+
+  # PostgreSQL 15 (acotado para caja compartida; ver infra/postgresql.conf).
+  db:
+    image: postgres:15-alpine
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    environment:
+      POSTGRES_USER: senoriales
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+      POSTGRES_DB: senoriales
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ./infra/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+    # Para la réplica de capa_02, exponer 5432 SOLO en la IP privada:
+    # ports:
+    #   - "10.4.6.20:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U senoriales -d senoriales"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - senoriales-network
+    logging: *default-logging
+
+  # PgBouncer — absorbe ráfagas de conexión (interno, no publicado).
+  pgbouncer:
+    image: edoburu/pgbouncer:1.23.1
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: senoriales
+      DB_PASSWORD: "${POSTGRES_PASSWORD}"
+      DB_NAME: senoriales
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: "1000"
+      DEFAULT_POOL_SIZE: "25"
+      MIN_POOL_SIZE: "5"
+      RESERVE_POOL_SIZE: "5"
+      RESERVE_POOL_TIMEOUT: "3"
+      AUTH_TYPE: scram-sha-256
+      SERVER_IDLE_TIMEOUT: "600"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - senoriales-network
+    logging: *default-logging
+
+  # Promtail — envía logs al Loki que YA corre en capa_01 (contenedor `loki`,
+  # publicado en 10.4.6.20:3100). Reusamos esa observabilidad existente.
+  promtail:
+    image: grafana/promtail:3.3.0
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./promtail/promtail-config.prod.yml:/etc/promtail/config.yml:ro
+      - promtail_positions:/tmp
+    restart: unless-stopped
+    networks:
+      - senoriales-network
+    logging: *default-logging
+
+volumes:
+  postgres_data:
+  promtail_positions:
+
+networks:
+  senoriales-network:
+    driver: bridge

@@ -7,6 +7,12 @@ FROM node:20-alpine AS frontend-builder
 
 WORKDIR /app/client
 
+# Harden npm against flaky/slow network (ETIMEDOUT en registry.npmjs.org)
+RUN npm config set fetch-retries 5 \
+ && npm config set fetch-retry-mintimeout 20000 \
+ && npm config set fetch-retry-maxtimeout 120000 \
+ && npm config set fetch-timeout 600000
+
 # Copy frontend package files
 COPY package*.json ./
 RUN npm install --legacy-peer-deps
@@ -19,6 +25,12 @@ RUN npm run build
 FROM node:20-alpine AS backend-builder
 
 WORKDIR /app/server
+
+# Harden npm against flaky/slow network (ETIMEDOUT en registry.npmjs.org)
+RUN npm config set fetch-retries 5 \
+ && npm config set fetch-retry-mintimeout 20000 \
+ && npm config set fetch-retry-maxtimeout 120000 \
+ && npm config set fetch-timeout 600000
 
 # Copy backend package files
 COPY server/package*.json ./
@@ -38,6 +50,12 @@ RUN npm run build
 FROM node:20-alpine AS production
 
 WORKDIR /app
+
+# Harden npm against flaky/slow network (ETIMEDOUT en registry.npmjs.org)
+RUN npm config set fetch-retries 5 \
+ && npm config set fetch-retry-mintimeout 20000 \
+ && npm config set fetch-retry-maxtimeout 120000 \
+ && npm config set fetch-timeout 600000
 
 # Install production dependencies for backend
 COPY server/package*.json ./
@@ -71,5 +89,9 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
 
-# Run Prisma migrations and start server
-CMD ["sh", "-c", "npx prisma db push --skip-generate --accept-data-loss && tsx prisma/seed.ts && node dist/index.js"]
+# Start the server only. Schema migrations and seeding are NO LONGER run here:
+# with multiple replicas this command would race N times on boot and the old
+# `prisma db push --accept-data-loss` could silently drop data. Migrations now
+# run once via the dedicated `migrate` one-shot service in docker-compose.prod.yml
+# (`npx prisma migrate deploy` + idempotent seed). See infra/RUNBOOK.md.
+CMD ["node", "dist/index.js"]

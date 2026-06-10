@@ -26,6 +26,9 @@ dist-ssr
 # Environment variables
 .env
 .env.*
+# ...pero las plantillas (solo placeholders, sin secretos) sí se versionan.
+!.env.example
+!.env.prod.example
 
 # SSH keys (nunca versionar llaves privadas)
 conexion

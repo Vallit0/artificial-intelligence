@@ -104,6 +104,21 @@ export async function getConversationToken(req: AuthRequest, res: Response, next
       }
     }
 
+    // Diagnostic: the override prompt is resolved by the REQUESTED secretName,
+    // independently of which agentId resolveAgentId() ended up routing to. Cross
+    // this against the 'resolve-agent' log to spot prompt-injected-on-wrong-agent.
+    getLogger({ component: 'elevenlabs', op: 'conversation-token' }).info(
+      {
+        agentSecretName: agentSecretName ?? null,
+        scenarioId: scenarioId ?? null,
+        promptOverrideApplied: !!overrides?.prompt,
+        promptOverrideLen: overrides?.prompt?.length ?? 0,
+        firstMessageOverrideApplied: !!overrides?.firstMessage,
+        variantId: variantId ?? null,
+      },
+      'conversation token issued',
+    );
+
     res.json({ signedUrl, scenario, overrides, variantId });
   } catch (error) {
     const appError = handleError(error);
