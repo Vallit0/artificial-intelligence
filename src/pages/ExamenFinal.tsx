@@ -34,6 +34,7 @@ interface EvaluationResult {
     propuesta_valor: number;
     cierre: number;
   };
+  checklist?: { label: string; passed: boolean }[];
 }
 
 type ExamState = "idle" | "active" | "evaluating" | "evaluated" | "leveling-up";

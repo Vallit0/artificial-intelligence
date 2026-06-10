@@ -13,6 +13,10 @@ interface EvaluationResult {
     propuesta_valor: number;
     cierre: number;
   };
+  // Desglose por ítem del checklist de Prospección (Legado de Vida). Cada
+  // entrada es uno de los criterios de la tool submit_evaluation con su
+  // resultado, para mostrar en pantalla el motivo concreto del rechazo.
+  checklist?: { label: string; passed: boolean }[];
 }
 
 export type LatencyEventType = "connect" | "ttfa";
@@ -251,10 +255,25 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
       const passedCount = Object.values(checks).filter(Boolean).length;
       const score = Math.round((passedCount / 6) * 100);
       const llmFeedback = typeof parameters.feedback === "string" ? parameters.feedback.trim() : "";
+      // Etiquetas legibles por ítem para mostrar en pantalla qué criterios se
+      // cumplieron y cuáles no (el "motivo del rechazo" que pide la tool).
+      const checklistLabels: Record<keyof typeof checks, string> = {
+        saludo_ok: "Saludo",
+        identificacion_ok: "Identificación (nombre + Señoriales)",
+        justificacion_ok: "Justificación del motivo",
+        permiso_para_avanzar_ok: "Permiso para avanzar",
+        ofrece_valor_legado_ok: "Presenta Legado de Vida",
+        pide_cita_ok: "Pide cita",
+      };
+      const checklist = (Object.keys(checks) as (keyof typeof checks)[]).map((key) => ({
+        label: checklistLabels[key],
+        passed: checks[key],
+      }));
       const evaluation: EvaluationResult = {
         score,
         passed: score >= 75,
         feedback: llmFeedback || `Checklist Legado de Vida: ${passedCount}/6 ítems cumplidos.`,
+        checklist,
       };
       console.log("[DEBUG][EVAL] checklist evaluation (no DB persist yet):", { checks, evaluation });
       onEvaluationRef.current?.(evaluation);

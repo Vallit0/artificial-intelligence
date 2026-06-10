@@ -17,6 +17,7 @@ interface EvaluationResult {
     propuesta_valor: number;
     cierre: number;
   };
+  checklist?: { label: string; passed: boolean }[];
 }
 
 interface EvaluationScreenProps {
@@ -199,6 +200,35 @@ const EvaluationScreen = ({
             {evaluation.feedback}
           </p>
         </div>
+
+        {/* Checklist breakdown (Prospección / Legado de Vida): muestra qué
+            criterios se cumplieron y cuáles no, el motivo concreto del rechazo. */}
+        {evaluation.checklist && evaluation.checklist.length > 0 && (
+          <div className="bg-background border border-border rounded-xl p-4 mb-6">
+            <h3 className="text-sm font-bold text-foreground mb-3">
+              Criterios evaluados
+            </h3>
+            <ul className="space-y-2">
+              {evaluation.checklist.map((item) => (
+                <li key={item.label} className="flex items-center gap-2">
+                  {item.passed ? (
+                    <CheckCircle2 className="w-4 h-4 text-secondary shrink-0" />
+                  ) : (
+                    <XCircle className="w-4 h-4 text-destructive shrink-0" />
+                  )}
+                  <span
+                    className={cn(
+                      "text-sm",
+                      item.passed ? "text-foreground" : "text-destructive font-medium"
+                    )}
+                  >
+                    {item.label}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {/* Breakdown toggle */}
         {evaluation.breakdown && (

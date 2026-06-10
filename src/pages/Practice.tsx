@@ -56,6 +56,7 @@ interface EvaluationResult {
     propuesta_valor: number;
     cierre: number;
   };
+  checklist?: { label: string; passed: boolean }[];
 }
 
 // ============================================
