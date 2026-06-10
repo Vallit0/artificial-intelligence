@@ -41,6 +41,7 @@ async function loadAuthUser(userId: string): Promise<AuthUser | null> {
     lastName: user.lastName || undefined,
     examenFinalEnabled: user.examenFinalEnabled,
     level2Unlocked: user.level2Unlocked,
+    courseCompleted: user.courseCompleted,
     sedeId: user.sedeId,
     roles,
     coachPermissions,

@@ -431,6 +431,41 @@ apiRouter.post('/users/me/unlock-level2', async (req: AuthRequest, res: Response
   }
 });
 
+/**
+ * @openapi
+ * /api/users/me/complete-course:
+ *   post:
+ *     tags: [Users]
+ *     summary: Marca el curso (programa) como completado para el usuario actual
+ *     description: Se invoca al aprobar el examen final de Nivel 2 (Manejo de Objeciones). Habilita el certificado de finalización.
+ *     responses:
+ *       200:
+ *         description: Curso marcado como completado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean }
+ *                 courseCompleted: { type: boolean }
+ */
+apiRouter.post('/users/me/complete-course', async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const { default: prisma } = await import('../db/index.js');
+
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data: { courseCompleted: true },
+      select: { courseCompleted: true },
+    });
+    res.json({ success: true, courseCompleted: updated.courseCompleted });
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
 // Prospecting Scenarios visible to current user
 /**
  * @openapi

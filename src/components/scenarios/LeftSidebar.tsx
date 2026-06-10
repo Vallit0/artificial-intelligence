@@ -43,6 +43,7 @@ const LeftSidebar = () => {
 
   const level2Items: NavItem[] = [
     { icon: Phone, label: "Llamada", href: "/practice" },
+    { icon: GraduationCap, label: "Examen Final", href: "/examen-objeciones" },
     { icon: TrendingUp, label: "Mi Progreso", href: "/progress" },
   ];
 

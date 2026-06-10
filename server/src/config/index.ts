@@ -54,6 +54,7 @@ const envSchema = z.object({
   ELEVENLABS_AGENT_STAND2: optionalString,
   ELEVENLABS_AGENT_PROSPECTING_CEMENTERIO: optionalString,
   ELEVENLABS_AGENT_EXAMEN_FINAL: optionalString,
+  ELEVENLABS_AGENT_EXAMEN_FINAL_NIVEL2: optionalString,
 
   OPENAI_API_KEY: optionalString,
   OPENAI_MODEL: z.string().default('gpt-4o-mini'),

@@ -10,6 +10,7 @@ import Scenarios from "./pages/Scenarios";
 import Practice from "./pages/Practice";
 import Progress from "./pages/Progress";
 import ExamenFinal from "./pages/ExamenFinal";
+import ExamenFinalObjeciones from "./pages/ExamenFinalObjeciones";
 import Auth from "./pages/Auth";
 import Prospecting from "./pages/Prospecting";
 import Admin from "./pages/Admin";
@@ -100,6 +101,14 @@ const AppRoutes = () => (
       element={
         <ProtectedRoute>
           <ExamenFinal />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/examen-objeciones"
+      element={
+        <ProtectedRoute>
+          <ExamenFinalObjeciones />
         </ProtectedRoute>
       }
     />

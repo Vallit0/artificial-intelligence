@@ -13,6 +13,7 @@ export interface ApiUser {
   lastName?: string;
   examenFinalEnabled?: boolean;
   level2Unlocked?: boolean;
+  courseCompleted?: boolean;
   // Sólo presentes en la respuesta de /auth/me (datos de display).
   sede?: { id: string; name: string } | null;
   coach?: { id: string; name: string } | null;

@@ -34,6 +34,7 @@ export interface AuthUser {
   lastName?: string;
   examenFinalEnabled?: boolean;
   level2Unlocked?: boolean;
+  courseCompleted?: boolean;
   // sedeId puede ser null durante la ventana del backfill (usuarios viejos
   // que aún no fueron asignados). Cualquier endpoint sede-scoped debe
   // rechazar requests con sedeId null vía `requireSede(req)`.

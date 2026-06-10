@@ -138,7 +138,9 @@
       "Bash(cd *)",
       "Bash(DATABASE_URL=\"postgresql://senoriales:senoriales@localhost:5432/senoriales\" node /tmp/diag.mjs)",
       "Bash(cp /tmp/diag.mjs ./diag.mjs)",
-      "Bash(DATABASE_URL=\"postgresql://senoriales:senoriales@localhost:5432/senoriales\" node ./diag.mjs)"
+      "Bash(DATABASE_URL=\"postgresql://senoriales:senoriales@localhost:5432/senoriales\" node ./diag.mjs)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\estua\\\\Documents\\\\ai\\\\senoriales-48152aa7\" -Depth 2)",
+      "Bash(Select-Object FullName)"
     ]
   },
   "hooks": {
