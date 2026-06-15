@@ -143,7 +143,17 @@
       "Bash(Select-Object FullName)",
       "Bash(head -n 1951 server/src/routes/admin.ts)",
       "Bash(mv server/src/routes/admin.ts.tmp server/src/routes/admin.ts)",
-      "Bash(sort -k1)"
+      "Bash(sort -k1)",
+      "Bash(docker build *)",
+      "PowerShell($p = Get-Process 'Docker Desktop' -ErrorAction SilentlyContinue; if \\($p\\) { \"Docker Desktop process: RUNNING\" } else { \"Docker Desktop process: NOT running\" }; \\(Get-Process com.docker.backend -ErrorAction SilentlyContinue | Select-Object -First 1\\) | ForEach-Object { \"backend: RUNNING\" })",
+      "PowerShell($exe = \"C:\\\\Program Files\\\\Docker\\\\Docker\\\\Docker Desktop.exe\"; if \\(Test-Path $exe\\) { Start-Process $exe; \"Lanzando Docker Desktop...\" } else { \"No se encontró Docker Desktop en la ruta estándar: $exe\" })",
+      "Read(//c/Users/estua/**)",
+      "Bash(docker save *)",
+      "Bash(gzip)",
+      "Bash(gzip -t senoriales-app.tar.gz)",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\('name:',p.name\\); console.log\\(JSON.stringify\\({...p.dependencies},null,0\\)\\);\")",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\(JSON.stringify\\({...p.devDependencies},null,0\\)\\);\")",
+      "Bash(node -e \"const p=require\\('./server/package.json'\\); console.log\\(JSON.stringify\\({...p.dependencies},null,0\\)\\);\")"
     ]
   },
   "hooks": {

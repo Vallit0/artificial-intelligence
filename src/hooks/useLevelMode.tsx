@@ -47,7 +47,8 @@ function writeOverride(level: Level | null) {
 }
 
 export const LevelModeProvider = ({ children }: { children: ReactNode }) => {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, roles } = useAuth();
+  const isCoach = roles.includes("coach");
   const [override, setOverride] = useState<Level | null>(() => readOverride());
   const [lastChangeAt, setLastChangeAt] = useState(0);
 
@@ -62,8 +63,10 @@ export const LevelModeProvider = ({ children }: { children: ReactNode }) => {
   const baseLevel: Level = user?.level2Unlocked ? 2 : 1;
   // An advisor can switch between Level 1 and Level 2 once Level 2 is unlocked
   // — Level 1 content (Prospección, Legado de Vida) stays available alongside
-  // the new Level 2 modules. Admins can always switch to preview either level.
-  const canSwitchLevel = isAdmin || baseLevel === 2;
+  // the new Level 2 modules. Admins and coaches can always switch to preview
+  // either level: coaches evalúan ambos exámenes (Prospección y Objeciones),
+  // así que no dependen de level2Unlocked para alternar niveles.
+  const canSwitchLevel = isAdmin || isCoach || baseLevel === 2;
   const currentLevel: Level = canSwitchLevel && override !== null ? override : baseLevel;
 
   // When the underlying baseLevel flips (e.g., student passes the exam), bump
