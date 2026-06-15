@@ -113,40 +113,11 @@ async function checkResend(): Promise<DependencyCheck> {
   };
 }
 
-// Moodle LTI platforms register their JWKS URL in the LtiPlatform table.
-// If no active platform exists yet (pre-launch install), we skip.
-async function checkLtiJwks(): Promise<DependencyCheck> {
-  let jwksUrl: string | null = null;
-  try {
-    const platform = await prisma.ltiPlatform.findFirst({
-      where: { isActive: true },
-      select: { jwksUrl: true },
-    });
-    jwksUrl = platform?.jwksUrl ?? null;
-  } catch (error) {
-    return { name: 'moodle-jwks', status: 'down', latencyMs: 0, error: errMsg(error, READY_TIMEOUT_MS) };
-  }
-  if (!jwksUrl) {
-    return { name: 'moodle-jwks', status: 'skipped', latencyMs: 0 };
-  }
-  const { ms, value, error } = await timed(() => fetchWithTimeout(jwksUrl!));
-  if (error) {
-    return { name: 'moodle-jwks', status: 'down', latencyMs: Math.round(ms), error: errMsg(error, READY_TIMEOUT_MS) };
-  }
-  return {
-    name: 'moodle-jwks',
-    status: reachabilityFromStatus(value!.status),
-    latencyMs: Math.round(ms),
-    ...(value!.status >= 500 ? { error: `HTTP ${value!.status}` } : {}),
-  };
-}
-
 export async function getReadinessReport(): Promise<ReadinessReport> {
   const checks = await Promise.all([
     checkDatabase(),
     checkElevenLabs(),
     checkResend(),
-    checkLtiJwks(),
   ]);
   const anyDown = checks.some((c) => c.status === 'down');
   return {

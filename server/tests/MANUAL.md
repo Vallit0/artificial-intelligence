@@ -14,7 +14,7 @@
 | Bootstrap global | `server/tests/globalSetup.ts` | Verifica que apunta a la DB de test y hace `prisma db push` |
 | Helpers de DB | `server/tests/helpers/db.ts` | `prisma`, `resetDatabase()`, `ensureTestSede()` |
 | Variables de entorno | `server/.env.test` | DB de test (puerto 5433), `JWT_SECRET` de test, API keys vacías |
-| Casos | `server/tests/integration/*.test.ts` | 9 archivos, ~97 casos |
+| Casos | `server/tests/integration/*.test.ts` | suite de integración HTTP |
 
 ### Decisiones clave de configuración
 
@@ -68,12 +68,12 @@ npm run test:db:down    # docker compose ... down -v  (borra el volumen)
 
 - **Petición HTTP real**: `request(app).post('/auth/login').send({...})` — supertest monta el server
   Express en memoria, sin puerto.
-- **Sembrado directo por Prisma**: helpers `seedUser`, `createSede`, `seedPlatformAndUser`, etc.
+- **Sembrado directo por Prisma**: helpers `seedUser`, `createSede`, etc.
   crean estado vía `prisma.*` para no depender de los endpoints bajo prueba.
 - **Autenticación**: `loginAs(email, password)` hace `POST /auth/login` y devuelve el `accessToken`;
   algunos tests usan `generateAccessToken()` directo del servicio.
-- **Aislamiento de estado externo**: mock de `fetch` por test + `_resetTokenCache()` /
-  `_resetSigningKeyCache()` para limpiar cachés de módulo entre casos.
+- **Aislamiento de estado externo**: mock de `fetch` por test + `_resetTokenCache()`
+  para limpiar cachés de módulo entre casos.
 - **Aserciones dobles**: se verifica el código HTTP/respuesta **y** el estado en DB (p. ej. que el
   cambio realmente se persistió o que un cascade borró las filas hijas).
 
@@ -86,13 +86,9 @@ npm run test:db:down    # docker compose ... down -v  (borra el volumen)
 | `auth.test.ts` | Signup / login / sesión | 5 |
 | `userManagement.test.ts` | Gestión de usuarios (regresión del stress test) | 18 |
 | `sedes.test.ts` | Multi-sede + roles + permisos de coach | 19 |
-| `lti.test.ts` | LTI tool key / JWKS / AGS (envío de notas) | 9 |
-| `ltiSync.test.ts` | LTI NRPS (sincronización de cursos) | 10 |
-| `ltiDeepLinking.test.ts` | LTI Deep Linking (picker de escenarios) | 21 |
 | `health.test.ts` | Health checks | 3 |
 | `latencyProbe.test.ts` | Sonda de latencia (admin) | 5 |
 | `memory.test.ts` | Memoria del asesor (server tools de ElevenLabs) | 7 |
-| **Total** | | **~97** |
 
 ---
 
@@ -116,28 +112,6 @@ npm run test:db:down    # docker compose ... down -v  (borra el volumen)
 - **Creación de coaches**: signup público nunca asigna rol coach (ignora injection); reglas de `canCreateCoaches` por sede; admin global crea en cualquier sede; cambio de permisos solo por admin.
 - **Edición de prompts**: requiere `canEditPrompts` o admin (403 si no).
 - **CRUD de sedes**: `GET /api/sedes` público sin campos sensibles; crear/borrar solo admin; borrar sede con usuarios → 409.
-
-### LTI — Tool key / JWKS / AGS (`lti.test.ts`)
-- `ensureToolKey` crea keypair RS256 activo y es idempotente.
-- `GET /lti/jwks` expone JWK pública (`kty/use/alg/kid/n/e`); la pública verifica firmas de la privada.
-- `submitScoreForUser` (AGS): skip si no hay `LtiSession`, sin endpoint AGS, o sin scope de score; POST correcto al lineitem (`Content-Type` AGS, token Bearer, body y URL `/scores` con query preservada); 4xx del platform → outcome `failed`.
-
-### LTI — NRPS course sync (`ltiSync.test.ts`)
-- Match por email exacto → crea `LtiSession` con lineitem y scopes.
-- Fallback por nombre+apellido (case-insensitive) cuando el email no matchea.
-- Homónimos → `LtiPendingMatch` (`ambiguous_name`), sin crear sesión.
-- Sin match → crea usuario nuevo con rol learner y sesión.
-- Re-sync idempotente (no duplica sesiones ni pending).
-- Filtra miembros inactivos y no-learners.
-- Actualiza `lastSyncedAt` / `lastSyncStatus`; propaga error y marca `error` si NRPS responde 401.
-- `resolvePendingMatch` crea sesión con el `userId` elegido y marca resuelto; rechaza un `userId` fuera de los candidatos.
-
-### LTI — Deep Linking (`ltiDeepLinking.test.ts`)
-- Helpers puros: detección de `LtiDeepLinkingRequest`, extracción de settings.
-- `signDeepLinkingResponse`: firma JWT verificable con la JWK pública; claims correctos; omite `custom.scenarioId` y el claim `data` cuando son null.
-- `GET /lti/deep-linking/state/:id`: 404 inexistente, 410 consumido/expirado, 200 con escenarios activos ordenados por `displayOrder`.
-- `POST /lti/deep-linking/submit`: validación de UUID (400), 404/410 según estado; auto-submit form HTML que marca el state consumido; `includeMenuLink`; fallback a link de menú con `scenarioIds` vacíos; filtra inactivos/inexistentes; segundo submit → 410.
-- `POST /lti/launch` (rama DeepLinkingRequest): verifica id_token firmado por el platform (JWKS mockeado), crea `LtiDeepLinkingState` y redirige (302) al picker; 400 sin settings o sin claim `sub`.
 
 ### Health (`health.test.ts`)
 - `GET /health/live` siempre 200.

@@ -3,28 +3,8 @@
 // ============================================
 
 import prisma from '../db/index.js';
-import { PracticeSession, CreateSessionInput, UpdateSessionInput, SessionEvaluation, UserStats, EvaluationStatus, ExamType } from '../types/index.js';
+import { PracticeSession, CreateSessionInput, UpdateSessionInput, SessionEvaluation, UserStats } from '../types/index.js';
 import { NotFoundError } from '../utils/errors.js';
-import { submitScoreForUser, GradingProgress } from './ags.service.js';
-import { getLogger } from '../utils/logger.js';
-
-const log = getLogger({ component: 'sessions' });
-
-// Map our internal evaluation status to AGS gradingProgress values so the
-// gradebook reflects whether a score is final, manual-review, or unscored.
-function gradingProgressFor(status: EvaluationStatus | undefined): GradingProgress {
-  switch (status) {
-    case 'real':
-      return 'FullyGraded';
-    case 'too_short':
-    case 'fallback_exam':
-      return 'Failed';
-    case 'fallback_practice':
-      return 'PendingManual';
-    default:
-      return 'FullyGraded';
-  }
-}
 
 // ============================================
 // Session Operations
@@ -136,34 +116,6 @@ export async function saveEvaluation(
   if (evaluation.passed && session.scenarioId) {
     await updateProgressOnPass(userId, session.scenarioId, evaluation.score);
   }
-
-  // Push the score back to Moodle's gradebook over LTI AGS. Fire-and-forget:
-  // don't block the user's response on a third-party round-trip, and don't
-  // fail the whole evaluation persistence if Moodle is unreachable. The
-  // service itself returns 'skipped' when the user did not arrive via LTI.
-  //
-  // examType selecciona el label del lineitem cuando hay que auto-crearlo, de
-  // modo que el examen final y el de objeciones caigan en columnas distintas
-  // del gradebook. Si el launch ya trajo un lineitem fijo (cada actividad LTI
-  // de Moodle tiene el suyo), ese tiene prioridad y la separación es natural.
-  void submitScoreForUser({
-    userId,
-    score: evaluation.score,
-    scoreMaximum: 100,
-    feedback: evaluation.feedback,
-    gradingProgress: gradingProgressFor(evaluation.evaluationStatus),
-    examType: session.examType as ExamType | null,
-  })
-    .then((outcome) => {
-      if (outcome.status === 'failed') {
-        log.warn({ sessionId, userId, reason: outcome.reason }, 'AGS push failed');
-      } else if (outcome.status === 'submitted') {
-        log.info({ sessionId, userId, lineitemUrl: outcome.lineitemUrl }, 'AGS push submitted');
-      }
-    })
-    .catch((err) => {
-      log.error({ err, sessionId, userId }, 'AGS push threw');
-    });
 
   return mapToSession(session);
 }

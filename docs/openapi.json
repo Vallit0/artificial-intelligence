@@ -53,10 +53,6 @@
       "description": "Analíticas de desempeño y competencias."
     },
     {
-      "name": "LTI",
-      "description": "Integración LTI 1.3 con Moodle (OIDC, launch, JWKS, deep linking)."
-    },
-    {
       "name": "Memory",
       "description": "Memoria del asesor (server tools del agente de ElevenLabs)."
     },
@@ -335,6 +331,81 @@
           },
           "403": {
             "description": "No es admin"
+          }
+        }
+      }
+    },
+    "/api/admin/users/{id}/coach": {
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Asigna o desasigna el coach de un estudiante (sólo admin global)",
+        "description": "`coachId: null` desasigna. El coach debe tener rol coach y pertenecer a la misma sede que el estudiante (aislamiento duro entre sedes).",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "coachId"
+                ],
+                "properties": {
+                  "coachId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "nullable": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Coach asignado/desasignado"
+          },
+          "400": {
+            "description": "Coach inválido o de otra sede",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No es admin global",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Usuario no encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -2222,6 +2293,165 @@
         }
       }
     },
+    "/api/admin/analytics/usage": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Analíticas de uso por sede (tiempo, sesiones, estudiantes activos)",
+        "description": "Métricas de USO agregadas por sede — tiempo total de práctica, número de sesiones y estudiantes activos. No incluye calificaciones ni competencias. Sede-aware: admin global ve todas las sedes; un coach/instructor sólo la suya.",
+        "responses": {
+          "200": {
+            "description": "Analíticas de uso por sede"
+          },
+          "403": {
+            "description": "Acceso denegado"
+          }
+        }
+      }
+    },
+    "/api/admin/analytics/costs": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Estimación de costos del periodo agrupada por sede/usuario/escenario",
+        "description": "Calcula costos de ElevenLabs (por minutos de voz) e infraestructura (prorrateado del costo fijo mensual). El costo de OpenAI queda en 0 hasta que se instrumente tracking de tokens por evaluación. Coaches sólo ven su propia sede; admin global ve todas.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "in": "query",
+            "name": "groupBy",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "sede",
+                "user",
+                "scenario"
+              ],
+              "default": "sede"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "in": "query",
+            "name": "sedeId",
+            "description": "Sólo admin global — filtra a una sede específica",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Estimación de costos"
+          },
+          "400": {
+            "description": "Parámetros inválidos"
+          },
+          "403": {
+            "description": "Acceso denegado"
+          }
+        }
+      }
+    },
+    "/api/admin/pricing-rates": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Lista tarifas vigentes (o todas si includeHistory=true)",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "includeHistory",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tarifas"
+          },
+          "403": {
+            "description": "No es admin global"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Crea una tarifa nueva (cierra la anterior activa preservando historial)",
+        "responses": {
+          "201": {
+            "description": "Tarifa creada"
+          },
+          "400": {
+            "description": "Body inválido"
+          },
+          "403": {
+            "description": "No es admin global"
+          }
+        }
+      }
+    },
+    "/api/admin/pricing-rates/{id}": {
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Actualiza metadata de una tarifa (notes / isActive). No toca el precio.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tarifa actualizada"
+          },
+          "404": {
+            "description": "No encontrada"
+          }
+        }
+      }
+    },
     "/api/admin/experiments": {
       "get": {
         "tags": [
@@ -3112,1047 +3342,6 @@
         }
       }
     },
-    "/api/admin/lti-platforms": {
-      "get": {
-        "tags": [
-          "Admin"
-        ],
-        "summary": "Lista las plataformas LTI registradas (sólo admin global)",
-        "responses": {
-          "200": {
-            "description": "Lista de plataformas",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "string",
-                        "format": "uuid"
-                      },
-                      "name": {
-                        "type": "string"
-                      },
-                      "issuerUrl": {
-                        "type": "string"
-                      },
-                      "clientId": {
-                        "type": "string"
-                      },
-                      "authEndpoint": {
-                        "type": "string"
-                      },
-                      "tokenEndpoint": {
-                        "type": "string"
-                      },
-                      "jwksUrl": {
-                        "type": "string"
-                      },
-                      "deploymentId": {
-                        "type": "string",
-                        "nullable": true
-                      },
-                      "isActive": {
-                        "type": "boolean"
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "No es admin global",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "Admin"
-        ],
-        "summary": "Registra una plataforma LTI (sólo admin global)",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "name",
-                  "issuerUrl",
-                  "clientId",
-                  "authEndpoint",
-                  "tokenEndpoint",
-                  "jwksUrl"
-                ],
-                "properties": {
-                  "name": {
-                    "type": "string"
-                  },
-                  "issuerUrl": {
-                    "type": "string"
-                  },
-                  "clientId": {
-                    "type": "string"
-                  },
-                  "authEndpoint": {
-                    "type": "string"
-                  },
-                  "tokenEndpoint": {
-                    "type": "string"
-                  },
-                  "jwksUrl": {
-                    "type": "string"
-                  },
-                  "deploymentId": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Plataforma creada",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean"
-                    },
-                    "platform": {
-                      "type": "object"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "No es admin global",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/lti-platforms/{id}": {
-      "put": {
-        "tags": [
-          "Admin"
-        ],
-        "summary": "Actualiza una plataforma LTI (sólo admin global)",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "type": "string"
-                  },
-                  "issuerUrl": {
-                    "type": "string"
-                  },
-                  "clientId": {
-                    "type": "string"
-                  },
-                  "authEndpoint": {
-                    "type": "string"
-                  },
-                  "tokenEndpoint": {
-                    "type": "string"
-                  },
-                  "jwksUrl": {
-                    "type": "string"
-                  },
-                  "deploymentId": {
-                    "type": "string"
-                  },
-                  "isActive": {
-                    "type": "boolean"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Plataforma actualizada",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean"
-                    },
-                    "platform": {
-                      "type": "object"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "No es admin global",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Plataforma no encontrada",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "Admin"
-        ],
-        "summary": "Elimina una plataforma LTI (sólo admin global)",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Plataforma eliminada",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "No es admin global",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Plataforma no encontrada",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/lti/sessions/{practiceSessionId}/resync-grade": {
-      "post": {
-        "tags": [
-          "Admin"
-        ],
-        "summary": "Reintenta empujar la nota de una sesión al gradebook de la plataforma LTI (sólo admin global)",
-        "description": "Útil cuando el hook fire-and-forget de saveEvaluation falló (Moodle caído, lineitem mal configurado, etc.). Empuja siempre como FullyGraded.",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "practiceSessionId",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Resultado del reintento de envío",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "outcome": {
-                      "type": "object"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "La sesión todavía no tiene score",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "No es admin global",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Sesión de práctica no encontrada",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/lti/courses": {
-      "get": {
-        "tags": [
-          "Admin"
-        ],
-        "summary": "Lista los cursos LTI sincronizados vía NRPS (sólo admin global)",
-        "responses": {
-          "200": {
-            "description": "Lista de cursos sincronizados",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "string",
-                        "format": "uuid"
-                      },
-                      "platformId": {
-                        "type": "string",
-                        "format": "uuid"
-                      },
-                      "contextId": {
-                        "type": "string"
-                      },
-                      "contextTitle": {
-                        "type": "string",
-                        "nullable": true
-                      },
-                      "membershipsUrl": {
-                        "type": "string"
-                      },
-                      "lineitemUrl": {
-                        "type": "string",
-                        "nullable": true
-                      },
-                      "isActive": {
-                        "type": "boolean"
-                      },
-                      "platform": {
-                        "type": "object",
-                        "properties": {
-                          "name": {
-                            "type": "string"
-                          },
-                          "issuerUrl": {
-                            "type": "string"
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "No es admin global",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "Admin"
-        ],
-        "summary": "Registra (upsert) un curso LTI para sincronización NRPS (sólo admin global)",
-        "description": "Útil cuando aún no hubo un launch (auto-detección) o el admin quiere sobrescribir el lineitem capturado. Upsert por (platformId, contextId).",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "platformId",
-                  "contextId",
-                  "membershipsUrl"
-                ],
-                "properties": {
-                  "platformId": {
-                    "type": "string",
-                    "format": "uuid"
-                  },
-                  "contextId": {
-                    "type": "string"
-                  },
-                  "contextTitle": {
-                    "type": "string"
-                  },
-                  "membershipsUrl": {
-                    "type": "string",
-                    "format": "uri"
-                  },
-                  "lineitemUrl": {
-                    "type": "string",
-                    "format": "uri"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Curso registrado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean"
-                    },
-                    "course": {
-                      "type": "object"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Datos inválidos (URLs o IDs)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "No es admin global",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/lti/courses/{id}": {
-      "patch": {
-        "tags": [
-          "Admin"
-        ],
-        "summary": "Actualiza un curso LTI sincronizado (sólo admin global)",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "contextTitle": {
-                    "type": "string",
-                    "nullable": true
-                  },
-                  "membershipsUrl": {
-                    "type": "string",
-                    "format": "uri"
-                  },
-                  "lineitemUrl": {
-                    "type": "string",
-                    "format": "uri",
-                    "nullable": true
-                  },
-                  "isActive": {
-                    "type": "boolean"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Curso actualizado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean"
-                    },
-                    "course": {
-                      "type": "object"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Datos inválidos",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "No es admin global",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Curso no encontrado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "Admin"
-        ],
-        "summary": "Elimina un curso LTI sincronizado (sólo admin global)",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Curso eliminado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "No es admin global",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Curso no encontrado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/lti/courses/{id}/sync": {
-      "post": {
-        "tags": [
-          "Admin"
-        ],
-        "summary": "Dispara una sincronización NRPS on-demand de un curso (sólo admin global)",
-        "description": "Devuelve los contadores del resultado (matched/created/pending/etc.).",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Resultado de la sincronización",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean"
-                    },
-                    "result": {
-                      "type": "object",
-                      "properties": {
-                        "courseSyncId": {
-                          "type": "string",
-                          "format": "uuid"
-                        },
-                        "membersFetched": {
-                          "type": "integer"
-                        },
-                        "matched": {
-                          "type": "integer"
-                        },
-                        "created": {
-                          "type": "integer"
-                        },
-                        "pending": {
-                          "type": "integer"
-                        },
-                        "skipped": {
-                          "type": "integer"
-                        },
-                        "errors": {
-                          "type": "integer"
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "No es admin global",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Curso no encontrado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "El curso está inactivo o falló la sincronización",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/lti/sync-all": {
-      "post": {
-        "tags": [
-          "Admin"
-        ],
-        "summary": "Corre un tick completo de sincronización NRPS sobre todos los cursos activos (sólo admin global)",
-        "description": "Mismo code path que el cron, expuesto manualmente para forzar sin esperar el próximo disparo programado.",
-        "responses": {
-          "200": {
-            "description": "Resultado del tick",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean"
-                    },
-                    "result": {
-                      "type": "object",
-                      "properties": {
-                        "startedAt": {
-                          "type": "string",
-                          "format": "date-time"
-                        },
-                        "finishedAt": {
-                          "type": "string",
-                          "format": "date-time"
-                        },
-                        "coursesProcessed": {
-                          "type": "integer"
-                        },
-                        "coursesSucceeded": {
-                          "type": "integer"
-                        },
-                        "coursesFailed": {
-                          "type": "integer"
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "No es admin global",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/lti/pending-matches": {
-      "get": {
-        "tags": [
-          "Admin"
-        ],
-        "summary": "Lista los matches NRPS pendientes (ambiguos) sin resolver (sólo admin global)",
-        "description": "Sólo los matches aún abiertos (no resueltos ni descartados), con los usuarios candidatos embebidos para que la UI renderice el picker sin N+1.",
-        "responses": {
-          "200": {
-            "description": "Lista de matches pendientes con candidatos",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "string",
-                        "format": "uuid"
-                      },
-                      "candidateUserIds": {
-                        "type": "array",
-                        "items": {
-                          "type": "string",
-                          "format": "uuid"
-                        }
-                      },
-                      "courseSync": {
-                        "type": "object",
-                        "properties": {
-                          "contextTitle": {
-                            "type": "string",
-                            "nullable": true
-                          },
-                          "contextId": {
-                            "type": "string"
-                          }
-                        }
-                      },
-                      "candidates": {
-                        "type": "array",
-                        "items": {
-                          "type": "object",
-                          "properties": {
-                            "id": {
-                              "type": "string",
-                              "format": "uuid"
-                            },
-                            "email": {
-                              "type": "string",
-                              "format": "email"
-                            },
-                            "firstName": {
-                              "type": "string",
-                              "nullable": true
-                            },
-                            "lastName": {
-                              "type": "string",
-                              "nullable": true
-                            },
-                            "createdAt": {
-                              "type": "string",
-                              "format": "date-time"
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "No es admin global",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/lti/pending-matches/{id}/resolve": {
-      "post": {
-        "tags": [
-          "Admin"
-        ],
-        "summary": "Resuelve un match NRPS pendiente vinculándolo a un usuario (sólo admin global)",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "userId"
-                ],
-                "properties": {
-                  "userId": {
-                    "type": "string",
-                    "format": "uuid"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Match resuelto",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "userId inválido",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "No es admin global",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Match pendiente no encontrado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/lti/pending-matches/{id}/dismiss": {
-      "post": {
-        "tags": [
-          "Admin"
-        ],
-        "summary": "Descarta un match NRPS pendiente sin vincularlo (sólo admin global)",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Match descartado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "No es admin global",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Match pendiente no encontrado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/scenarios": {
       "get": {
         "tags": [
@@ -4833,6 +4022,35 @@
           },
           "403": {
             "description": "Examen final no aprobado"
+          }
+        }
+      }
+    },
+    "/api/users/me/complete-course": {
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Marca el curso (programa) como completado para el usuario actual",
+        "description": "Se invoca al aprobar el examen final de Nivel 2 (Manejo de Objeciones). Habilita el certificado de finalización.",
+        "responses": {
+          "200": {
+            "description": "Curso marcado como completado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "courseCompleted": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -6090,533 +5308,6 @@
           },
           "404": {
             "description": "Sesión no encontrada"
-          }
-        }
-      }
-    },
-    "/lti/initiate": {
-      "post": {
-        "tags": [
-          "LTI"
-        ],
-        "summary": "OIDC Login Initiation (LTI 1.3, paso 1)",
-        "security": [],
-        "description": "Lo invoca el LMS (Moodle) para iniciar el flujo OIDC. Valida que la plataforma esté registrada, persiste un `state`+`nonce` de un solo uso y redirige (302) al `authEndpoint` de la plataforma con los parámetros de autenticación. No usa bearer JWT propio.",
-        "requestBody": {
-          "required": true,
-          "description": "Campos enviados por el LMS (form_post o query).",
-          "content": {
-            "application/x-www-form-urlencoded": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "iss",
-                  "login_hint",
-                  "target_link_uri"
-                ],
-                "properties": {
-                  "iss": {
-                    "type": "string",
-                    "description": "Issuer URL de la plataforma"
-                  },
-                  "login_hint": {
-                    "type": "string"
-                  },
-                  "target_link_uri": {
-                    "type": "string",
-                    "format": "uri"
-                  },
-                  "lti_message_hint": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "302": {
-            "description": "Redirección al endpoint de autenticación de la plataforma.",
-            "headers": {
-              "Location": {
-                "description": "URL del authEndpoint con scope/response_type/client_id/state/nonce.",
-                "schema": {
-                  "type": "string",
-                  "format": "uri"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Faltan parámetros requeridos",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Plataforma no registrada o inactiva",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Error interno",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/lti/launch": {
-      "post": {
-        "tags": [
-          "LTI"
-        ],
-        "summary": "LTI Launch (LTI 1.3, paso 2 — recibe el id_token firmado)",
-        "security": [],
-        "description": "Endpoint `target_link_uri` al que el LMS hace form_post con el `id_token` y el `state` emitido en `/lti/initiate`. Verifica firma (JWKS de la plataforma), `state`/`nonce`, `exp` y `aud`, y luego ramifica según `message_type`: (a) `LtiDeepLinkingRequest` → crea un estado de deep linking y redirige (302) a la página del picker (`/lti/deep-linking/select?state=...`); (b) `LtiResourceLinkRequest` → hace JIT-provisioning del usuario, emite access/refresh tokens propios y redirige (302) a la SPA con los tokens en query (`access_token`, `refresh_token`, opcional `scenario`). No usa bearer JWT propio.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/x-www-form-urlencoded": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "id_token",
-                  "state"
-                ],
-                "properties": {
-                  "id_token": {
-                    "type": "string",
-                    "description": "JWT firmado por la plataforma (LTI 1.3)."
-                  },
-                  "state": {
-                    "type": "string",
-                    "description": "Valor emitido en /lti/initiate (un solo uso)."
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "302": {
-            "description": "Redirección a la SPA. En launch de recurso, a la app con `access_token`/`refresh_token` (y opcional `scenario`) en query; en deep linking, al picker con `state` en query.",
-            "headers": {
-              "Location": {
-                "schema": {
-                  "type": "string",
-                  "format": "uri"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "id_token/state ausente",
-            "JWT mal formado": null,
-            "settings de deep linking inválidos": null,
-            "o email requerido para usuario nuevo": null,
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "State desconocido/expirado/de otra plataforma",
-            "nonce mismatch": null,
-            "firma o audience inválida": null,
-            "o token expirado": null,
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Plataforma no encontrada o inactiva",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "No se pudo obtener la clave pública o error interno",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "No hay sede configurada para el JIT-provisioning",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/lti/info": {
-      "get": {
-        "tags": [
-          "LTI"
-        ],
-        "summary": "Datos de registro de la herramienta (para configurar en el LMS)",
-        "security": [],
-        "description": "Devuelve metadatos estáticos del tool LTI 1.3 (URLs de initiate/launch, JWKS, redirect_uris, mensajes soportados) para registrarlo manualmente en Moodle. No usa bearer JWT propio.",
-        "responses": {
-          "200": {
-            "description": "Información de registro del tool.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "tool_name": {
-                      "type": "string"
-                    },
-                    "description": {
-                      "type": "string"
-                    },
-                    "lti_version": {
-                      "type": "string",
-                      "example": "1.3.0"
-                    },
-                    "initiate_login_url": {
-                      "type": "string",
-                      "format": "uri"
-                    },
-                    "target_link_uri": {
-                      "type": "string",
-                      "format": "uri"
-                    },
-                    "redirect_uris": {
-                      "type": "array",
-                      "items": {
-                        "type": "string",
-                        "format": "uri"
-                      }
-                    },
-                    "oidc_initiation_url": {
-                      "type": "string",
-                      "format": "uri"
-                    },
-                    "public_jwks_url": {
-                      "type": "string",
-                      "format": "uri"
-                    },
-                    "messages": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "type": {
-                            "type": "string",
-                            "example": "LtiResourceLinkRequest"
-                          },
-                          "target_link_uri": {
-                            "type": "string",
-                            "format": "uri"
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/lti/jwks": {
-      "get": {
-        "tags": [
-          "LTI"
-        ],
-        "summary": "JWKS público del tool (claves RSA de firma)",
-        "security": [],
-        "description": "Set de claves públicas (JWKS) que el LMS consulta para verificar los `client_assertion` JWT y las respuestas de Deep Linking firmadas por el tool. Durante una rotación puede devolver más de una clave activa. Responde con `Cache-Control: public, max-age=600`. No usa bearer JWT propio.",
-        "responses": {
-          "200": {
-            "description": "Conjunto de claves públicas en formato JWKS.",
-            "headers": {
-              "Cache-Control": {
-                "schema": {
-                  "type": "string",
-                  "example": "public, max-age=600"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "keys": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "kty": {
-                            "type": "string",
-                            "example": "RSA"
-                          },
-                          "use": {
-                            "type": "string",
-                            "example": "sig"
-                          },
-                          "alg": {
-                            "type": "string",
-                            "example": "RS256"
-                          },
-                          "kid": {
-                            "type": "string"
-                          },
-                          "n": {
-                            "type": "string",
-                            "description": "Módulo RSA (base64url)"
-                          },
-                          "e": {
-                            "type": "string",
-                            "description": "Exponente público (base64url)"
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "No se pudo construir el JWKS",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/lti/deep-linking/state/{id}": {
-      "get": {
-        "tags": [
-          "LTI"
-        ],
-        "summary": "Bootstrap del picker de Deep Linking (estado + escenarios)",
-        "security": [],
-        "description": "Lo consume la SPA del picker (`/lti/deep-linking/select`) para renderizar el formulario. La posesión del `id` (generado en el launch, de un solo uso, expira a los 30 min) funciona como credencial; no usa bearer JWT propio.",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "description": "Id del estado de Deep Linking emitido en /lti/launch."
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Estado válido + lista de escenarios activos.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "stateId": {
-                      "type": "string",
-                      "format": "uuid"
-                    },
-                    "platformName": {
-                      "type": "string"
-                    },
-                    "contextTitle": {
-                      "type": "string",
-                      "nullable": true
-                    },
-                    "scenarios": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "id": {
-                            "type": "string",
-                            "format": "uuid"
-                          },
-                          "name": {
-                            "type": "string"
-                          },
-                          "description": {
-                            "type": "string",
-                            "nullable": true
-                          },
-                          "displayOrder": {
-                            "type": "integer"
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Estado de Deep Linking no encontrado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "410": {
-            "description": "Estado ya usado o expirado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Error interno",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/lti/deep-linking/submit": {
-      "post": {
-        "tags": [
-          "LTI"
-        ],
-        "summary": "Envía la selección del picker y devuelve el form de auto-submit a Moodle",
-        "security": [],
-        "description": "Lo invoca la SPA del picker con los escenarios elegidos. Firma un `LtiDeepLinkingResponse` JWT, marca el estado como consumido y devuelve una página `text/html` con un formulario de auto-submit que el navegador postea a `deep_link_return_url` de la plataforma. Si no se elige nada (o `includeMenuLink`), agrega un link al menú de práctica. No usa bearer JWT propio.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "stateId"
-                ],
-                "properties": {
-                  "stateId": {
-                    "type": "string",
-                    "format": "uuid"
-                  },
-                  "scenarioIds": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "format": "uuid"
-                    },
-                    "description": "Vacío significa \"mostrar el menú completo\"."
-                  },
-                  "includeMenuLink": {
-                    "type": "boolean",
-                    "default": false
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "HTML con formulario de auto-submit (JWT `LtiDeepLinkingResponse`) que el navegador postea de vuelta a la plataforma.",
-            "content": {
-              "text/html": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Body inválido (Zod) — incluye `issues`",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Estado de Deep Linking no encontrado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "410": {
-            "description": "Estado ya usado o expirado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Error interno",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
           }
         }
       }

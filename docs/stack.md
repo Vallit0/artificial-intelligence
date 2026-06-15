@@ -17,7 +17,7 @@ Plataforma de entrenamiento de ventas con IA conversacional, diseñada como una 
 │  │  │   Routes    │  │ Controllers │  │    Services     │ ││
 │  │  │  /auth      │→ │   auth      │→ │  auth.service   │ ││
 │  │  │  /api       │  │   sessions  │  │  sessions       │ ││
-│  │  │  /lti       │  │   elevenlabs│  │  elevenlabs     │ ││
+│  │  │             │  │   elevenlabs│  │  elevenlabs     │ ││
 │  │  └─────────────┘  └─────────────┘  └─────────────────┘ ││
 │  │                          ↓                               ││
 │  │  ┌─────────────────────────────────────────────────────┐││
@@ -31,13 +31,13 @@ Plataforma de entrenamiento de ventas con IA conversacional, diseñada como una 
 │  └─────────────────────────────────────────────────────────┘│
 └─────────────────────────────────────────────────────────────┘
                               ↓
-           ┌──────────────────┼──────────────────┐
-           ↓                  ↓                  ↓
-   ┌───────────────┐  ┌───────────────┐  ┌───────────────┐
-   │  ElevenLabs   │  │    OpenAI     │  │    Moodle     │
-   │ Conversational│  │   (Optional)  │  │  (LTI 1.3)    │
-   │      AI       │  │  Evaluations  │  │     SSO       │
-   └───────────────┘  └───────────────┘  └───────────────┘
+           ┌──────────────────┴──────────────────┐
+           ↓                                     ↓
+   ┌───────────────┐                     ┌───────────────┐
+   │  ElevenLabs   │                     │    OpenAI     │
+   │ Conversational│                     │   (Optional)  │
+   │      AI       │                     │  Evaluations  │
+   └───────────────┘                     └───────────────┘
 ```
 
 ---
@@ -74,8 +74,7 @@ server/src/
 ├── routes/
 │   ├── api.ts            # Rutas API protegidas
 │   ├── auth.ts           # Autenticación
-│   ├── elevenlabs.ts     # Tokens de voz
-│   └── lti.ts            # Integración Moodle
+│   └── elevenlabs.ts     # Tokens de voz
 ├── services/
 │   ├── auth.service.ts
 │   ├── elevenlabs.service.ts
@@ -172,14 +171,7 @@ src/
                          └─────────────────┘
 ```
 
-### LTI 1.3 (Single Sign-On)
-
-Integración con Moodle y otros LMS compatibles:
-
-1. **OIDC Login Initiation** → `/lti/initiate`
-2. **JWT Verification** → JWKS del LMS
-3. **User Linking** → Crear o vincular usuario local
-4. **Redirect** → App con tokens JWT
+Los usuarios acceden mediante registro/login directo (email/password) en el dominio de la aplicación.
 
 ---
 
@@ -228,8 +220,6 @@ services:
 | `scenarios` | Escenarios de práctica |
 | `practice_sessions` | Sesiones de entrenamiento |
 | `user_scenario_progress` | Progreso por escenario |
-| `lti_platforms` | Configuración Moodle/LMS |
-| `lti_sessions` | Vinculación LTI-Usuario |
 
 ### Diagrama ER
 
@@ -240,9 +230,7 @@ users ─────────────┬─── user_roles
   │
   ├─── practice_sessions ─── scenarios
   │
-  ├─── user_scenario_progress ─── scenarios
-  │
-  └─── lti_sessions ─── lti_platforms
+  └─── user_scenario_progress ─── scenarios
 ```
 
 ---

@@ -1,6 +1,6 @@
 # Señoriales — Documentación
 
-Plataforma de entrenamiento de ventas con **IA conversacional** (ElevenLabs) integrada a **Moodle vía LTI 1.3**. Aplicación monolítica **Node.js/Express + React SPA + PostgreSQL**, desplegable en Docker.
+Plataforma de entrenamiento de ventas con **IA conversacional** (ElevenLabs). Aplicación monolítica **Node.js/Express + React SPA + PostgreSQL**, desplegable en Docker.
 
 !!! tip "Cómo levantar esta wiki"
     ```bash
@@ -23,7 +23,7 @@ Plataforma de entrenamiento de ventas con **IA conversacional** (ElevenLabs) int
   Modelo de tenancy por sede, rol `coach` y reglas de aislamiento de datos.
 
 - :material-puzzle: **[Integraciones externas](integraciones.md)**
-  ElevenLabs, OpenAI, Moodle (LTI 1.3), WhatsApp (WHAPI), Resend.
+  ElevenLabs, OpenAI, WhatsApp (WHAPI), Resend.
 
 - :material-api: **[Referencia de API (OpenAPI)](api.md)**
   92 endpoints documentados, servidos en `/api/docs` (Swagger UI).
@@ -53,11 +53,11 @@ Navegador (React SPA + WebSocket de voz)
         ▼
    Docker: app (Node 20 + Express)
    Routers → Controllers → Services → Prisma
-   /auth  /api/*  /lti  /api/citas  /api/memory  /health
+   /auth  /api/*  /api/citas  /api/memory  /health
         │                         │
         ▼                         ▼
    PostgreSQL 15           APIs externas:
-   (Prisma ORM)            ElevenLabs · OpenAI · Moodle LTI
+   (Prisma ORM)            ElevenLabs · OpenAI
                            WHAPI · Resend
 ```
 

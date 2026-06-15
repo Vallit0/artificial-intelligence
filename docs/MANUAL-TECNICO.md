@@ -42,7 +42,7 @@ flowchart TB
     subgraph ecs["Huawei Cloud ECS · Docker"]
         subgraph app["Contenedor app · Node 20 + Express"]
             direction TB
-            R["Routers<br/>/auth · /lti · /api/* · /health"]
+            R["Routers<br/>/auth · /api/* · /health"]
             C["Controllers"]
             S["Services<br/>(lógica de negocio)"]
             P["Prisma Client"]
@@ -61,7 +61,6 @@ flowchart TB
         OAI["OpenAI<br/>evaluación de sesiones"]
         WH["WHAPI<br/>WhatsApp"]
         RS["Resend<br/>email transaccional"]
-        MO["Moodle<br/>LTI 1.3 · NRPS · AGS"]
     end
 
     B -->|HTTPS / WSS| NG
@@ -71,7 +70,6 @@ flowchart TB
     S --> OAI
     S --> WH
     S --> RS
-    MO <-->|launch / roster sync / grades| R
 ```
 
 ### 2.2 Decisiones arquitectónicas clave
@@ -79,7 +77,7 @@ flowchart TB
 - **Monolito modular**: un solo proceso Node.js sirve API + SPA estática. Simplifica despliegue y reduce costos de infraestructura. Adecuado para el volumen objetivo (≤300 concurrentes).
 - **Contenedorización Docker**: portable entre nubes (Huawei Cloud ECS es el target actual).
 - **Base de datos relacional con Prisma**: esquema versionado, migraciones reproducibles.
-- **Autenticación dual**: JWT local + LTI 1.3 para Single Sign-On desde Moodle.
+- **Autenticación**: JWT local (email/password) con access + refresh tokens.
 - **IA externa (ElevenLabs + OpenAI)**: sin modelos propios, reduciendo costos y complejidad. Riesgo: dependencia de terceros → mitigado con health checks y fallbacks.
 
 ---
@@ -188,7 +186,6 @@ Route → Controller → Service → Prisma → PostgreSQL
 |---|---|
 | **Sedes (multi-tenant)** | `Sede`, `CoachPermission` — ver [Multi-sede](multi-sede.md) |
 | **Usuarios y autenticación** | `User` (con `sedeId`, `coachId`), `UserRole`, `RefreshToken`, `PasswordResetToken` |
-| **Integración LTI / Moodle** | `LtiPlatform`, `LtiSession` |
 | **Escenarios y práctica** | `Scenario`, `PracticeSession`, `EvaluationBreakdown`, `UserScenarioProgress` |
 | **Calificaciones** | `StudentGrade` |
 | **Memoria del asesor** | `AdvisorMemory`, `SessionSummary` |
@@ -254,67 +251,7 @@ erDiagram
     }
 ```
 
-#### 5.2.2 Integración LTI / Moodle
-
-```mermaid
-erDiagram
-    LTI_PLATFORM ||--o{ LTI_SESSION : ""
-    LTI_PLATFORM ||--o{ LTI_COURSE_SYNC : ""
-    LTI_PLATFORM ||--o{ LTI_DEEP_LINKING_STATE : ""
-    LTI_PLATFORM ||--o{ LTI_LAUNCH_STATE : ""
-    LTI_COURSE_SYNC ||--o{ LTI_PENDING_MATCH : ""
-    SEDE ||--o{ LTI_COURSE_SYNC : "defaultSedeId"
-    USER ||--o{ LTI_SESSION : ""
-
-    LTI_PLATFORM {
-        uuid id PK
-        string issuerUrl UK
-        string clientId
-        string deploymentId
-        boolean isActive
-    }
-    LTI_SESSION {
-        uuid id PK
-        string userId FK
-        string platformId FK
-        string ltiUserId
-        string contextId
-        enum roles "LtiRole[]"
-    }
-    LTI_COURSE_SYNC {
-        uuid id PK
-        string platformId FK
-        string contextId
-        string defaultSedeId FK
-        string membershipsUrl
-        boolean isActive
-    }
-    LTI_PENDING_MATCH {
-        uuid id PK
-        string courseSyncId FK
-        string ltiUserId
-        string reason
-        datetime resolvedAt
-    }
-    LTI_DEEP_LINKING_STATE {
-        uuid id PK
-        string platformId FK
-        string returnUrl
-        datetime consumedAt
-    }
-    LTI_LAUNCH_STATE {
-        string state PK
-        string nonce
-        string platformId
-        datetime expiresAt
-    }
-```
-
-!!! note "Tabla sin relaciones FK"
-    `ToolKey` (par de llaves RSA del tool LTI, expuesto en `/lti/jwks`) es
-    independiente: no tiene relaciones con otras entidades.
-
-#### 5.2.3 Escenarios, práctica, evaluación y memoria
+#### 5.2.2 Escenarios, práctica, evaluación y memoria
 
 ```mermaid
 erDiagram
@@ -383,7 +320,7 @@ erDiagram
     }
 ```
 
-#### 5.2.4 Coach Center, agentes y A/B Testing
+#### 5.2.3 Coach Center, agentes y A/B Testing
 
 ```mermaid
 erDiagram
@@ -432,7 +369,6 @@ erDiagram
 ### 5.3 Enums principales
 
 - `AppRole`: `admin`, `instructor`, `learner`, `coach`
-- `LtiRole`: `instructor`, `learner`, `admin`, `content_developer`
 - `MemoryCategory`: `debilidad`, `fortaleza`, `expresion`, `comportamiento`, `progreso`
 - `ExperimentStatus`: `draft`, `active`, `completed`
 - `CitaTipo`: `presencial`, `virtual`, `telefonica`
@@ -466,16 +402,7 @@ npm run db:seed-demo           # Datos semilla demo
 | POST | `/auth/forgot-password` | Envío de email de reset | — |
 | POST | `/auth/reset-password` | Reset con token | Token |
 
-### 6.2 LTI 1.3 (`/lti`)
-
-| Método | Ruta | Propósito |
-|---|---|---|
-| POST/GET | `/lti/initiate` | OIDC login initiation desde Moodle |
-| POST | `/lti/launch` | Recibe id_token JWT, autentica y redirige |
-| GET | `/lti/jwks` | Claves públicas del tool |
-| GET | `/lti/info` | Info de registro para admins LMS |
-
-### 6.3 API protegida (`/api/*`, Bearer JWT)
+### 6.2 API protegida (`/api/*`, Bearer JWT)
 
 | Dominio | Rutas |
 |---|---|
@@ -488,7 +415,7 @@ npm run db:seed-demo           # Datos semilla demo
 | WhatsApp | `POST /api/whatsapp/agent-send` (expuesto a agentes ElevenLabs) |
 | Admin | `/api/admin/*` (gestión de agentes, A/B, usuarios) |
 
-### 6.4 Observabilidad
+### 6.3 Observabilidad
 
 | Método | Ruta | Respuesta |
 |---|---|---|
@@ -528,13 +455,6 @@ npm run db:seed-demo           # Datos semilla demo
 
 - **Uso**: recuperación de contraseña, notificaciones.
 - **Remitente por defecto**: `Señoriales <onboarding@resend.dev>` (sustituir por dominio verificado en producción).
-
-### 7.5 Moodle LTI 1.3
-
-- **Uso**: Single Sign-On desde el campus virtual.
-- **Flujo**: OIDC initiation → verificación JWT contra JWKS de Moodle → user-linking → redirect al SPA con tokens JWT.
-- **Prerrequisitos**: HTTPS obligatorio, `APP_URL` debe ser HTTPS.
-- **Detalles**: ver sección 2 de `Integraciones.md`.
 
 ---
 
@@ -645,7 +565,7 @@ docker-compose restart app
 | 3000 | Interno | App Node |
 | 5432 | Interno | PostgreSQL (solo app→db) |
 
-**Salida requerida (443)**: `api.elevenlabs.io`, `api.openai.com`, `gate.whapi.cloud`, `api.resend.com`, JWKS del Moodle integrado.
+**Salida requerida (443)**: `api.elevenlabs.io`, `api.openai.com`, `gate.whapi.cloud`, `api.resend.com`.
 
 ### 10.4 Certificados SSL
 
@@ -707,7 +627,6 @@ docker-compose logs -f nginx
 | **Sesión de práctica** | Conversación individual contra un agente IA |
 | **Memoria del asesor** | Registro persistente de patrones detectados entre sesiones |
 | **Server Tool (ElevenLabs)** | Función HTTP que el agente invoca durante la conversación |
-| **LTI** | Learning Tools Interoperability — estándar de integración con LMS |
 | **SPA** | Single-Page Application (el frontend React) |
 | **RDS** | Relational Database Service (PostgreSQL administrado en nube) |
 
@@ -718,6 +637,6 @@ docker-compose logs -f nginx
 - `README.md` — resumen y arranque rápido.
 - `server/STACK.md` — detalle técnico del stack.
 - `server/DEPLOYMENT.md` — guía específica de Huawei Cloud.
-- `Integraciones.md` — paso a paso de ElevenLabs, Moodle LTI y WHAPI.
+- `Integraciones.md` — paso a paso de ElevenLabs y WHAPI.
 - `docs/RUNBOOKS.md` — procedimientos operativos (ITIL 4).
 - `.env.example` — plantilla de variables de entorno.

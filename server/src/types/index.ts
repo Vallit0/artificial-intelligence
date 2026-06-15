@@ -52,7 +52,6 @@ export interface AuthRequest extends Request {
 }
 
 export type AppRole = 'admin' | 'instructor' | 'learner' | 'coach';
-export type LTIRole = 'instructor' | 'learner' | 'admin' | 'content_developer';
 
 // ============================================
 // Scenario Types
@@ -175,36 +174,6 @@ export interface UserStats {
   avgScore: number;
   completedScenarios: number;
   practiceDays: number;
-}
-
-// ============================================
-// LTI Types
-// ============================================
-
-export interface LTIPlatform {
-  id: string;
-  name: string;
-  issuerUrl: string;
-  clientId: string;
-  authEndpoint: string;
-  tokenEndpoint: string;
-  jwksUrl: string;
-  deploymentId: string;
-  isActive: boolean;
-}
-
-export interface LTISession {
-  id: string;
-  userId: string;
-  platformId: string;
-  ltiUserId: string;
-  ltiEmail?: string;
-  ltiName?: string;
-  contextId?: string;
-  contextTitle?: string;
-  resourceLinkId?: string;
-  roles: LTIRole[];
-  lastLaunchAt: Date;
 }
 
 // ============================================

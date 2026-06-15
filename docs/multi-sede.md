@@ -7,7 +7,7 @@
 | Campo | Valor |
 |---|---|
 | Estado | Backend + frontend shipeados en `develop` |
-| Entidades nuevas | `Sede`, `CoachPermission`, `User.sedeId`, `User.coachId`, `LtiCourseSync.defaultSedeId` |
+| Entidades nuevas | `Sede`, `CoachPermission`, `User.sedeId`, `User.coachId` |
 | Rol nuevo | `coach` (en enum `AppRole`) |
 | Enforcement | Capa de aplicación (`getSedeScope`) + constraints de DB |
 
@@ -46,8 +46,7 @@ model Sede {
   address   String?
   isActive  Boolean  @default(true)
   // ...
-  users          User[]
-  ltiCourseSyncs LtiCourseSync[]
+  users     User[]
 }
 ```
 
@@ -87,12 +86,6 @@ Se modela aparte (en vez de columnas en `User`) porque sólo aplica a coaches �
 ensuciaría `User` con campos `null` para learners y admins. Los toggles los maneja
 un admin global desde el panel.
 
-### 2.4 Relación con LTI
-
-`LtiCourseSync.defaultSedeId` asigna la sede de los usuarios **auto-creados** por
-el roster sync de NRPS y por el JIT-provisioning de un launch. Si es `null`, el
-servicio usa la **primera sede activa** como fallback (ver §4).
-
 ---
 
 ## 3. Modelo de autorización
@@ -131,8 +124,9 @@ Helpers asociados en el mismo módulo:
 | **Signup** (`POST /auth/signup`) | `sedeId`/`sede` **requerido** (UUID o slug). Debe existir y estar activa, si no `400`. |
 | **Admin crea usuario** (`POST /api/admin/users`) | Admin global elige cualquier sede; un coach con `canCreateCoaches` sólo su propia sede. |
 | **Bulk create** (`POST /api/admin/users/bulk`) | Cada item usa su `sedeId` propio o, en su defecto, el `sedeId` default del body. |
-| **LTI launch (JIT)** | `LtiCourseSync.defaultSedeId` del curso → fallback: primera sede activa. Si no hay ninguna, `503`. |
-| **NRPS roster sync** | Igual que el launch: `defaultSedeId` del `LtiCourseSync`, o primera sede activa. |
+
+La sede de un usuario se fija siempre en el momento del alta (signup o creación por
+admin) y no se deriva de ninguna integración externa.
 
 El selector de sede del signup se alimenta del endpoint público
 `GET /api/sedes`, que devuelve sólo `{ id, slug, name, country }` de las sedes

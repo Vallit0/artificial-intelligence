@@ -67,7 +67,6 @@ it('...', async () => {
 
 - `/api/memory/context` (construcción de prompt override)
 - `/api/elevenlabs/agent-evaluation` (mockear OpenAI; validar persistencia de summary)
-- LTI callback (firma JWT con JWKS — requiere fixture de plataforma LTI)
 - Tests unitarios puros de servicios que no tocan DB (utils de evaluación, helpers de prompt)
 
 ## Bug conocido detectado por la suite

@@ -14,7 +14,6 @@ flowchart TB
         AUTH["/auth/* · Autenticación JWT"]
         API["/api/* · Escenarios · Sesiones · Progreso<br/>Memoria · Citas · Admin"]
         ELT["/api/elevenlabs/* · Tokens de voz"]
-        LTI["/lti/* · Integración Moodle"]
     end
 
     DB[("PostgreSQL 15<br/>Prisma ORM")]
@@ -25,7 +24,6 @@ flowchart TB
         OAI["OpenAI · evaluación"]
         WH["WHAPI · WhatsApp"]
         RS["Resend · email"]
-        MO["Moodle · LTI 1.3"]
     end
 
     U -->|HTTPS / WSS| docker
@@ -34,7 +32,6 @@ flowchart TB
     API --> OAI
     API --> WH
     API --> RS
-    LTI <--> MO
 ```
 
 > La arquitectura detallada (diagrama lógico, modelo de datos y despliegue) vive en la [wiki MkDocs](docs/index.md).

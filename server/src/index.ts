@@ -14,7 +14,6 @@ import { fileURLToPath } from 'url';
 
 import config, { validateConfig } from './config/index.js';
 import { authRouter } from './routes/auth.js';
-import { ltiRouter } from './routes/lti.js';
 import { apiRouter } from './routes/api.js';
 import { elevenlabsRouter } from './routes/elevenlabs.js';
 import { adminRouter } from './routes/admin.js';
@@ -25,8 +24,6 @@ import { AppError } from './utils/errors.js';
 import { rootLogger, getLogger } from './utils/logger.js';
 import { requestContextMiddleware, httpLogger } from './middleware/requestContext.js';
 import { getReadinessReport } from './services/health.service.js';
-import { ensureToolKey } from './services/toolKey.service.js';
-import { startNrpsCron } from './services/ltiSyncCron.service.js';
 import { mountSwagger } from './swagger.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -36,6 +33,12 @@ const __dirname = path.dirname(__filename);
 validateConfig();
 
 const app = express();
+
+// Detrás de nginx (1 hop): confiar en X-Forwarded-For para que `req.ip` y el
+// rate-limiter de Express vean la IP real del cliente y no la del proxy. Sin
+// esto, con varias réplicas detrás de nginx todos los clientes comparten un
+// solo bucket de rate-limit (la IP del proxy).
+app.set('trust proxy', 1);
 
 // ============================================
 // Middleware
@@ -88,7 +91,6 @@ mountSwagger(app);
 
 // API Routes
 app.use('/auth', authRouter);
-app.use('/lti', ltiRouter);
 app.use('/api/elevenlabs', elevenlabsRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/memory', memoryRouter);
@@ -149,17 +151,13 @@ if (config.isProduction) {
   }));
 
   app.use(express.static(staticPath));
-  
-  // SPA fallback. /lti/* is mostly handled by the backend router (initiate,
-  // launch, info, jwks, deep-linking/state/:id, deep-linking/submit), but
-  // /lti/deep-linking/select is an SPA page — fall through to index.html
-  // for that one path. Anything else under /lti hits the API router above
-  // and never reaches this handler.
+
+  // SPA fallback. Everything that is not an API/auth path falls through to
+  // index.html so client-side routing can take over.
   app.get('*', (req, res) => {
     const isApiPath =
       req.path.startsWith('/api') ||
-      req.path.startsWith('/auth') ||
-      (req.path.startsWith('/lti') && req.path !== '/lti/deep-linking/select');
+      req.path.startsWith('/auth');
     if (!isApiPath) {
       res.sendFile(path.join(staticPath, 'index.html'));
     }
@@ -196,36 +194,12 @@ app.use((err: Error, req: express.Request, res: express.Response, _next: express
 // ============================================
 
 if (process.env.NODE_ENV !== 'test') {
-  // Bootstrap LTI tool keypair before accepting traffic. Failure to ensure
-  // a signing key would mean AGS/NRPS calls and Deep Linking responses
-  // fail later with a confusing error — fail fast at boot instead.
-  ensureToolKey()
-    .then(() => {
-      // NRPS roster sync. Opt-in via LTI_NRPS_CRON_ENABLED so dev/test never
-      // hit real Moodle instances without explicit configuration.
-      //
-      // RUN_CRONS gate: in production we run multiple stateless `app` replicas
-      // behind nginx plus a single dedicated `worker` replica. Only the worker
-      // sets RUN_CRONS=true, so scheduled jobs fire exactly once instead of
-      // N times (one per replica). When RUN_CRONS is unset (single-process /
-      // dev), default to running crons so local behaviour is unchanged.
-      if (process.env.RUN_CRONS !== 'false') {
-        startNrpsCron();
-      } else {
-        rootLogger.info('RUN_CRONS=false — skipping scheduled jobs on this replica');
-      }
-
-      app.listen(config.port, () => {
-        rootLogger.info(
-          { port: config.port, environment: config.nodeEnv, appUrl: config.appUrl },
-          'Señoriales server started',
-        );
-      });
-    })
-    .catch((err) => {
-      rootLogger.fatal({ err }, 'Failed to ensure LTI tool key — refusing to start');
-      process.exit(1);
-    });
+  app.listen(config.port, () => {
+    rootLogger.info(
+      { port: config.port, environment: config.nodeEnv, appUrl: config.appUrl },
+      'Señoriales server started',
+    );
+  });
 }
 
 export default app;

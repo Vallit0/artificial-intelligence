@@ -77,7 +77,7 @@ const Index = () => {
                 <FeatureBadge>
                   <div className="flex items-center gap-2">
                     <Users className="w-4 h-4 text-primary" />
-                    Integración Moodle
+                    Acompañamiento de coach
                   </div>
                 </FeatureBadge>
               </div>

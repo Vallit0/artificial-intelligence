@@ -56,7 +56,7 @@ Infra/Cloud, dirección de Corporación Señoriales.
 ### 2.1 Propósito
 
 Asegurar que Señoriales pueda **continuar entregando valor a los usuarios finales
-(vendedores en entrenamiento y cohortes Moodle)** ante interrupciones mayores, y
+(vendedores en entrenamiento y cohortes)** ante interrupciones mayores, y
 **recuperar el servicio completo dentro de los objetivos acordados** (RTO/RPO) tras
 un desastre.
 
@@ -64,7 +64,7 @@ un desastre.
 
 - Proteger la vida y seguridad de las personas (precede a cualquier objetivo técnico).
 - Preservar la integridad de los datos de sesiones de práctica y evaluaciones.
-- Mantener la confianza de Corporación Señoriales y de las cohortes LTI.
+- Mantener la confianza de Corporación Señoriales y de las cohortes de usuarios.
 - Reducir la duración y el impacto de las interrupciones.
 - Cumplir compromisos contractuales y regulatorios (protección de datos personales
   de participantes).
@@ -75,7 +75,7 @@ un desastre.
 
 - Aplicación Señoriales (frontend React + backend Node/Express).
 - Base de datos PostgreSQL (contenedor Docker o RDS gestionado).
-- Integraciones críticas: ElevenLabs, OpenAI, Moodle LTI 1.3, WHAPI, Resend.
+- Integraciones críticas: ElevenLabs, OpenAI, WHAPI, Resend.
 - Infraestructura: Huawei Cloud ECS, RDS, DNS, certificados SSL, Nginx.
 - Personal técnico del servicio.
 
@@ -83,7 +83,6 @@ un desastre.
 
 - Continuidad de negocio general de Corporación Señoriales (RRHH, ventas
   presenciales, capillas físicas) — corresponde al BCP corporativo.
-- Continuidad de Moodle como LMS (responsabilidad del operador del campus virtual).
 
 ### 2.4 Supuestos
 
@@ -140,7 +139,7 @@ Puede **desactivar**: Service Owner, tras validar criterios de cierre (sección 
 | ID | Proceso | Descripción | Criticidad |
 |---|---|---|---|
 | P-01 | Sesión de práctica con IA conversacional | Usuario inicia una sesión con agente ElevenLabs (Coach, Role-Play, Objeciones, Pitch, Cierre, Examen). Core del producto. | **Crítica** |
-| P-02 | Autenticación y SSO LTI | Login local + ingreso desde Moodle vía LTI 1.3. Sin esto no hay servicio. | **Crítica** |
+| P-02 | Autenticación | Login local email/password (access + refresh JWT). Sin esto no hay servicio. | **Crítica** |
 | P-03 | Registro y progreso académico | Persistencia de sesiones, evaluaciones, progreso por cohorte. | **Crítica** |
 | P-04 | Evaluación automática con OpenAI | Calificación post-sesión usando `gpt-4o-mini`. | Alta |
 | P-05 | Envío de brochure por WhatsApp (WHAPI) | Tool de agente: entrega PDF "Legado de Vida". | Media |
@@ -155,7 +154,7 @@ Impacto estimado si el proceso está caído continuamente:
 | Proceso | 1 h | 4 h | 24 h | 72 h |
 |---|---|---|---|---|
 | P-01 Sesión IA | Bajo (sesiones perdidas) | Medio (cohortes bloqueadas) | Alto (SLA incumplido) | Crítico (riesgo contractual) |
-| P-02 Auth/LTI | Medio | Alto | Crítico | Crítico |
+| P-02 Auth | Medio | Alto | Crítico | Crítico |
 | P-03 Persistencia | Bajo (degradación) | Alto | Crítico (posible pérdida) | Crítico |
 | P-04 Evaluación | Trivial | Bajo | Medio (bloqueo pedagógico) | Alto |
 | P-05 WhatsApp | Trivial | Bajo | Bajo | Medio |
@@ -175,7 +174,7 @@ Abreviaturas:
 | Proceso | MTPD | RTO | RPO | MBCO (modo degradado aceptable) |
 |---|---|---|---|---|
 | P-01 Sesión IA | 24 h | 4 h | 24 h (no se persiste audio, solo resumen/evaluación) | Plataforma disponible con aviso de "IA temporalmente no disponible"; ejercicios de lectura como sustituto. |
-| P-02 Auth/LTI | 8 h | 2 h | 0 (credenciales no se pierden) | Login LTI operativo aunque `/auth/signup` local esté deshabilitado. |
+| P-02 Auth | 8 h | 2 h | 0 (credenciales no se pierden) | Login operativo aunque `/auth/signup` esté temporalmente deshabilitado (solo altas por admin). |
 | P-03 Persistencia | 24 h | 2 h | 24 h (último backup diario) | Lectura habilitada; escritura puede estar temporalmente bloqueada. |
 | P-04 Evaluación OpenAI | 72 h | 24 h | 24 h | Sesión se guarda sin evaluación; se recalcula cuando el proveedor vuelve. |
 | P-05 WHAPI | 7 días | 48 h | N/A (idempotente) | Agente informa que el brochure se enviará por email. |
@@ -216,7 +215,6 @@ Probabilidad (P) y Severidad (S) en escala 1–5. Riesgo = P × S.
 | T-12 | Borrado accidental de datos por admin | 2 | 4 | 8 | Backup diario + auditoría de roles | RB-05, RB-07 |
 | T-13 | Cambios de API no anunciados en proveedores | 2 | 3 | 6 | Monitoreo de errores + suscripción a changelog | — |
 | T-14 | Sanciones geopolíticas sobre proveedor de nube o IA | 1 | 5 | 5 | Contratos redundantes preparados (ver 6.3) | — |
-| T-15 | Fallas masivas en Moodle LTI del cliente | 1 | 4 | 4 | Acceso directo vía signup local como fallback | — |
 
 ### 5.2 Priorización
 
@@ -241,7 +239,6 @@ Riesgos con puntaje ≥10 deben tener:
 | OpenAI | **Cola diferida** | Evaluaciones se encolan o marcan `pending`; la sesión se guarda igual y la evaluación se recalcula cuando el proveedor vuelve. |
 | WHAPI | **Degradación + sustituto** | Si falla, el agente instruye al usuario que recibirá el brochure por email (Resend). |
 | Resend | **Degradación** | Los mensajes críticos (reset password) se logran en BD para re-envío cuando el proveedor se restablezca. |
-| Moodle LTI | **Independencia** | El servicio no depende de Moodle para operar; puede usarse con signup local si LTI está caído. |
 | Host ECS | **Reconstrucción** | Infra como código implícita: docker-compose + `.env` + backup = host reconstruible en <2 h en otro ECS. |
 | DNS | **Resiliencia** | Proveedor con SLA; respaldo de zona en gestor documental. |
 
@@ -457,7 +454,6 @@ por favor contáctanos en <canal>. Gracias por tu paciencia.
 
 Conocimiento que debe estar documentado para no depender de una persona:
 
-- Flujo LTI 1.3 y claves de Moodle → Manual Técnico + este BCP.
 - Tools de agentes ElevenLabs y sus endpoints server-side → Manual Técnico.
 - Procedimiento de restore de PostgreSQL → RB-05 (probado mensualmente).
 - Credenciales y su rotación → RB-06 + gestor de secretos.
@@ -541,7 +537,7 @@ mayores (nuevas estrategias, cambio de RTO/RPO) requieren aprobación del Sponso
 | Proceso | Criticidad | RTO | RPO | Runbook |
 |---|---|---|---|---|
 | P-01 Sesión IA | Crítica | 4 h | 24 h | RB-01, RB-03 |
-| P-02 Auth/LTI | Crítica | 2 h | 0 | RB-01 |
+| P-02 Auth | Crítica | 2 h | 0 | RB-01 |
 | P-03 Persistencia | Crítica | 2 h | 24 h | RB-02, RB-05 |
 | P-04 Evaluación | Alta | 24 h | 24 h | RB-03 |
 | P-05 WHAPI | Media | 48 h | N/A | — |

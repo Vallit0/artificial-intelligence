@@ -14,9 +14,6 @@ import CreateUserModal from "@/components/admin/CreateUserModal";
 import BulkUploadModal from "@/components/admin/BulkUploadModal";
 import AgentConfigPanel from "@/components/admin/AgentConfigPanel";
 import ProspectingScenariosPanel from "@/components/admin/ProspectingScenariosPanel";
-import LtiPlatformPanel from "@/components/admin/LtiPlatformPanel";
-import LtiCourseSyncPanel from "@/components/admin/LtiCourseSyncPanel";
-import LtiPendingMatchesPanel from "@/components/admin/LtiPendingMatchesPanel";
 import AiAccessPanel from "@/components/admin/AiAccessPanel";
 import LatencyTesterPanel from "@/components/admin/LatencyTesterPanel";
 import AgentLatencyPanel from "@/components/admin/AgentLatencyPanel";
@@ -134,7 +131,6 @@ export default function Admin() {
             {canSeeProspecting && (
               <TabsTrigger value="prospecting">Prospección</TabsTrigger>
             )}
-            {isAdmin && <TabsTrigger value="lti">LTI / Moodle</TabsTrigger>}
             {isAdmin && (
               <TabsTrigger value="latency" className="flex items-center gap-1">
                 <Activity className="w-3.5 h-3.5" />
@@ -370,25 +366,6 @@ export default function Admin() {
               <ProspectingScenariosPanel />
             </TabsContent>
           )}
-
-          <TabsContent value="lti">
-            <Tabs defaultValue="platforms" className="space-y-4">
-              <TabsList>
-                <TabsTrigger value="platforms">Plataformas</TabsTrigger>
-                <TabsTrigger value="courses">Cursos & Roster</TabsTrigger>
-                <TabsTrigger value="pending">Matches Pendientes</TabsTrigger>
-              </TabsList>
-              <TabsContent value="platforms">
-                <LtiPlatformPanel />
-              </TabsContent>
-              <TabsContent value="courses">
-                <LtiCourseSyncPanel />
-              </TabsContent>
-              <TabsContent value="pending">
-                <LtiPendingMatchesPanel />
-              </TabsContent>
-            </Tabs>
-          </TabsContent>
 
           <TabsContent value="latency">
             <LatencyTesterPanel />

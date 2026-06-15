@@ -17,7 +17,6 @@ import Admin from "./pages/Admin";
 import ResetPassword from "./pages/ResetPassword";
 import LegadoDeVida from "./pages/LegadoDeVida";
 import CoachCenter from "./pages/CoachCenter";
-import LtiDeepLinkingPicker from "./pages/LtiDeepLinkingPicker";
 
 const queryClient = new QueryClient();
 
@@ -136,10 +135,6 @@ const AppRoutes = () => (
     {/* Password reset route */}
     <Route path="/reset-password" element={<ResetPassword />} />
 
-    {/* LTI Deep Linking picker — open by design (the state id in the URL
-        is the only credential, short-lived + single-use). */}
-    <Route path="/lti/deep-linking/select" element={<LtiDeepLinkingPicker />} />
-    
     {/* Admin route - protected */}
     <Route path="/admin" element={
       <ProtectedRoute>

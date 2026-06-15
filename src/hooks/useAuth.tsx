@@ -22,25 +22,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const isAdmin = roles.includes("admin");
 
-  // Check for tokens in URL (LTI redirect flow)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const accessToken = params.get("access_token");
-    const refreshToken = params.get("refresh_token");
-
-    if (accessToken && refreshToken) {
-      api.setTokens(accessToken, refreshToken);
-      // Strip ONLY the auth tokens; keep other query params (e.g.
-      // ?scenario=... set by an LTI deep-linked resource launch) so the
-      // landing page can still react to them.
-      params.delete("access_token");
-      params.delete("refresh_token");
-      const remaining = params.toString();
-      const cleanUrl = window.location.pathname + (remaining ? `?${remaining}` : "");
-      window.history.replaceState({}, "", cleanUrl);
-    }
-  }, []);
-
   // Validate session on mount
   useEffect(() => {
     const validateSession = async () => {

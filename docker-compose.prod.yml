@@ -1,21 +1,23 @@
 # =============================================================================
-# Producción — CONSOLIDADO en capa_01 (12 vCPU / 30 GB), caja compartida con
-# los 3 Moodles + n8n. Señoriales corre aquí DETRÁS DEL NGINX DEL HOST (no se
-# levanta un nginx en Docker: el host ya escucha 80/443 y enruta por dominio).
+# PRODUCCIÓN — capa_02 (4 vCPU / 8 GiB, Ubuntu 24.04, caja DEDICADA a Señoriales).
+#   IP pública 101.44.189.13 · IP privada 10.4.6.4 · dominio centro-de-negocios.org
 #
-#   nginx del HOST (centro-de-negocios.org)  →  127.0.0.1:4001..4004 (app1..4)
-#                                                     │
-#                                                pgbouncer (:6432, interno)
-#                                                     │
-#                                                db (Postgres 15, interno)
-#   worker (1 réplica)  →  crons LTI/NRPS (RUN_CRONS=true)
-#   migrate (one-shot)  →  prisma migrate deploy + seed idempotente
-#   promtail            →  Loki YA existente en capa_01 (10.4.6.20:3100)
+#   internet → nginx (443, TLS) → app1, app2 (least_conn)
+#                                      │
+#                                      └→ db (Postgres 15, interno)
+#   migrate (one-shot) → prisma migrate deploy + seed idempotente
+#   promtail           → Loki en capa_01 (10.4.6.20:3100)
 #
-# Levantar:   docker compose -f docker-compose.prod.yml up -d --build
-# Front:      añadir el vhost de infra/nginx-host/ al nginx del host (ver RUNBOOK).
+# Afinado para una caja de 8 GiB: 2 réplicas de app (Node es 1 hilo/proceso; 2
+# usan 2 cores y dejan 2 para Postgres + nginx + SO). SIN PgBouncer (con 2
+# réplicas y connection_limit=20 el tope es 40 conexiones < max_connections=100;
+# Prisma ya acota el pool). SIN worker de crons (no hay jobs tras remover LTI).
+# La consolidación a capa_01 (4 réplicas + PgBouncer + nginx del host) vive en
+# docker-compose.capa01.yml para una migración futura.
 #
-# Requiere ./server/.env con POSTGRES_PASSWORD, JWT_SECRET, ELEVENLABS_*, etc.
+# Levantar:  docker compose -f docker-compose.prod.yml up -d --build
+# Requiere ./server/.env con POSTGRES_PASSWORD, JWT_SECRET, ELEVENLABS_*, etc.,
+# y los certs TLS en ./nginx/ssl/{fullchain,privkey}.pem.
 # =============================================================================
 
 x-app-base: &app-base
@@ -25,18 +27,18 @@ x-app-base: &app-base
   image: senoriales-app:latest
   env_file:
     - ./server/.env
-  environment: &app-env
+  environment:
     NODE_ENV: production
     PORT: "3000"
-    DATABASE_URL: "postgresql://senoriales:${POSTGRES_PASSWORD}@pgbouncer:6432/senoriales?pgbouncer=true&connection_limit=15&pool_timeout=30"
+    # Sin PgBouncer: Prisma conecta directo a Postgres. connection_limit=20 por
+    # réplica → 40 conexiones máx con 2 réplicas, holgado bajo max_connections=100.
+    DATABASE_URL: "postgresql://senoriales:${POSTGRES_PASSWORD}@db:5432/senoriales?connection_limit=20&pool_timeout=30"
     CORS_ORIGIN: "https://centro-de-negocios.org,https://www.centro-de-negocios.org"
     JWT_SECRET: "${JWT_SECRET}"
     RUN_CRONS: "false"
   depends_on:
     migrate:
       condition: service_completed_successfully
-    pgbouncer:
-      condition: service_started
   restart: unless-stopped
   networks:
     - senoriales-network
@@ -45,9 +47,13 @@ x-app-base: &app-base
     options:
       max-size: "10m"
       max-file: "3"
+  deploy:
+    resources:
+      limits:
+        memory: 768M
 
 services:
-  # Migraciones + seed (one-shot). Apunta directo a Postgres (no a PgBouncer).
+  # Migraciones + seed (one-shot). Corre antes de levantar las réplicas.
   migrate:
     build:
       context: .
@@ -67,35 +73,14 @@ services:
       - senoriales-network
     logging: *default-logging
 
-  # Réplicas de aplicación. Publicadas SOLO en loopback (127.0.0.1) para que el
-  # nginx del host las alcance; nunca expuestas a la red pública directamente.
-  # (3001 ya está ocupado en capa_01 → usamos 4001-4004.)
+  # Réplicas de app. No publican puertos al host: nginx las alcanza por la red
+  # interna de Docker (app1:3000, app2:3000).
   app1:
     <<: *app-base
-    ports:
-      - "127.0.0.1:4001:3000"
   app2:
     <<: *app-base
-    ports:
-      - "127.0.0.1:4002:3000"
-  app3:
-    <<: *app-base
-    ports:
-      - "127.0.0.1:4003:3000"
-  app4:
-    <<: *app-base
-    ports:
-      - "127.0.0.1:4004:3000"
 
-  # Worker: única réplica que dispara crons. No expone HTTP.
-  worker:
-    <<: *app-base
-    environment:
-      <<: *app-env
-      RUN_CRONS: "true"
-      LTI_NRPS_CRON_ENABLED: "true"
-
-  # PostgreSQL 15 (acotado para caja compartida; ver infra/postgresql.conf).
+  # PostgreSQL 15 — afinado para caja DEDICADA de 8 GiB (ver infra/postgresql.capa02.conf).
   db:
     image: postgres:15-alpine
     command: postgres -c config_file=/etc/postgresql/postgresql.conf
@@ -105,11 +90,8 @@ services:
       POSTGRES_DB: senoriales
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./infra/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ./infra/postgresql.capa02.conf:/etc/postgresql/postgresql.conf:ro
       - ./infra/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
-    # Para la réplica de capa_02, exponer 5432 SOLO en la IP privada:
-    # ports:
-    #   - "10.4.6.20:5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U senoriales -d senoriales"]
       interval: 10s
@@ -119,34 +101,34 @@ services:
     networks:
       - senoriales-network
     logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 3G
 
-  # PgBouncer — absorbe ráfagas de conexión (interno, no publicado).
-  pgbouncer:
-    image: edoburu/pgbouncer:1.23.1
-    environment:
-      DB_HOST: db
-      DB_PORT: "5432"
-      DB_USER: senoriales
-      DB_PASSWORD: "${POSTGRES_PASSWORD}"
-      DB_NAME: senoriales
-      POOL_MODE: transaction
-      MAX_CLIENT_CONN: "1000"
-      DEFAULT_POOL_SIZE: "25"
-      MIN_POOL_SIZE: "5"
-      RESERVE_POOL_SIZE: "5"
-      RESERVE_POOL_TIMEOUT: "3"
-      AUTH_TYPE: scram-sha-256
-      SERVER_IDLE_TIMEOUT: "600"
+  # nginx — termina TLS y balancea entre las 2 réplicas (ver nginx/nginx.prod.conf).
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./certbot/www:/var/www/certbot:ro
     depends_on:
-      db:
-        condition: service_healthy
+      - app1
+      - app2
     restart: unless-stopped
     networks:
       - senoriales-network
     logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 128M
 
-  # Promtail — envía logs al Loki que YA corre en capa_01 (contenedor `loki`,
-  # publicado en 10.4.6.20:3100). Reusamos esa observabilidad existente.
+  # Promtail — envía logs al Loki de capa_01 (10.4.6.20:3100).
   promtail:
     image: grafana/promtail:3.3.0
     command: -config.file=/etc/promtail/config.yml
@@ -158,6 +140,10 @@ services:
     networks:
       - senoriales-network
     logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 128M
 
 volumes:
   postgres_data:

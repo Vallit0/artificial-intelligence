@@ -289,7 +289,7 @@ Si el último despliegue es sospechoso, ver **RB-04** sección "rollback de rele
    - Mensaje por email/WhatsApp a cohortes activas.
    - Registro estimado de recuperación.
 
-6. **Mientras dura la degradación**: el resto de la plataforma (escenarios, progreso, dashboards, LTI) sigue operativo. Sesiones en curso se cortan; sesiones nuevas fallarán hasta restitución.
+6. **Mientras dura la degradación**: el resto de la plataforma (escenarios, progreso, dashboards) sigue operativo. Sesiones en curso se cortan; sesiones nuevas fallarán hasta restitución.
 
 ### Criterios de éxito
 
@@ -609,10 +609,6 @@ Gestionar accesos al sistema Señoriales conforme al principio de mínimo privil
 
 Registro desde `/auth/signup`. Rol por defecto: `learner`.
 
-#### Vía LTI (Moodle)
-
-Primer acceso desde Moodle crea el usuario automáticamente con rol derivado del claim LTI.
-
 #### Vía admin (alta manual)
 
 1. Login como `admin` en el panel.
@@ -660,7 +656,7 @@ Primer acceso desde Moodle crea el usuario automáticamente con rol derivado del
 ### Post-ejecución
 
 - Registrar en bitácora de accesos: acción, usuario, rol antes/después, responsable.
-- Notificar al supervisor si aplica (learners LTI → instructor).
+- Notificar al supervisor si aplica.
 
 ---
 

@@ -23,15 +23,14 @@ Página estática autocontenida —no requiere que el backend esté corriendo—
 
 ## Cobertura
 
-**92 operaciones** documentadas en 73 paths. Distribución por tag:
+Operaciones documentadas, distribuidas por tag:
 
 | Tag | Operaciones | Descripción |
 |---|---|---|
-| `Admin` | 47 | Gestión de usuarios, coaches, configs de agente, A/B testing, LTI platforms, latency probe |
+| `Admin` | 41 | Gestión de usuarios, coaches, configs de agente, A/B testing, latency probe |
 | `Auth` | 7 | Registro, login, refresh, perfil, reset de password |
 | `Sessions` | 6 | Sesiones de práctica + evaluación + transcript |
 | `Citas` | 6 | Agendamiento y gestión de citas |
-| `LTI` | 6 | OIDC initiate, launch, JWKS, deep linking |
 | `Sedes` | 5 | CRUD de sedes (admin global) |
 | `Scenarios` | 3 | Escenarios de objeción/llamada |
 | `Progress` | 3 | Progreso y estadísticas del usuario |
@@ -77,7 +76,7 @@ Definidos en `server/src/swagger.ts` (`components.schemas`), referenciables con 
 
 ### Convenciones
 
-- Rutas **públicas** (signup, login, endpoints LTI llamados por el LMS, server tools de memoria): `security: []`.
+- Rutas **públicas** (signup, login, server tools de memoria): `security: []`.
 - Rutas **protegidas**: heredan `bearerAuth` global — no hace falta declararlo.
 - Endpoints *sede-aware* devuelven **404** (no 403) al acceder a recursos de otra sede, para no filtrar su existencia.
 - Documenta los status codes **reales** (200/201/400/401/403/404/409/410/429/503) según el comportamiento del controlador.

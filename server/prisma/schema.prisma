@@ -18,13 +18,6 @@ enum AppRole {
   coach
 }
 
-enum LtiRole {
-  instructor
-  learner
-  admin
-  content_developer
-}
-
 enum MemoryCategory {
   debilidad
   fortaleza
@@ -75,8 +68,7 @@ model Sede {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
-  users           User[]
-  ltiCourseSyncs  LtiCourseSync[]
+  users User[]
 
   @@index([isActive])
   @@map("sedes")
@@ -116,7 +108,6 @@ model User {
   refreshTokens       RefreshToken[]
   practiceSessions    PracticeSession[]
   scenarioProgress    UserScenarioProgress[]
-  ltiSessions         LtiSession[]
   studentGrade        StudentGrade?          @relation("StudentGradeUser")
   gradesGiven         StudentGrade[]         @relation("GradedByUser")
   passwordResetTokens PasswordResetToken[]
@@ -191,195 +182,6 @@ model PasswordResetToken {
 }
 
 // ============================================
-// LTI (Moodle Integration)
-// ============================================
-
-model LtiPlatform {
-  id            String   @id @default(uuid())
-  name          String
-  issuerUrl     String   @unique @map("issuer_url")
-  clientId      String   @map("client_id")
-  authEndpoint  String   @map("auth_endpoint")
-  tokenEndpoint String   @map("token_endpoint")
-  jwksUrl       String   @map("jwks_url")
-  deploymentId  String   @map("deployment_id")
-  isActive      Boolean  @default(true) @map("is_active")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
-
-  sessions          LtiSession[]
-  courseSyncs       LtiCourseSync[]
-  deepLinkingStates LtiDeepLinkingState[]
-
-  @@index([issuerUrl])
-  @@map("lti_platforms")
-}
-
-model LtiSession {
-  id                 String    @id @default(uuid())
-  userId             String    @map("user_id")
-  platformId         String    @map("platform_id")
-  ltiUserId          String    @map("lti_user_id")
-  ltiEmail           String?   @map("lti_email")
-  ltiName            String?   @map("lti_name")
-  contextId          String?   @map("context_id")
-  contextTitle       String?   @map("context_title")
-  resourceLinkId     String?   @map("resource_link_id")
-  roles              LtiRole[] @default([])
-  // AGS (Assignment & Grade Services) endpoint claim, captured per launch.
-  // agsLineitemUrl is set when Moodle launches against a specific gradable
-  // activity; agsLineitemsUrl is the collection used to discover/create
-  // line items when the activity has no fixed lineitem yet. Either may be
-  // null for resource links the teacher has not gradable.
-  agsLineitemUrl     String?   @map("ags_lineitem_url")
-  agsLineitemsUrl    String?   @map("ags_lineitems_url")
-  agsScopes          String[]  @default([]) @map("ags_scopes")
-  // NRPS (Names and Role Provisioning Services) endpoint claim. Captured at
-  // launch time so the periodic roster sync can resolve which course this
-  // user came from without depending on a separately-registered course
-  // entry. When the same context_id appears in multiple sessions we keep
-  // them all; the LtiCourseSync row is the canonical source of truth used
-  // by the cron.
-  nrpsMembershipsUrl String?   @map("nrps_memberships_url")
-  lastLaunchAt       DateTime  @default(now()) @map("last_launch_at")
-  createdAt          DateTime  @default(now()) @map("created_at")
-
-  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  platform LtiPlatform @relation(fields: [platformId], references: [id], onDelete: Cascade)
-
-  @@unique([platformId, ltiUserId])
-  @@index([userId])
-  @@index([platformId, ltiUserId])
-  @@map("lti_sessions")
-}
-
-// RSA keypair the tool uses to sign client_assertion JWTs (token grants
-// against AGS/NRPS) and Deep Linking responses. Public half is exposed at
-// /lti/jwks; private half is stored encrypted with a key derived from
-// JWT_SECRET via HKDF. Keep at most one active key; rotate by inserting a
-// new active key and deactivating the old one (old kid stays serveable for
-// in-flight tokens until cleanup).
-model ToolKey {
-  id            String    @id @default(uuid())
-  kid           String    @unique
-  algorithm     String    @default("RS256")
-  publicKeyPem  String    @map("public_key_pem")
-  privateKeyEnc String    @map("private_key_enc")
-  isActive      Boolean   @default(true) @map("is_active")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  rotatedAt     DateTime? @map("rotated_at")
-
-  @@index([isActive])
-  @@map("tool_keys")
-}
-
-// A Moodle course (LTI context) registered for periodic roster sync via
-// NRPS. The cron iterates active rows, calls {membershipsUrl}, and runs
-// the cascading match (email → normalized name) against `users`. The
-// lineitemUrl is captured here so AGS pushes from web-only logins (where
-// the user never did an LTI launch) still know which gradebook column to
-// hit. Both URLs come from the LTI launch claims; an admin can also
-// register a course manually if a teacher launches before sync runs.
-model LtiCourseSync {
-  id             String    @id @default(uuid())
-  platformId     String    @map("platform_id")
-  contextId      String    @map("context_id")
-  contextTitle   String?   @map("context_title")
-  membershipsUrl String    @map("memberships_url")
-  // Defaulting lineitem for users who never launched: the practice/exam
-  // they take from the web posts here. Optional because some courses are
-  // pure roster sync (no grading) and because the value is only known
-  // after a teacher has bound the tool to a gradable activity.
-  lineitemUrl    String?   @map("lineitem_url")
-  // Sede asignada a los usuarios auto-creados por NRPS sync. Si es null,
-  // el servicio de sync usa la primera sede activa como fallback. El
-  // admin la setea explícitamente desde el panel cuando un curso de
-  // Moodle corresponde a una sede específica.
-  defaultSedeId  String?   @map("default_sede_id")
-  isActive       Boolean   @default(true) @map("is_active")
-  lastSyncedAt   DateTime? @map("last_synced_at")
-  lastSyncStatus String?   @map("last_sync_status")
-  lastSyncError  String?   @map("last_sync_error")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at")
-
-  platform       LtiPlatform       @relation(fields: [platformId], references: [id], onDelete: Cascade)
-  defaultSede    Sede?             @relation(fields: [defaultSedeId], references: [id], onDelete: SetNull)
-  pendingMatches LtiPendingMatch[]
-
-  @@unique([platformId, contextId])
-  @@index([isActive])
-  @@map("lti_course_syncs")
-}
-
-// Roster entries the cascading matcher could not unambiguously resolve.
-// Today this is exclusively the "name match returned 2+ candidates"
-// branch — email matches always succeed unambiguously (email is unique
-// on users), and no-match cases auto-create. Admin resolves manually:
-// either picks one of the candidates or marks the row dismissed.
-model LtiPendingMatch {
-  id               String    @id @default(uuid())
-  courseSyncId     String    @map("course_sync_id")
-  ltiUserId        String    @map("lti_user_id")
-  ltiEmail         String?   @map("lti_email")
-  ltiName          String?   @map("lti_name")
-  candidateUserIds String[]  @default([]) @map("candidate_user_ids")
-  reason           String // "ambiguous_name" today; reserved for future variants
-  resolvedAt       DateTime? @map("resolved_at")
-  resolvedUserId   String?   @map("resolved_user_id")
-  dismissedAt      DateTime? @map("dismissed_at")
-  createdAt        DateTime  @default(now()) @map("created_at")
-
-  courseSync LtiCourseSync @relation(fields: [courseSyncId], references: [id], onDelete: Cascade)
-
-  @@unique([courseSyncId, ltiUserId])
-  @@index([resolvedAt])
-  @@map("lti_pending_matches")
-}
-
-// One-time-use launch state for OIDC Login Initiation. Persisted at
-// /lti/initiate and consumed at /lti/launch — closes the CSRF/replay window
-// (without this, a stolen launch URL could be replayed). Rows TTL via
-// expiresAt (10 minutes) and are deleted on consumption.
-model LtiLaunchState {
-  state      String   @id
-  nonce      String
-  platformId String   @map("platform_id")
-  createdAt  DateTime @default(now()) @map("created_at")
-  expiresAt  DateTime @map("expires_at")
-
-  @@index([expiresAt])
-  @@map("lti_launch_states")
-}
-
-// Deep Linking 1.3 — short-lived handoff between the launch (where Moodle
-// sent us a LtiDeepLinkingRequest with the return URL) and the picker UI
-// (where the teacher chooses which scenarios to embed). The picker reads
-// this row to know which scenarios to show, and POSTs the selection back
-// against the same id; the submit endpoint signs the LtiDeepLinkingResponse
-// JWT and returns an auto-submit form pointed at returnUrl. Single-use:
-// consumedAt is set on submit so the same picker URL cannot be replayed
-// to register another activity.
-model LtiDeepLinkingState {
-  id            String    @id @default(uuid())
-  platformId    String    @map("platform_id")
-  deploymentId  String    @map("deployment_id")
-  returnUrl     String    @map("return_url")
-  data          String?   // opaque "data" field from the request, echoed back per spec
-  ltiUserId     String    @map("lti_user_id")
-  contextId     String?   @map("context_id")
-  contextTitle  String?   @map("context_title")
-  expiresAt     DateTime  @map("expires_at")
-  consumedAt    DateTime? @map("consumed_at")
-  createdAt     DateTime  @default(now()) @map("created_at")
-
-  platform LtiPlatform @relation(fields: [platformId], references: [id], onDelete: Cascade)
-
-  @@index([expiresAt])
-  @@map("lti_deep_linking_states")
-}
-
-// ============================================
 // Scenarios & Practice
 // ============================================
 
@@ -412,7 +214,7 @@ model PracticeSession {
   // null = práctica normal; 'prospeccion' = Examen Final de Prospección
   // (Nivel 1); 'objeciones' = Examen Final de Manejo de Objeciones (Nivel 2).
   // Distingue los dos exámenes, que ambos corren con scenarioId == null, para
-  // gradear/trackear/reportar a Moodle por separado.
+  // gradear/trackear/reportar por separado.
   examType        String?  @map("exam_type")
   durationSeconds Int      @default(0) @map("duration_seconds")
   score           Int?

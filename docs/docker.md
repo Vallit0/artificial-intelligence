@@ -236,7 +236,6 @@ flowchart TD
     R["request -> nginx :443"]
     R -->|"/auth/"| AU["limit 5 r/s -> app:3000"]
     R -->|"/api/"| AP["limit 100 r/s · read 120s -> app:3000"]
-    R -->|"/lti/"| LT["-> app:3000"]
     R -->|"/health"| HE["-> app:3000"]
     R -->|"/ resto"| SPA["SPA fallback -> app:3000"]
 ```
@@ -250,7 +249,7 @@ flowchart TD
   - `api` → 100 r/s (burst 200) — un admin abriendo el dashboard dispara ~6 requests.
   - Devuelve **429** al exceder.
 - **Rutas proxeadas** a `app:3000`: `/auth/`, `/api/` (con timeouts largos: read 120s),
-  `/lti/`, `/health`, y `/` como *fallback* SPA.
+  `/health`, y `/` como *fallback* SPA.
 - `client_max_body_size 10M`.
 
 ---

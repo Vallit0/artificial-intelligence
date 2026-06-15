@@ -25,7 +25,6 @@ const options: swaggerJsdoc.Options = {
       { name: 'Sedes', description: 'Gestión de sedes (CRUD, admin global).' },
       { name: 'Progress', description: 'Progreso y estadísticas del usuario.' },
       { name: 'Analytics', description: 'Analíticas de desempeño y competencias.' },
-      { name: 'LTI', description: 'Integración LTI 1.3 con Moodle (OIDC, launch, JWKS, deep linking).' },
       { name: 'Memory', description: 'Memoria del asesor (server tools del agente de ElevenLabs).' },
       { name: 'Citas', description: 'Agendamiento y gestión de citas.' },
     ],

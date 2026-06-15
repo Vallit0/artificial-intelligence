@@ -23,7 +23,6 @@ flowchart LR
         OAI["api.openai.com"]
         WH["gate.whapi.cloud"]
         RS["api.resend.com"]
-        MO["Moodle · LTI 1.3"]
     end
 
     U -->|443 HTTPS / WSS| ng
@@ -32,7 +31,6 @@ flowchart LR
     app --> OAI
     app --> WH
     app --> RS
-    MO <-->|launch / NRPS / AGS| app
 ```
 
 Para el detalle de la arquitectura de contenedores (Dockerfiles y los tres
