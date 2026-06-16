@@ -58,6 +58,7 @@ const MobileNavigation = () => {
 
   return (
     <nav
+      data-tour="nav-mobile"
       className="fixed bottom-0 left-0 right-0 py-2 px-2 lg:hidden z-30"
       style={{
         background: "rgba(255,255,255,0.75)",

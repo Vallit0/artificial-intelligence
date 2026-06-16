@@ -92,6 +92,10 @@ model User {
   // Se marca al aprobar el examen final de Nivel 2 (Manejo de Objeciones).
   // Habilita la descarga del certificado de finalización del programa.
   courseCompleted    Boolean  @default(false) @map("course_completed")
+  // Se marca al terminar (o saltar) el tour guiado del primer login. Mientras
+  // sea false, /practice dispara el onboarding tour. Default false para todos,
+  // así los usuarios existentes lo ven como reintroducción a la plataforma.
+  tutorialCompleted  Boolean  @default(false) @map("tutorial_completed")
   sedeId             String?  @map("sede_id")
   // Coach asignado (auto-relación). Sólo lo asigna un admin global y debe ser
   // un usuario con rol coach de la MISMA sede que el learner; al borrar el

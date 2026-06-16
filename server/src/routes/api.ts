@@ -466,6 +466,41 @@ apiRouter.post('/users/me/complete-course', async (req: AuthRequest, res: Respon
   }
 });
 
+/**
+ * @openapi
+ * /api/users/me/complete-tutorial:
+ *   post:
+ *     tags: [Users]
+ *     summary: Marca el tour guiado del primer login como completado
+ *     description: Se invoca al terminar o saltar el onboarding tour. Mientras sea false, /practice vuelve a mostrar el tour.
+ *     responses:
+ *       200:
+ *         description: Tutorial marcado como completado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean }
+ *                 tutorialCompleted: { type: boolean }
+ */
+apiRouter.post('/users/me/complete-tutorial', async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const { default: prisma } = await import('../db/index.js');
+
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data: { tutorialCompleted: true },
+      select: { tutorialCompleted: true },
+    });
+    res.json({ success: true, tutorialCompleted: updated.tutorialCompleted });
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
 // Prospecting Scenarios visible to current user
 /**
  * @openapi

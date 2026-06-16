@@ -106,7 +106,7 @@ export const prospectingScenarios: (ProspectingScenario & { agentId?: string })[
   },
   {
     id: 10,
-    title: "Pareja en Cementerio",
+    title: "Persona en Cementerio",
     description: "Usted se encuentra dentro de Cementerio Los Parques, en uno de los jardines se observa a una pareja joven de aproximadamente 30 años, la dama está con su perro, mientras colocan flores en una lápida.",
     location: "Cementerio Los Parques",
     targetAge: "30 años",

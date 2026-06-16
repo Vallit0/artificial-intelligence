@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import LeftSidebar from "@/components/scenarios/LeftSidebar";
+import OnboardingTour from "@/components/onboarding/OnboardingTour";
 import AICompanionOrb from "@/components/AICompanionOrb";
 import type { Scenario } from "@/hooks/useScenarios";
 import { prospectingScenarios } from "@/components/prospecting/ProspectingCarousel";
@@ -514,6 +515,7 @@ const Practice = () => {
 
   return (
     <div className="min-h-screen bg-background flex">
+      {user && <OnboardingTour />}
       {user && <LeftSidebar />}
 
       <div className={`flex-1 flex flex-col items-center justify-center relative ${user ? "lg:ml-60" : ""}`}>
@@ -537,7 +539,9 @@ const Practice = () => {
           {isFreeTier && sessionState === "active" ? (
             <FreeTierTimer maxSeconds={FREE_TIER_MAX_SECONDS} currentSeconds={sessionTime} onTimeUp={handleTimeUp} />
           ) : user ? (
-            <UserMenu />
+            <span data-tour="user-menu" className="inline-block">
+              <UserMenu />
+            </span>
           ) : null}
         </div>
 
@@ -551,7 +555,7 @@ const Practice = () => {
 
         {/* ===== IDLE STATE: Suggestion Bubbles (Claude-style) ===== */}
         {sessionState === "idle" && !selectedAgent && (
-          <div className="flex flex-col items-center w-full max-w-2xl px-4 pb-24 lg:pb-0 animate-fade-in">
+          <div data-tour="practice-main" className="flex flex-col items-center w-full max-w-2xl px-4 pb-24 lg:pb-0 animate-fade-in">
             {/* AI Companion Orb */}
             <div className="relative mb-4">
               {/* Poke speech bubble */}

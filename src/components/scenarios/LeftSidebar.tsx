@@ -70,6 +70,7 @@ const LeftSidebar = () => {
 
   return (
     <aside
+      data-tour="nav-desktop"
       className="hidden lg:flex flex-col w-60 min-h-screen fixed left-0 top-0 bottom-0 z-40"
       style={{
         background: "hsl(var(--sidebar-background))",
