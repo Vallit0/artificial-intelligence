@@ -2,11 +2,16 @@
 // Admin Service
 // ============================================
 
+import { Prisma } from '@prisma/client';
 import prisma from '../db/index.js';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '../utils/errors.js';
 import { hashPassword } from '../utils/passwordHash.js';
 import { AuthUser, AppRole } from '../types/index.js';
 import { canCreateCoachIn, isGlobalAdmin, getSedeScope } from '../middleware/sedeScope.js';
+
+// Todos los roles asignables vía edición de usuario (incluye admin, a
+// diferencia de CREATABLE_ROLES que es para creación masiva sin admin).
+const ASSIGNABLE_ROLES: AppRole[] = ['learner', 'coach', 'instructor', 'admin'];
 
 // Roles que se pueden crear desde el panel admin. `admin` se trata aparte
 // para retrocompatibilidad con el flag `isAdmin` legacy.
@@ -114,6 +119,11 @@ export async function createUser(input: CreateUserInput, caller: AuthUser) {
       lastName: input.lastName?.trim() || null,
       phoneNumber: input.phoneNumber?.trim() || null,
       emailVerified: true,
+      // Los usuarios creados desde el panel admin se aprueban en el acto — el
+      // flujo de aprobación pending sólo aplica al auto-registro público.
+      status: 'approved',
+      approvedBy: caller.id,
+      approvedAt: new Date(),
       sedeId: sede.id,
       roles: {
         create: { role: targetRole },
@@ -227,6 +237,10 @@ export async function bulkCreateUsers(users: CreateUserInput[], caller: AuthUser
           firstName: userData.firstName?.trim() || null,
           lastName: userData.lastName?.trim() || null,
           emailVerified: true,
+          // Bulk lo hace admin global → aprobados en el acto (ver createUser).
+          status: 'approved',
+          approvedBy: caller.id,
+          approvedAt: new Date(),
           sedeId: resolvedSedeId,
           roles: { create: { role: 'learner' } },
         },
@@ -330,6 +344,9 @@ export async function getAllStudents(caller: AuthUser): Promise<StudentWithStats
       // Listado de "estudiantes" — sólo learners. Si más adelante se quiere
       // un panel separado de "coaches" del admin, agregamos otra función.
       roles: { some: { role: 'learner' } },
+      // Los usuarios pendientes/rechazados de auto-registro viven en la bandeja
+      // de aprobación, no acá — el panel de estudiantes es sólo aprobados.
+      status: 'approved',
     },
     include: {
       practiceSessions: {
@@ -483,6 +500,323 @@ export async function updateUserName(userId: string, caller: AuthUser, firstName
     },
     select: { id: true, firstName: true, lastName: true },
   });
+}
+
+// ============================================
+// Edición unificada de usuario (admin global only)
+// ============================================
+
+export interface UpdateUserInput {
+  sedeId?: string;            // UUID o slug — sólo presente si se mueve de sede
+  roles?: AppRole[];          // reescribe el set completo de roles
+  email?: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  phoneNumber?: string | null;
+  coachId?: string | null;    // obligatorio (puede ser null) cuando cambia la sede
+  examenFinalEnabled?: boolean;
+  level2Unlocked?: boolean;
+  courseCompleted?: boolean;
+  tutorialCompleted?: boolean;
+  emailVerified?: boolean;
+}
+
+// Devuelve el estado editable completo de un usuario (incluye roles y flags
+// que el listado de estudiantes no trae). Alimenta el modal "Editar usuario".
+// Sólo admin global.
+export async function getEditableUser(userId: string, caller: AuthUser) {
+  if (!isGlobalAdmin(caller)) {
+    throw new ForbiddenError('Sólo admin global puede ver el detalle editable');
+  }
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      sede: { select: { id: true, name: true } },
+      coach: { select: { id: true, firstName: true, lastName: true, email: true } },
+      roles: { select: { role: true } },
+    },
+  });
+  if (!user) {
+    throw new NotFoundError('Usuario no encontrado');
+  }
+  return {
+    id: user.id,
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    phoneNumber: user.phoneNumber,
+    status: user.status,
+    sedeId: user.sedeId,
+    sedeName: user.sede?.name ?? null,
+    coachId: user.coachId,
+    coachName: user.coach
+      ? [user.coach.firstName, user.coach.lastName].filter(Boolean).join(' ') || user.coach.email
+      : null,
+    roles: user.roles.map((r) => r.role),
+    examenFinalEnabled: user.examenFinalEnabled,
+    level2Unlocked: user.level2Unlocked,
+    courseCompleted: user.courseCompleted,
+    tutorialCompleted: user.tutorialCompleted,
+    emailVerified: user.emailVerified,
+  };
+}
+
+// Edita cualquier subconjunto de campos de un usuario. Sólo admin global.
+// Concentra las reglas delicadas: mover de sede invalida el coach anterior
+// (hay que indicar uno nuevo de la sede destino, o null), reescribir roles
+// se hace transaccional, y cambiar el email invalida las sesiones activas.
+export async function updateUser(userId: string, input: UpdateUserInput, caller: AuthUser) {
+  if (!isGlobalAdmin(caller)) {
+    throw new ForbiddenError('Sólo admin global puede editar usuarios');
+  }
+
+  const target = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      email: true,
+      sedeId: true,
+      coachId: true,
+      roles: { select: { role: true } },
+    },
+  });
+  if (!target) {
+    throw new NotFoundError('Usuario no encontrado');
+  }
+
+  const data: Prisma.UserUncheckedUpdateInput = {};
+
+  // --- Sede ---
+  let newSedeId = target.sedeId;
+  if (input.sedeId !== undefined) {
+    const sede = await prisma.sede.findFirst({
+      where: { isActive: true, OR: [{ id: input.sedeId }, { slug: input.sedeId }] },
+      select: { id: true },
+    });
+    if (!sede) {
+      throw new BadRequestError('Sede inválida o inactiva');
+    }
+    newSedeId = sede.id;
+    data.sedeId = sede.id;
+  }
+  const sedeChanged = newSedeId !== target.sedeId;
+
+  if (sedeChanged) {
+    // Si el usuario es coach con alumnos asignados, moverlo de sede dejaría a
+    // esos alumnos con un coach de otra sede (rompe el aislamiento). Bloquear
+    // hasta que se reasignen.
+    const learnerCount = await prisma.user.count({ where: { coachId: userId } });
+    if (learnerCount > 0) {
+      throw new BadRequestError(
+        'Este usuario es coach con alumnos asignados. Reasigná sus alumnos antes de cambiarlo de sede.',
+      );
+    }
+    // El coach previo es de la sede vieja → ya no es válido. Exigir decisión
+    // explícita: un coach de la sede destino, o null (sin coach).
+    if (input.coachId === undefined) {
+      throw new BadRequestError('Al cambiar de sede debés indicar el coach de la sede destino (o null).');
+    }
+  }
+
+  // --- Coach ---
+  if (input.coachId !== undefined) {
+    if (input.coachId === null) {
+      data.coachId = null;
+    } else {
+      const coach = await prisma.user.findUnique({
+        where: { id: input.coachId },
+        select: { id: true, sedeId: true, status: true, roles: { select: { role: true } } },
+      });
+      if (
+        !coach ||
+        coach.status !== 'approved' ||
+        !coach.roles.some((r) => r.role === 'coach') ||
+        coach.sedeId !== newSedeId
+      ) {
+        throw new BadRequestError('El coach debe tener rol coach y pertenecer a la sede del usuario');
+      }
+      data.coachId = coach.id;
+    }
+  } else if (sedeChanged) {
+    // Defensa extra: nunca dejar un coachId de la sede vieja tras mover.
+    data.coachId = null;
+  }
+
+  // --- Email ---
+  let emailChanged = false;
+  if (input.email !== undefined) {
+    const email = input.email.trim().toLowerCase();
+    if (!isValidEmail(email)) {
+      throw new BadRequestError('Formato de email inválido');
+    }
+    if (email !== target.email) {
+      const existing = await prisma.user.findUnique({ where: { email } });
+      if (existing) {
+        throw new ConflictError('Este email ya está registrado');
+      }
+      data.email = email;
+      emailChanged = true;
+    }
+  }
+
+  // --- Campos simples / flags ---
+  if (input.firstName !== undefined) data.firstName = input.firstName?.trim() || null;
+  if (input.lastName !== undefined) data.lastName = input.lastName?.trim() || null;
+  if (input.phoneNumber !== undefined) data.phoneNumber = input.phoneNumber?.trim() || null;
+  if (input.examenFinalEnabled !== undefined) data.examenFinalEnabled = input.examenFinalEnabled;
+  if (input.level2Unlocked !== undefined) data.level2Unlocked = input.level2Unlocked;
+  if (input.courseCompleted !== undefined) data.courseCompleted = input.courseCompleted;
+  if (input.tutorialCompleted !== undefined) data.tutorialCompleted = input.tutorialCompleted;
+  if (input.emailVerified !== undefined) data.emailVerified = input.emailVerified;
+
+  // --- Roles ---
+  let rolesToSet: AppRole[] | undefined;
+  if (input.roles !== undefined) {
+    const roles = Array.from(new Set(input.roles));
+    if (roles.length === 0) {
+      throw new BadRequestError('El usuario debe tener al menos un rol');
+    }
+    for (const r of roles) {
+      if (!ASSIGNABLE_ROLES.includes(r)) {
+        throw new BadRequestError(`Rol inválido: ${r}`);
+      }
+    }
+    // Guardrail: un admin no puede quitarse a sí mismo su propio rol admin
+    // (evita quedarse sin acceso global por error).
+    const targetRoles = target.roles.map((r) => r.role as AppRole);
+    if (userId === caller.id && targetRoles.includes('admin') && !roles.includes('admin')) {
+      throw new BadRequestError('No podés quitarte tu propio rol admin');
+    }
+    rolesToSet = roles;
+  }
+
+  await prisma.$transaction(async (tx) => {
+    if (Object.keys(data).length > 0) {
+      await tx.user.update({ where: { id: userId }, data });
+    }
+
+    if (rolesToSet) {
+      await tx.userRole.deleteMany({ where: { userId } });
+      await tx.userRole.createMany({ data: rolesToSet.map((role) => ({ userId, role })) });
+      // Si ahora es coach, asegurar su fila de permisos (en false por defecto).
+      if (rolesToSet.includes('coach')) {
+        await tx.coachPermission.upsert({
+          where: { userId },
+          create: { userId, canCreateCoaches: false, canEditPrompts: false, grantedBy: caller.id },
+          update: {},
+        });
+      }
+    }
+
+    // Cambiar el email invalida las sesiones existentes por seguridad.
+    if (emailChanged) {
+      await tx.refreshToken.deleteMany({ where: { userId } });
+    }
+  });
+
+  const updated = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      sede: { select: { id: true, name: true } },
+      coach: { select: { id: true, firstName: true, lastName: true, email: true } },
+      roles: { select: { role: true } },
+    },
+  });
+
+  return {
+    id: updated!.id,
+    email: updated!.email,
+    firstName: updated!.firstName,
+    lastName: updated!.lastName,
+    phoneNumber: updated!.phoneNumber,
+    status: updated!.status,
+    sedeId: updated!.sedeId,
+    sedeName: updated!.sede?.name ?? null,
+    coachId: updated!.coachId,
+    coachName: updated!.coach
+      ? [updated!.coach.firstName, updated!.coach.lastName].filter(Boolean).join(' ') || updated!.coach.email
+      : null,
+    roles: updated!.roles.map((r) => r.role),
+    emailChanged,
+  };
+}
+
+// ============================================
+// Auto-registro: bandeja de aprobación
+// ============================================
+
+// Lista los usuarios en estado `pending` esperando visto bueno. Scope-aware:
+// admin global ve todas las sedes; un coach ve sólo los pendientes de su sede.
+export async function listPendingUsers(caller: AuthUser) {
+  const scope = getSedeScope(caller);
+  const sedeFilter = scope.scope === 'sede' ? { sedeId: scope.sedeId } : {};
+
+  const users = await prisma.user.findMany({
+    where: { ...sedeFilter, status: 'pending' },
+    include: {
+      sede: { select: { id: true, name: true } },
+      coach: { select: { id: true, firstName: true, lastName: true, email: true } },
+    },
+    orderBy: { createdAt: 'asc' },
+  });
+
+  return users.map((u) => ({
+    id: u.id,
+    email: u.email,
+    firstName: u.firstName,
+    lastName: u.lastName,
+    phoneNumber: u.phoneNumber,
+    createdAt: u.createdAt,
+    sedeId: u.sedeId,
+    sedeName: u.sede?.name ?? null,
+    coachId: u.coachId,
+    coachName: u.coach
+      ? [u.coach.firstName, u.coach.lastName].filter(Boolean).join(' ') || u.coach.email
+      : null,
+  }));
+}
+
+export interface ApprovalResult {
+  id: string;
+  email: string;
+  status: 'approved' | 'rejected';
+}
+
+// Aprueba o rechaza un registro pendiente. Accesible a admin global o al
+// coach/instructor de la sede del usuario (el scope se valida con
+// loadUserScopedOrThrow → 404 cross-sede). Sólo opera sobre usuarios que
+// siguen en `pending`; reintentar sobre uno ya resuelto es un 400.
+export async function setUserApproval(
+  userId: string,
+  decision: 'approve' | 'reject',
+  caller: AuthUser,
+  reason?: string,
+): Promise<ApprovalResult> {
+  await loadUserScopedOrThrow(userId, caller);
+
+  const target = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, email: true, status: true },
+  });
+  if (!target) {
+    throw new NotFoundError('Usuario no encontrado');
+  }
+  if (target.status !== 'pending') {
+    throw new BadRequestError('Este usuario ya fue procesado');
+  }
+
+  const newStatus = decision === 'approve' ? 'approved' : 'rejected';
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      status: newStatus,
+      approvedBy: caller.id,
+      approvedAt: new Date(),
+      rejectedReason: decision === 'reject' ? (reason?.trim() || null) : null,
+    },
+  });
+
+  return { id: target.id, email: target.email, status: newStatus };
 }
 
 // ============================================

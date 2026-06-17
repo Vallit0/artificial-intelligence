@@ -29,6 +29,7 @@ async function seedUser(opts: SeedUserOpts) {
       email: opts.email,
       passwordHash,
       emailVerified: true,
+      status: 'approved',
       sedeId: opts.sedeId,
       roles: { create: { role: opts.role ?? 'learner' } },
     },
@@ -160,15 +161,21 @@ describe('Multi-sede: creación de coaches', () => {
   });
 
   it('signup público NUNCA crea rol coach (siempre learner)', async () => {
+    // El signup ahora exige sede + coach de esa sede; usamos un coach de sede-a.
+    const coach = await prisma.user.findFirst({
+      where: { sedeId: sedeA.id, roles: { some: { role: 'coach' } } },
+      select: { id: true },
+    });
     const res = await request(app).post('/auth/signup').send({
-      email: 'public-signup@test',
+      email: 'public-signup@test.com',
       password: 'supersecret-abc',
       role: 'coach',         // intento de injection — debe ignorarse
       sede: 'sede-a',
+      coachId: coach!.id,
     });
     expect(res.status).toBe(201);
     const userRoles = await prisma.userRole.findMany({
-      where: { user: { email: 'public-signup@test' } },
+      where: { user: { email: 'public-signup@test.com' } },
       select: { role: true },
     });
     expect(userRoles.map((r) => r.role)).toEqual(['learner']);
@@ -181,7 +188,7 @@ describe('Multi-sede: creación de coaches', () => {
       .post('/api/admin/users')
       .set('Authorization', `Bearer ${token}`)
       .send({
-        email: 'nuevo-coach@test',
+        email: 'nuevo-coach@test.com',
         password: 'supersecret-abc',
         role: 'coach',
         sedeId: sedeA.id,
@@ -195,7 +202,7 @@ describe('Multi-sede: creación de coaches', () => {
       .post('/api/admin/users')
       .set('Authorization', `Bearer ${token}`)
       .send({
-        email: 'nuevo-coach@test',
+        email: 'nuevo-coach@test.com',
         password: 'supersecret-abc',
         role: 'coach',
         sedeId: sedeA.id,
@@ -216,7 +223,7 @@ describe('Multi-sede: creación de coaches', () => {
       .post('/api/admin/users')
       .set('Authorization', `Bearer ${token}`)
       .send({
-        email: 'nuevo-coach@test',
+        email: 'nuevo-coach@test.com',
         password: 'supersecret-abc',
         role: 'coach',
         sedeId: sedeB.id, // sede distinta
@@ -230,7 +237,7 @@ describe('Multi-sede: creación de coaches', () => {
       .post('/api/admin/users')
       .set('Authorization', `Bearer ${token}`)
       .send({
-        email: 'nuevo-learner@test',
+        email: 'nuevo-learner@test.com',
         password: 'supersecret-abc',
         role: 'learner',
         sedeId: sedeA.id,
@@ -244,7 +251,7 @@ describe('Multi-sede: creación de coaches', () => {
       .post('/api/admin/users')
       .set('Authorization', `Bearer ${token}`)
       .send({
-        email: 'coach-en-b@test',
+        email: 'coach-en-b@test.com',
         password: 'supersecret-abc',
         role: 'coach',
         sedeId: sedeB.id,

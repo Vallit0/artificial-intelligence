@@ -23,6 +23,7 @@ async function seedUser(opts: {
       email: opts.email,
       passwordHash,
       emailVerified: true,
+      status: 'approved',
       sedeId: opts.sedeId,
       firstName: opts.firstName,
       lastName: opts.lastName,

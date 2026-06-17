@@ -19,14 +19,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { type Coach, coachDisplayName } from "@/hooks/useCoaches";
-import { Award, Check, ChevronDown, ChevronUp, Clock, Eye, FileText, KeyRound, Lock, Pencil, Trash2, Unlock, UserPen } from "lucide-react";
+import { Award, Check, ChevronDown, ChevronUp, Clock, Eye, FileText, KeyRound, Lock, Pencil, Trash2, Unlock, UserCog, UserPen } from "lucide-react";
 import StudentDetailModal from "./StudentDetailModal";
 import GradeModal from "./GradeModal";
 import CertificateModal from "./CertificateModal";
 import DeleteUserModal from "./DeleteUserModal";
 import EditNameModal from "./EditNameModal";
+import EditUserModal from "./EditUserModal";
 import ResetStudentPasswordModal from "./ResetStudentPasswordModal";
 import { useToast } from "@/hooks/use-toast";
+import { UpdateUserPatch } from "@/hooks/useStudents";
 
 interface StudentListProps {
   students: Student[];
@@ -37,6 +39,10 @@ interface StudentListProps {
   coaches: Coach[];
   canAssignCoach: boolean;
   onAssignCoach: (userId: string, coachId: string | null) => Promise<boolean>;
+  // Edición unificada (admin global). Si no se provee, se cae al editor de
+  // nombre simple (que también pueden usar los coaches).
+  canEditUser?: boolean;
+  onUpdateUser?: (userId: string, patch: UpdateUserPatch) => Promise<boolean>;
 }
 
 const NO_COACH = "__none__";
@@ -50,7 +56,7 @@ const formatDuration = (seconds: number): string => {
   return `${minutes}m`;
 };
 
-export default function StudentList({ students, onAssignGrade, onToggleExamenFinal, onBulkToggleExamenFinal, onRefetch, coaches, canAssignCoach, onAssignCoach }: StudentListProps) {
+export default function StudentList({ students, onAssignGrade, onToggleExamenFinal, onBulkToggleExamenFinal, onRefetch, coaches, canAssignCoach, onAssignCoach, canEditUser, onUpdateUser }: StudentListProps) {
   const { toast } = useToast();
   const [assigningCoachId, setAssigningCoachId] = useState<string | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -58,6 +64,7 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
   const [certificateStudent, setCertificateStudent] = useState<Student | null>(null);
   const [deleteStudent, setDeleteStudent] = useState<Student | null>(null);
   const [editNameStudent, setEditNameStudent] = useState<Student | null>(null);
+  const [editUserStudent, setEditUserStudent] = useState<Student | null>(null);
   const [resetPasswordStudent, setResetPasswordStudent] = useState<Student | null>(null);
   const [sortBy, setSortBy] = useState<"name" | "sessions" | "grade">("sessions");
   const [sortAsc, setSortAsc] = useState(false);
@@ -388,15 +395,27 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
                   >
                     <Eye className="w-4 h-4" />
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => setEditNameStudent(student)}
-                    title="Editar nombre"
-                  >
-                    <UserPen className="w-4 h-4" />
-                  </Button>
+                  {canEditUser && onUpdateUser ? (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => setEditUserStudent(student)}
+                      title="Editar usuario"
+                    >
+                      <UserCog className="w-4 h-4" />
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => setEditNameStudent(student)}
+                      title="Editar nombre"
+                    >
+                      <UserPen className="w-4 h-4" />
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="icon"
@@ -493,6 +512,15 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
         onOpenChange={(open) => !open && setEditNameStudent(null)}
         onSuccess={onRefetch}
       />
+
+      {onUpdateUser && (
+        <EditUserModal
+          student={editUserStudent}
+          open={!!editUserStudent}
+          onOpenChange={(open) => !open && setEditUserStudent(null)}
+          onSubmit={onUpdateUser}
+        />
+      )}
 
       <ResetStudentPasswordModal
         student={resetPasswordStudent}

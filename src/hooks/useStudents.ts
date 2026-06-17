@@ -43,6 +43,23 @@ interface UseStudentsReturn {
   toggleExamenFinal: (userId: string, enabled: boolean) => Promise<boolean>;
   bulkToggleExamenFinal: (userIds: string[], enabled: boolean) => Promise<number | null>;
   assignCoach: (userId: string, coachId: string | null) => Promise<boolean>;
+  updateUser: (userId: string, patch: UpdateUserPatch) => Promise<boolean>;
+}
+
+// Campos editables vía el endpoint unificado PATCH /api/admin/users/:id.
+export interface UpdateUserPatch {
+  sedeId?: string;
+  roles?: string[];
+  email?: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  phoneNumber?: string | null;
+  coachId?: string | null;
+  examenFinalEnabled?: boolean;
+  level2Unlocked?: boolean;
+  courseCompleted?: boolean;
+  tutorialCompleted?: boolean;
+  emailVerified?: boolean;
 }
 
 export const useStudents = (): UseStudentsReturn => {
@@ -143,9 +160,22 @@ export const useStudents = (): UseStudentsReturn => {
     }
   };
 
+  // Edición unificada (admin global). El backend valida coach↔sede, roles y
+  // el cambio de email. Re-lanza el error para que el modal muestre el mensaje.
+  const updateUser = async (userId: string, patch: UpdateUserPatch): Promise<boolean> => {
+    try {
+      await api.patch(`/api/admin/users/${userId}`, patch);
+      await fetchStudents();
+      return true;
+    } catch (err) {
+      console.error("Error updating user:", err);
+      throw err;
+    }
+  };
+
   useEffect(() => {
     fetchStudents();
   }, [fetchStudents]);
 
-  return { students, isLoading, error, refetch: fetchStudents, assignGrade, toggleExamenFinal, bulkToggleExamenFinal, assignCoach };
+  return { students, isLoading, error, refetch: fetchStudents, assignGrade, toggleExamenFinal, bulkToggleExamenFinal, assignCoach, updateUser };
 };

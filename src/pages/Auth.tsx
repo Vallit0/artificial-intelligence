@@ -12,14 +12,15 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { usePublicSedes } from "@/hooks/useSedes";
+import { usePublicCoaches } from "@/hooks/usePublicCoaches";
 import { z } from "zod";
-import { ArrowLeft, Building2, Eye, EyeOff, Phone } from "lucide-react";
+import { ArrowLeft, Building2, CheckCircle2, Eye, EyeOff, Phone, UserCheck } from "lucide-react";
 import { ForgotPasswordModal } from "@/components/auth/ForgotPasswordModal";
 import AICompanionOrb from "@/components/AICompanionOrb";
 
 const authSchema = z.object({
   email: z.string().email("Email inválido"),
-  password: z.string().min(4, "La contraseña debe tener al menos 4 caracteres"),
+  password: z.string().min(12, "La contraseña debe tener al menos 12 caracteres"),
 });
 
 const Auth = () => {
@@ -31,19 +32,28 @@ const Auth = () => {
   const [lastName, setLastName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [sedeId, setSedeId] = useState("");
+  const [coachId, setCoachId] = useState("");
   const [loading, setLoading] = useState(false);
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [pendingApproval, setPendingApproval] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const { signIn, signUp } = useAuth();
   const { sedes, isLoading: sedesLoading } = usePublicSedes();
+  const { coaches, isLoading: coachesLoading } = usePublicCoaches(isLogin ? undefined : sedeId);
 
   useEffect(() => {
     if (!sedeId && sedes.length > 0) {
       setSedeId(sedes[0].id);
     }
   }, [sedes, sedeId]);
+
+  // Al cambiar de sede, el coach elegido ya no es válido (los coaches son por
+  // sede). Reseteamos la selección para forzar elegir uno de la nueva sede.
+  useEffect(() => {
+    setCoachId("");
+  }, [sedeId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,19 +85,26 @@ const Auth = () => {
           setLoading(false);
           return;
         }
+        if (!coachId) {
+          toast({
+            variant: "destructive",
+            title: "Falta coach",
+            description: "Selecciona el coach al que estarás asignado.",
+          });
+          setLoading(false);
+          return;
+        }
         await signUp(
           email,
           password,
           sedeId,
+          coachId,
           firstName || undefined,
           lastName || undefined,
           phoneNumber || undefined,
         );
-        toast({
-          title: "¡Cuenta creada!",
-          description: "Ya puedes comenzar a practicar",
-        });
-        navigate("/practice");
+        // No hay sesión: la cuenta queda pendiente de aprobación.
+        setPendingApproval(true);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error desconocido";
@@ -130,6 +147,29 @@ const Auth = () => {
           <AICompanionOrb size="md" listening={false} speaking={false} />
         </div>
 
+        {pendingApproval ? (
+          <div className="flex flex-col items-center text-center max-w-sm">
+            <CheckCircle2 className="w-12 h-12 text-primary mb-4" />
+            <h1
+              className="text-2xl font-extrabold text-foreground mb-2"
+              style={{ fontFamily: "'Nunito', 'DIN Rounded', -apple-system, sans-serif" }}
+            >
+              ¡Registro recibido!
+            </h1>
+            <p className="text-sm text-muted-foreground mb-8">
+              Tu cuenta quedó <strong>pendiente de aprobación</strong>. Un administrador o el
+              coach de tu sede revisará tu registro. Te avisaremos por correo cuando puedas
+              iniciar sesión.
+            </p>
+            <Button
+              onClick={() => navigate("/")}
+              className="w-full h-13 rounded-xl text-base font-bold tracking-wide"
+            >
+              Volver al inicio
+            </Button>
+          </div>
+        ) : (
+        <>
         <h1
           className="text-2xl font-extrabold text-foreground text-center mb-1"
           style={{ fontFamily: "'Nunito', 'DIN Rounded', -apple-system, sans-serif" }}
@@ -192,6 +232,34 @@ const Auth = () => {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="relative">
+                <UserCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10 pointer-events-none" />
+                <Select
+                  value={coachId}
+                  onValueChange={setCoachId}
+                  disabled={!sedeId || coachesLoading}
+                >
+                  <SelectTrigger className="h-13 bg-card border border-border rounded-xl pl-10 pr-4 text-foreground focus:border-primary transition-colors">
+                    <SelectValue
+                      placeholder={
+                        coachesLoading ? "Cargando coaches..." : "Seleccionar coach"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {coaches.length === 0 && !coachesLoading && (
+                      <SelectItem value="__none__" disabled>
+                        No hay coaches en esta sede
+                      </SelectItem>
+                    )}
+                    {coaches.map((coach) => (
+                      <SelectItem key={coach.id} value={coach.id}>
+                        {coach.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </>
           )}
 
@@ -211,7 +279,7 @@ const Auth = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              minLength={4}
+              minLength={isLogin ? undefined : 12}
               className="h-13 bg-card border border-border rounded-xl px-4 pr-24 text-foreground placeholder:text-muted-foreground focus:border-primary transition-colors"
             />
             <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
@@ -259,6 +327,8 @@ const Auth = () => {
           </a>
           .
         </p>
+        </>
+        )}
       </div>
 
       <ForgotPasswordModal

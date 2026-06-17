@@ -36,6 +36,7 @@ async function seedUser(opts: SeedUserOpts) {
       email: opts.email,
       passwordHash,
       emailVerified: true,
+      status: 'approved',
       sedeId: opts.sedeId,
       roles: { create: { role: opts.role ?? 'learner' } },
     },

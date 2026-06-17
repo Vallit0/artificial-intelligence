@@ -6,6 +6,11 @@
 
 import rateLimit from 'express-rate-limit';
 
+// En tests el limiter es contraproducente: la suite corre secuencialmente
+// (fileParallelism:false) contra el mismo app/IP y haría 429 a partir del
+// décimo login. Lo saltamos sólo en NODE_ENV=test; en dev/prod sigue activo.
+const skipInTests = () => process.env.NODE_ENV === 'test';
+
 // Login + signup: 10 requests / 15 min / IP. Counts all attempts (success or
 // fail) so a single IP can't pummel the endpoint even if credentials are
 // rotated.
@@ -14,6 +19,7 @@ export const authLimiter = rateLimit({
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: skipInTests,
   message: { error: 'Demasiados intentos, intenta de nuevo en 15 minutos.' },
 });
 
@@ -24,5 +30,6 @@ export const passwordResetLimiter = rateLimit({
   max: 5,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: skipInTests,
   message: { error: 'Demasiadas solicitudes de reset, intenta de nuevo en 1 hora.' },
 });

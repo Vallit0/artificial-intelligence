@@ -7,7 +7,15 @@ interface AuthContextType {
   isAdmin: boolean;
   roles: string[];
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, sede: string, firstName?: string, lastName?: string, phoneNumber?: string) => Promise<void>;
+  signUp: (
+    email: string,
+    password: string,
+    sede: string,
+    coachId: string,
+    firstName?: string,
+    lastName?: string,
+    phoneNumber?: string,
+  ) => Promise<{ status: string; message?: string }>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
   patchUser: (patch: Partial<ApiUser>) => void;
@@ -72,16 +80,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setRoles(meData.roles);
   }, []);
 
-  const signUp = useCallback(async (email: string, password: string, sede: string, firstName?: string, lastName?: string, phoneNumber?: string) => {
-    const data = await api.post<{
-      user: ApiUser;
-      accessToken: string;
-      refreshToken: string;
-    }>("/auth/signup", { email, password, sede, firstName, lastName, phoneNumber });
-
-    api.setTokens(data.accessToken, data.refreshToken);
-    setUser(data.user);
-    setRoles(["learner"]);
+  // Auto-registro con aprobación: el backend ya NO emite tokens. El usuario
+  // queda en estado `pending` hasta que un admin/coach lo apruebe, así que
+  // acá no seteamos sesión — sólo devolvemos el estado para que la UI muestre
+  // la pantalla de "pendiente de aprobación".
+  const signUp = useCallback(async (
+    email: string,
+    password: string,
+    sede: string,
+    coachId: string,
+    firstName?: string,
+    lastName?: string,
+    phoneNumber?: string,
+  ) => {
+    const data = await api.post<{ status: string; email: string; message?: string }>(
+      "/auth/signup",
+      { email, password, sede, coachId, firstName, lastName, phoneNumber },
+    );
+    return { status: data.status, message: data.message };
   }, []);
 
   const refreshUser = useCallback(async () => {

@@ -13,6 +13,38 @@ import { AuthUser } from '../types/index.js';
 import { BadRequestError, NotFoundError } from '../utils/errors.js';
 import { getSedeScope, isGlobalAdmin } from '../middleware/sedeScope.js';
 
+// Listado PÚBLICO de coaches de una sede, para el selector del formulario de
+// auto-registro (el usuario aún no tiene sesión). Acepta la sede como UUID o
+// slug y expone sólo { id, name } — nada sensible (sin email, sin permisos).
+// Sólo coaches aprobados de una sede activa.
+export async function listPublicCoachesBySede(sedeRef: string) {
+  if (!sedeRef || typeof sedeRef !== 'string') {
+    throw new BadRequestError('sedeId es requerido');
+  }
+  const sede = await prisma.sede.findFirst({
+    where: { isActive: true, OR: [{ id: sedeRef }, { slug: sedeRef }] },
+    select: { id: true },
+  });
+  if (!sede) {
+    throw new BadRequestError('Sede inválida o inactiva');
+  }
+
+  const coaches = await prisma.user.findMany({
+    where: {
+      sedeId: sede.id,
+      status: 'approved',
+      roles: { some: { role: 'coach' } },
+    },
+    select: { id: true, firstName: true, lastName: true, email: true },
+    orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
+  });
+
+  return coaches.map((c) => ({
+    id: c.id,
+    name: [c.firstName, c.lastName].filter(Boolean).join(' ') || c.email,
+  }));
+}
+
 export async function listCoaches(caller: AuthUser) {
   const scope = getSedeScope(caller);
   const where: any = {

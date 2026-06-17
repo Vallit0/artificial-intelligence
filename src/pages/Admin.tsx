@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAuth } from "@/hooks/useAuth";
 import { useStudents } from "@/hooks/useStudents";
-import { Activity, BarChart3, Building2, Clock, Download, GraduationCap, Loader2, Play, Plus, Search, Shield, Timer, Upload, Users } from "lucide-react";
+import { Activity, BarChart3, Building2, Clock, Download, GraduationCap, Loader2, Play, Plus, Search, Shield, Timer, Upload, UserCheck, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -19,6 +19,7 @@ import LatencyTesterPanel from "@/components/admin/LatencyTesterPanel";
 import AgentLatencyPanel from "@/components/admin/AgentLatencyPanel";
 import SedesPanel from "@/components/admin/SedesPanel";
 import CoachesPanel from "@/components/admin/CoachesPanel";
+import PendingApprovalsPanel from "@/components/admin/PendingApprovalsPanel";
 import CoachStudentsPanel from "@/components/admin/CoachStudentsPanel";
 import LeftSidebar from "@/components/scenarios/LeftSidebar";
 import MobileNavigation from "@/components/MobileNavigation";
@@ -36,7 +37,7 @@ export default function Admin() {
   const isCoachOnly = isCoach && !isAdmin;
   const canSeeProspecting = !isCoachOnly || !!user?.coachPermissions?.canEditPrompts;
   const canSeeCoachesTab = isAdmin || !!user?.coachPermissions?.canCreateCoaches;
-  const { students, isLoading: studentsLoading, assignGrade, toggleExamenFinal, bulkToggleExamenFinal, assignCoach, refetch } = useStudents();
+  const { students, isLoading: studentsLoading, assignGrade, toggleExamenFinal, bulkToggleExamenFinal, assignCoach, updateUser, refetch } = useStudents();
   // Sólo admin global puede asignar coaches; gateamos el fetch para no
   // disparar un 403 en coaches sin permiso de listado.
   const { coaches } = useCoaches(isAdmin);
@@ -107,6 +108,10 @@ export default function Admin() {
         <Tabs defaultValue="students" className="space-y-4">
           <TabsList className="flex-wrap h-auto">
             <TabsTrigger value="students">Estudiantes</TabsTrigger>
+            <TabsTrigger value="pending" className="flex items-center gap-1">
+              <UserCheck className="w-3.5 h-3.5" />
+              Pendientes
+            </TabsTrigger>
             {isAdmin && (
               <TabsTrigger value="sedes" className="flex items-center gap-1">
                 <Building2 className="w-3.5 h-3.5" />
@@ -314,11 +319,17 @@ export default function Admin() {
                   coaches={coaches}
                   canAssignCoach={isAdmin}
                   onAssignCoach={assignCoach}
+                  canEditUser={isAdmin}
+                  onUpdateUser={updateUser}
                 />
               )}
             </ScrollArea>
           </CardContent>
         </Card>
+          </TabsContent>
+
+          <TabsContent value="pending">
+            <PendingApprovalsPanel />
           </TabsContent>
 
           <TabsContent value="analytics">

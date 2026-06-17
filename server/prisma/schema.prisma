@@ -32,6 +32,16 @@ enum ExperimentStatus {
   completed
 }
 
+// Estado de la cuenta en el flujo de auto-registro con aprobación.
+// pending: el usuario se registró y espera el visto bueno de un admin
+// global o del coach de su sede. approved: puede iniciar sesión.
+// rejected: el registro fue rechazado (no puede entrar; se le notifica).
+enum AccountStatus {
+  pending
+  approved
+  rejected
+}
+
 enum PricingService {
   elevenlabs
   openai
@@ -96,6 +106,15 @@ model User {
   // sea false, /practice dispara el onboarding tour. Default false para todos,
   // así los usuarios existentes lo ven como reintroducción a la plataforma.
   tutorialCompleted  Boolean  @default(false) @map("tutorial_completed")
+  // Flujo de auto-registro con aprobación. Los usuarios que se auto-registran
+  // nacen `pending` y no pueden iniciar sesión hasta que un admin global o el
+  // coach de su sede los apruebe. Los usuarios creados desde el panel admin se
+  // crean directamente `approved`. La migración hace backfill = approved para
+  // todos los usuarios preexistentes (eran de antes de este flujo).
+  status             AccountStatus @default(pending)
+  approvedBy         String?  @map("approved_by")      // userId del aprobador
+  approvedAt         DateTime? @map("approved_at")
+  rejectedReason     String?  @map("rejected_reason")  // motivo opcional (rechazo)
   sedeId             String?  @map("sede_id")
   // Coach asignado (auto-relación). Sólo lo asigna un admin global y debe ser
   // un usuario con rol coach de la MISMA sede que el learner; al borrar el
@@ -123,6 +142,7 @@ model User {
   @@index([email])
   @@index([sedeId])
   @@index([coachId])
+  @@index([status])
   @@map("users")
 }
 

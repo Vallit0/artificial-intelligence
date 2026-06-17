@@ -85,19 +85,19 @@ export async function signup(
   email: string,
   password: string,
   sedeIdOrSlug: string,
+  coachId: string,
   firstName?: string,
   lastName?: string,
   phoneNumber?: string,
-): Promise<{
-  user: AuthUser;
-  accessToken: string;
-  refreshToken: string;
-}> {
+): Promise<{ status: 'pending'; email: string }> {
   if (!email || !password) {
     throw new BadRequestError('Email and password required');
   }
   if (!sedeIdOrSlug || typeof sedeIdOrSlug !== 'string') {
     throw new BadRequestError('Sede es requerida');
+  }
+  if (!coachId || typeof coachId !== 'string') {
+    throw new BadRequestError('Coach es requerido');
   }
 
   // Acepta sede como UUID o como slug — la UI puede mandar cualquiera.
@@ -114,6 +114,22 @@ export async function signup(
     throw new BadRequestError('Sede inválida o inactiva');
   }
 
+  // El coach elegido debe existir, tener rol coach, estar aprobado y pertenecer
+  // a la sede elegida — mismo invariante que aplica el panel admin al asignar
+  // coaches (aislamiento duro entre sedes).
+  const coach = await prisma.user.findUnique({
+    where: { id: coachId },
+    select: { id: true, sedeId: true, status: true, roles: { select: { role: true } } },
+  });
+  if (
+    !coach ||
+    coach.status !== 'approved' ||
+    !coach.roles.some((r) => r.role === 'coach') ||
+    coach.sedeId !== sede.id
+  ) {
+    throw new BadRequestError('Coach inválido para la sede seleccionada');
+  }
+
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
     throw new ConflictError('User already exists');
@@ -121,34 +137,27 @@ export async function signup(
 
   const passwordHash = await hashPassword(password);
 
+  // Auto-registro: el usuario nace `pending` y NO se le emiten tokens. Queda
+  // a la espera del visto bueno de un admin global o del coach de su sede.
   // Signup público NUNCA crea rol coach — los coaches se crean exclusivamente
   // desde el panel admin (admin global o coach con canCreateCoaches).
-  const user = await prisma.user.create({
+  await prisma.user.create({
     data: {
       email,
       passwordHash,
       firstName: firstName || null,
       lastName: lastName || null,
       phoneNumber: phoneNumber || null,
-      emailVerified: true,
+      status: 'pending',
       sedeId: sede.id,
+      coachId: coach.id,
       roles: {
         create: { role: 'learner' },
       },
     },
   });
 
-  const authUser = await loadAuthUser(user.id);
-  if (!authUser) {
-    throw new NotFoundError('User not found after signup');
-  }
-
-  const accessToken = generateAccessToken(authUser);
-  const refreshToken = generateRefreshToken(authUser);
-
-  await storeRefreshToken(user.id, refreshToken);
-
-  return { user: authUser, accessToken, refreshToken };
+  return { status: 'pending', email };
 }
 
 export async function login(email: string, password: string): Promise<{
@@ -173,6 +182,20 @@ export async function login(email: string, password: string): Promise<{
   const validPassword = await comparePassword(password, user.passwordHash);
   if (!validPassword) {
     throw new UnauthorizedError('Invalid credentials');
+  }
+
+  // Gate de aprobación: un usuario auto-registrado no puede entrar hasta que
+  // un admin global o el coach de su sede lo apruebe. Mensajes distintos para
+  // pending vs rejected para que el frontend los muestre con claridad.
+  if (user.status === 'pending') {
+    throw new UnauthorizedError('Tu cuenta está pendiente de aprobación.');
+  }
+  if (user.status === 'rejected') {
+    throw new UnauthorizedError(
+      user.rejectedReason
+        ? `Tu registro no fue aprobado: ${user.rejectedReason}`
+        : 'Tu registro no fue aprobado.',
+    );
   }
 
   const authUser = await loadAuthUser(user.id);

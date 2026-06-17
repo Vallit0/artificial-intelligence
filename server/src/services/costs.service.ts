@@ -123,10 +123,12 @@ async function fetchRawAggregates(query: CostsQuery, sedeIdsAllowed: string[] | 
   const params: unknown[] = [from, to];
 
   if (sedeIdsAllowed && sedeIdsAllowed.length > 0) {
-    conditions.push(`u.sede_id = ANY($${params.length + 1}::uuid[])`);
+    // sede_id es TEXT (Prisma mapea String → text), así que el array param
+    // se castea a text[] — no uuid[] — o Postgres lanza 42883 (text = uuid).
+    conditions.push(`u.sede_id = ANY($${params.length + 1}::text[])`);
     params.push(sedeIdsAllowed);
   } else if (sedeIdFilter) {
-    conditions.push(`u.sede_id = $${params.length + 1}::uuid`);
+    conditions.push(`u.sede_id = $${params.length + 1}::text`);
     params.push(sedeIdFilter);
   }
 

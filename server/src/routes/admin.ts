@@ -20,6 +20,9 @@ import * as aiAccessService from '../services/aiAccess.service.js';
 import * as latencyProbeService from '../services/latencyProbe.service.js';
 import * as costsService from '../services/costs.service.js';
 import * as pricingService from '../services/pricing.service.js';
+import { sendAccountApprovedEmail, sendAccountRejectedEmail } from '../services/email.service.js';
+import config from '../config/index.js';
+import { getLogger } from '../utils/logger.js';
 import prisma from '../db/index.js';
 
 export const adminRouter = Router();
@@ -102,6 +105,210 @@ adminRouter.patch('/users/:id/coach', requireGlobalAdmin, async (req: AuthReques
       return;
     }
     const result = await adminService.assignCoach(req.params.id, parsed.data.coachId, req.user!);
+    res.json(result);
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
+// ============================================
+// GET /api/admin/users/pending - Bandeja de aprobación (admin global o coach)
+// ============================================
+/**
+ * @openapi
+ * /api/admin/users/pending:
+ *   get:
+ *     tags: [Admin]
+ *     summary: Lista los registros pendientes de aprobación
+ *     description: >-
+ *       Usuarios auto-registrados en estado `pending`. Admin global ve todas las
+ *       sedes; un coach/instructor ve sólo los de su propia sede.
+ *     responses:
+ *       200: { description: Usuarios pendientes }
+ *       403: { description: No autorizado }
+ */
+adminRouter.get('/users/pending', async (req: AuthRequest, res: Response) => {
+  try {
+    const pending = await adminService.listPendingUsers(req.user!);
+    res.json(pending);
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
+// ============================================
+// PATCH /api/admin/users/:id/approval - Aprobar/rechazar (admin global o coach de sede)
+// ============================================
+const approvalSchema = z.object({
+  decision: z.enum(['approve', 'reject']),
+  reason: z.string().max(500).optional(),
+});
+/**
+ * @openapi
+ * /api/admin/users/{id}/approval:
+ *   patch:
+ *     tags: [Admin]
+ *     summary: Aprueba o rechaza un registro pendiente
+ *     description: >-
+ *       Accesible a admin global o al coach de la sede del usuario (un coach de
+ *       otra sede recibe 404). Al aprobar/rechazar se notifica al usuario por
+ *       correo (el fallo del correo no bloquea la decisión).
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [decision]
+ *             properties:
+ *               decision: { type: string, enum: [approve, reject] }
+ *               reason: { type: string, description: Motivo opcional (rechazo) }
+ *     responses:
+ *       200: { description: Decisión aplicada }
+ *       400: { description: Decisión inválida o usuario ya procesado, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+ *       404: { description: Usuario no encontrado o de otra sede, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+ */
+adminRouter.patch('/users/:id/approval', async (req: AuthRequest, res: Response) => {
+  try {
+    const parsed = approvalSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "decision debe ser 'approve' o 'reject'" });
+      return;
+    }
+    const result = await adminService.setUserApproval(
+      req.params.id,
+      parsed.data.decision,
+      req.user!,
+      parsed.data.reason,
+    );
+
+    // Notificación al usuario. Best-effort: un fallo de correo no debe revertir
+    // la decisión ya persistida (mismo patrón que forgot-password).
+    try {
+      if (result.status === 'approved') {
+        await sendAccountApprovedEmail(result.email, `${config.appUrl}/login`);
+      } else {
+        await sendAccountRejectedEmail(result.email, parsed.data.reason);
+      }
+    } catch (err) {
+      getLogger({ component: 'admin', op: 'approval-email' }).error(
+        { err, email: result.email, status: result.status },
+        'Failed to send approval/rejection email',
+      );
+    }
+
+    res.json(result);
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
+// ============================================
+// PATCH /api/admin/users/:id - Edición unificada de usuario (admin global)
+// ============================================
+const updateUserSchema = z
+  .object({
+    sedeId: z.string().min(1).optional(),
+    roles: z.array(z.enum(['learner', 'coach', 'instructor', 'admin'])).optional(),
+    email: z.string().email().optional(),
+    firstName: z.string().nullable().optional(),
+    lastName: z.string().nullable().optional(),
+    phoneNumber: z.string().nullable().optional(),
+    coachId: z.string().uuid().nullable().optional(),
+    examenFinalEnabled: z.boolean().optional(),
+    level2Unlocked: z.boolean().optional(),
+    courseCompleted: z.boolean().optional(),
+    tutorialCompleted: z.boolean().optional(),
+    emailVerified: z.boolean().optional(),
+  })
+  .strict();
+/**
+ * @openapi
+ * /api/admin/users/{id}:
+ *   patch:
+ *     tags: [Admin]
+ *     summary: Edita campos de un usuario (sólo admin global)
+ *     description: >-
+ *       Acepta cualquier subconjunto de campos. Al cambiar la sede (`sedeId`)
+ *       hay que indicar el `coachId` de la sede destino (o `null`); el coach
+ *       debe pertenecer a esa sede. Reescribir `roles` reemplaza el set completo.
+ *       Cambiar el `email` invalida las sesiones activas del usuario.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               sedeId: { type: string, description: UUID o slug de la sede destino }
+ *               roles: { type: array, items: { type: string, enum: [learner, coach, instructor, admin] } }
+ *               email: { type: string, format: email }
+ *               firstName: { type: string, nullable: true }
+ *               lastName: { type: string, nullable: true }
+ *               phoneNumber: { type: string, nullable: true }
+ *               coachId: { type: string, format: uuid, nullable: true }
+ *               examenFinalEnabled: { type: boolean }
+ *               level2Unlocked: { type: boolean }
+ *               courseCompleted: { type: boolean }
+ *               tutorialCompleted: { type: boolean }
+ *               emailVerified: { type: boolean }
+ *     responses:
+ *       200: { description: Usuario actualizado }
+ *       400: { description: Datos inválidos, sede/coach inválidos o guardrail violado, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+ *       403: { description: No es admin global, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+ *       404: { description: Usuario no encontrado, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+ *       409: { description: El email ya está registrado, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+ */
+adminRouter.patch('/users/:id', requireGlobalAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const parsed = updateUserSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Datos de actualización inválidos' });
+      return;
+    }
+    const result = await adminService.updateUser(req.params.id, parsed.data, req.user!);
+    res.json(result);
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
+// ============================================
+// GET /api/admin/users/:id - Detalle editable (admin global) — alimenta el modal
+// ============================================
+/**
+ * @openapi
+ * /api/admin/users/{id}:
+ *   get:
+ *     tags: [Admin]
+ *     summary: Detalle editable de un usuario (sólo admin global)
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200: { description: Detalle del usuario (roles, flags, sede, coach) }
+ *       403: { description: No es admin global }
+ *       404: { description: Usuario no encontrado }
+ */
+adminRouter.get('/users/:id', requireGlobalAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await adminService.getEditableUser(req.params.id, req.user!);
     res.json(result);
   } catch (error) {
     const appError = handleError(error);

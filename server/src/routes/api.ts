@@ -10,6 +10,7 @@ import * as progressController from '../controllers/progress.controller.js';
 import * as analyticsController from '../controllers/analytics.controller.js';
 import * as prospectingScenariosService from '../services/prospectingScenarios.service.js';
 import * as sedesService from '../services/sedes.service.js';
+import * as coachesService from '../services/coaches.service.js';
 import { AuthRequest } from '../types/index.js';
 import { handleError } from '../utils/errors.js';
 
@@ -84,6 +85,47 @@ apiRouter.get('/sedes', async (req: AuthRequest, res: Response) => {
   try {
     const sedes = await sedesService.listSedes();
     res.json(sedes.map((s) => ({ id: s.id, slug: s.slug, name: s.name, country: s.country })));
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
+// Lista pública de coaches de una sede — usada por el selector de coach en el
+// signup (obligatorio). Devuelve sólo { id, name }. Requiere ?sedeId= (UUID o
+// slug); sin él responde 400.
+/**
+ * @openapi
+ * /api/coaches:
+ *   get:
+ *     tags: [Users]
+ *     summary: Lista pública de coaches de una sede
+ *     description: Usada por el selector de coach en el signup. Requiere sedeId (UUID o slug). Devuelve sólo id y name.
+ *     security: []
+ *     parameters:
+ *       - in: query
+ *         name: sedeId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Lista de coaches de la sede
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id: { type: string, format: uuid }
+ *                   name: { type: string }
+ *       400: { description: sedeId faltante o sede inválida }
+ */
+apiRouter.get('/coaches', async (req: AuthRequest, res: Response) => {
+  try {
+    const sedeRef = (req.query.sedeId ?? req.query.sede) as string | undefined;
+    const coaches = await coachesService.listPublicCoachesBySede(sedeRef ?? '');
+    res.json(coaches);
   } catch (error) {
     const appError = handleError(error);
     res.status(appError.statusCode).json({ error: appError.message });

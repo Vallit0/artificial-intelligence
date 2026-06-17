@@ -21,7 +21,11 @@ export const authRouter = Router();
  * /auth/signup:
  *   post:
  *     tags: [Auth]
- *     summary: Crea una cuenta nueva
+ *     summary: Crea una cuenta nueva (queda pendiente de aprobación)
+ *     description: >-
+ *       Auto-registro: el usuario elige sede y coach (obligatorios) y queda en
+ *       estado `pending`. NO se emiten tokens; debe esperar el visto bueno de un
+ *       admin global o del coach de su sede antes de poder iniciar sesión.
  *     security: []
  *     requestBody:
  *       required: true
@@ -29,20 +33,28 @@ export const authRouter = Router();
  *         application/json:
  *           schema:
  *             type: object
- *             required: [email, password]
+ *             required: [email, password, sedeId, coachId]
  *             properties:
  *               email: { type: string, format: email }
- *               password: { type: string, minLength: 4 }
+ *               password: { type: string, minLength: 12 }
+ *               sedeId: { type: string, description: UUID o slug de la sede (requerido) }
+ *               sede: { type: string, description: Alias de sedeId }
+ *               coachId: { type: string, format: uuid, description: Coach elegido, debe ser de la sede (requerido) }
  *               firstName: { type: string }
  *               lastName: { type: string }
  *               phoneNumber: { type: string }
  *     responses:
  *       201:
- *         description: Usuario creado y autenticado
+ *         description: Registro recibido, pendiente de aprobación
  *         content:
  *           application/json:
- *             schema: { $ref: '#/components/schemas/AuthTokens' }
- *       400: { description: Email ya registrado o datos inválidos, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status: { type: string, example: pending }
+ *                 email: { type: string, format: email }
+ *                 message: { type: string }
+ *       400: { description: Email ya registrado, sede/coach inválidos o datos inválidos, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
  *       429: { description: Demasiados intentos }
  */
 authRouter.post('/signup', authLimiter, authController.signup);

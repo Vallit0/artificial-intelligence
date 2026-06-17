@@ -13,16 +13,18 @@ import { handleError } from '../utils/errors.js';
 // ============================================
 export async function signup(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { email, password, firstName, lastName, phoneNumber, sede, sedeId } = req.body;
+    const { email, password, firstName, lastName, phoneNumber, sede, sedeId, coachId } = req.body;
     // Aceptamos `sede` (UUID o slug) o `sedeId` (UUID) — la UI puede mandar
     // cualquiera de los dos, ambas formas resuelven contra Sede en el servicio.
     const sedeRef = sede ?? sedeId;
-    const result = await authService.signup(email, password, sedeRef, firstName, lastName, phoneNumber);
-    
+    const result = await authService.signup(email, password, sedeRef, coachId, firstName, lastName, phoneNumber);
+
+    // Auto-registro con aprobación: NO se emiten tokens. El usuario queda
+    // pendiente del visto bueno de un admin/coach de su sede.
     res.status(201).json({
-      user: result.user,
-      accessToken: result.accessToken,
-      refreshToken: result.refreshToken,
+      status: result.status,
+      email: result.email,
+      message: 'Registro recibido. Tu cuenta queda pendiente de aprobación.',
     });
   } catch (error) {
     const appError = handleError(error);
