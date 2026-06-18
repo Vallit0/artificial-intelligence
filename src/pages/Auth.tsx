@@ -18,7 +18,16 @@ import { ArrowLeft, Building2, CheckCircle2, Eye, EyeOff, Phone, UserCheck } fro
 import { ForgotPasswordModal } from "@/components/auth/ForgotPasswordModal";
 import AICompanionOrb from "@/components/AICompanionOrb";
 
-const authSchema = z.object({
+// El mínimo de 12 caracteres es una regla de CREACIÓN de cuenta, no de login.
+// Al iniciar sesión sólo autenticamos una credencial ya existente (p. ej. el
+// admin quemado o usuarios legacy con contraseñas más cortas), así que ahí sólo
+// exigimos que no esté vacía. El backend valida el hash en ambos casos.
+const loginSchema = z.object({
+  email: z.string().email("Email inválido"),
+  password: z.string().min(1, "Ingresa tu contraseña"),
+});
+
+const signupSchema = z.object({
   email: z.string().email("Email inválido"),
   password: z.string().min(12, "La contraseña debe tener al menos 12 caracteres"),
 });
@@ -59,7 +68,7 @@ const Auth = () => {
     e.preventDefault();
     setLoading(true);
 
-    const validation = authSchema.safeParse({ email, password });
+    const validation = (isLogin ? loginSchema : signupSchema).safeParse({ email, password });
     if (!validation.success) {
       toast({
         variant: "destructive",
