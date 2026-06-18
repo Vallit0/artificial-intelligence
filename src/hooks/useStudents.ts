@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { api } from "@/lib/api-client";
+import { EMPTY_PERIOD, periodToQueryString, type Period } from "@/lib/period";
 
 export interface StudentSession {
   id: string;
@@ -62,17 +63,18 @@ export interface UpdateUserPatch {
   emailVerified?: boolean;
 }
 
-export const useStudents = (): UseStudentsReturn => {
+export const useStudents = (period: Period = EMPTY_PERIOD): UseStudentsReturn => {
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const qs = periodToQueryString(period);
 
   const fetchStudents = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
 
-      const data = await api.get<any[]>("/api/admin/students");
+      const data = await api.get<any[]>(`/api/admin/students${qs}`);
 
       const studentsWithData: Student[] = (data || []).map((s) => ({
         id: s.id,
@@ -104,7 +106,7 @@ export const useStudents = (): UseStudentsReturn => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [qs]);
 
   const assignGrade = async (
     userId: string,

@@ -30,6 +30,7 @@ export async function createSession(userId: string, input: CreateSessionInput): 
       userId,
       scenarioId: input.scenarioId || null,
       examType: input.examType || null,
+      practiceMode: input.practiceMode || null,
       durationSeconds: input.durationSeconds || 0,
       passed: false,
       rating: input.rating || null,
@@ -319,6 +320,7 @@ function mapToSession(row: any): PracticeSession {
     transcript: row.transcript || undefined,
     abVariantId: row.abVariantId || undefined,
     examType: row.examType || undefined,
+    practiceMode: row.practiceMode || undefined,
     breakdown: row.evaluationBreakdown ? {
       apertura: row.evaluationBreakdown.apertura,
       escuchaActiva: row.evaluationBreakdown.escuchaActiva,

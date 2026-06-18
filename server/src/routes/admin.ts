@@ -8,6 +8,7 @@ import { authMiddleware, requireRole } from '../middleware/auth.js';
 import { requireGlobalAdmin, canEditPrompts } from '../middleware/sedeScope.js';
 import { AuthRequest } from '../types/index.js';
 import { handleError, BadRequestError, ForbiddenError } from '../utils/errors.js';
+import { parseDateRange } from '../utils/dateRange.js';
 import * as adminService from '../services/admin.service.js';
 import * as sedesService from '../services/sedes.service.js';
 import * as coachesService from '../services/coaches.service.js';
@@ -48,13 +49,24 @@ adminRouter.use(requireRole('admin', 'coach'));
  *   get:
  *     tags: [Admin]
  *     summary: Lista todos los estudiantes con métricas agregadas
+ *     description: >-
+ *       Las métricas de uso (sesiones, tiempo, promedios) se pueden acotar a un
+ *       período con from/to (ISO). Sin ellos, son históricas.
+ *     parameters:
+ *       - in: query
+ *         name: from
+ *         schema: { type: string, format: date-time }
+ *       - in: query
+ *         name: to
+ *         schema: { type: string, format: date-time }
  *     responses:
  *       200: { description: Estudiantes }
  *       403: { description: No es admin }
  */
 adminRouter.get('/students', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const students = await adminService.getAllStudents(req.user!);
+    const range = parseDateRange(req.query);
+    const students = await adminService.getAllStudents(req.user!, range);
     res.json(students);
   } catch (error) {
     const appError = handleError(error);
@@ -1488,11 +1500,48 @@ adminRouter.get('/analytics', analyticsController.getAdminAnalytics);
  *       Métricas de USO agregadas por sede — tiempo total de práctica, número de
  *       sesiones y estudiantes activos. No incluye calificaciones ni competencias.
  *       Sede-aware: admin global ve todas las sedes; un coach/instructor sólo la suya.
+ *       Filtrable por período con from/to (ISO); sin ellos, es histórico.
+ *     parameters:
+ *       - in: query
+ *         name: from
+ *         schema: { type: string, format: date-time }
+ *       - in: query
+ *         name: to
+ *         schema: { type: string, format: date-time }
  *     responses:
  *       200: { description: Analíticas de uso por sede }
  *       403: { description: Acceso denegado }
  */
 adminRouter.get('/analytics/usage', analyticsController.getAdminUsage);
+
+/**
+ * @openapi
+ * /api/admin/analytics/time-by-mode:
+ *   get:
+ *     tags: [Admin]
+ *     summary: Desglose del tiempo de práctica por modo
+ *     description: >-
+ *       Tiempo total y por alumno desglosado por modo de práctica: Role-Play
+ *       Cliente (con su sub-modo Prospección), Role-Play Objeciones, Asesor,
+ *       Coach, exámenes finales y "Sin clasificar" (sesiones previas a la
+ *       feature). Admin global ve todo (o una sede vía ?sedeId); un coach ve
+ *       sólo sus alumnos asignados. Filtrable por período con from/to (ISO).
+ *     parameters:
+ *       - in: query
+ *         name: sedeId
+ *         description: Sólo admin global — filtra a una sede específica
+ *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: from
+ *         schema: { type: string, format: date-time }
+ *       - in: query
+ *         name: to
+ *         schema: { type: string, format: date-time }
+ *     responses:
+ *       200: { description: Desglose de tiempo por modo }
+ *       403: { description: Acceso denegado }
+ */
+adminRouter.get('/analytics/time-by-mode', analyticsController.getTimeByMode);
 
 // ============================================
 // Cost Analytics

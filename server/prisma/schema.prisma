@@ -240,6 +240,12 @@ model PracticeSession {
   // Distingue los dos exámenes, que ambos corren con scenarioId == null, para
   // gradear/trackear/reportar por separado.
   examType        String?  @map("exam_type")
+  // Modo de práctica con el que corrió la sesión. Se fija al crear la sesión y
+  // permite desglosar el tiempo de práctica por modo en analítica (el examType
+  // sólo cubre los dos exámenes finales). Valores: 'cliente',
+  // 'cliente_prospeccion' (sub-modo de Cliente), 'asesor', 'objeciones',
+  // 'coach'. null = sesiones previas a esta feature (Sin clasificar).
+  practiceMode    String?  @map("practice_mode")
   durationSeconds Int      @default(0) @map("duration_seconds")
   score           Int?
   passed          Boolean  @default(false)
@@ -259,6 +265,7 @@ model PracticeSession {
   @@index([userId, createdAt(sort: Desc)])
   @@index([scenarioId])
   @@index([abVariantId])
+  @@index([practiceMode])
   @@map("practice_sessions")
 }
 

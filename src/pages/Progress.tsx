@@ -4,6 +4,8 @@ import PracticeTimer from "@/components/PracticeTimer";
 import CelebrationModal from "@/components/CelebrationModal";
 import { Award, Clock, TrendingUp, Flame, Calendar, Star, Trophy, Target, Zap, Phone, Crown, Sparkles, CheckCircle2, Lock, Play } from "lucide-react";
 import { usePracticeSessions } from "@/hooks/usePracticeSessions";
+import { aggregateTimeByMode } from "@/lib/time-by-mode";
+import { TimeByModeBreakdown } from "@/components/analytics/TimeByModeBreakdown";
 import { formatDistanceToNow, startOfWeek, endOfWeek, isWithinInterval, startOfDay, differenceInCalendarDays } from "date-fns";
 import { es } from "date-fns/locale";
 import LeftSidebar from "@/components/scenarios/LeftSidebar";
@@ -23,9 +25,24 @@ const Progress = () => {
   const [hasSeenCelebration, setHasSeenCelebration] = useState(false);
   const [replaySessionId, setReplaySessionId] = useState<string | null>(null);
 
-  // Check if user has reached the target
+  // Desglose de tiempo por modo. La "primera parte" (Nivel 1) sólo cuenta la
+  // familia Role-Play Cliente (cliente + prospección) para la certificación.
+  const timeByMode = useMemo(
+    () =>
+      aggregateTimeByMode(
+        sessions.map((s) => ({
+          durationSeconds: s.duration_seconds,
+          practiceMode: s.practice_mode,
+          examType: s.exam_type,
+        })),
+      ),
+    [sessions],
+  );
+  const clienteTime = timeByMode.roleplayClienteSeconds;
+
+  // Check if user has reached the target (sólo cuenta Role-Play Cliente)
   useEffect(() => {
-    if (totalPracticeTime >= TARGET_TIME && !hasSeenCelebration && !isLoading) {
+    if (clienteTime >= TARGET_TIME && !hasSeenCelebration && !isLoading) {
       const celebrated = localStorage.getItem("certification_celebrated");
       if (!celebrated) {
         setShowCelebration(true);
@@ -95,7 +112,7 @@ const Progress = () => {
   };
 
   const recentSessions = sessions.slice(0, 8);
-  const progressPercent = Math.min(100, Math.round((totalPracticeTime / TARGET_TIME) * 100));
+  const progressPercent = Math.min(100, Math.round((clienteTime / TARGET_TIME) * 100));
 
   // ============================================
   // Mini Milestones
@@ -288,18 +305,24 @@ const Progress = () => {
                     </CardHeader>
                     <CardContent>
                       <PracticeTimer
-                        totalSeconds={totalPracticeTime}
+                        totalSeconds={clienteTime}
                         targetSeconds={TARGET_TIME}
                         className="mb-4"
                       />
                       <p className="text-sm text-muted-foreground text-center">
-                        {totalPracticeTime >= TARGET_TIME
-                          ? "¡Felicidades! Has completado las 2 horas de práctica requeridas."
-                          : `Necesitas ${formatDuration(TARGET_TIME - totalPracticeTime)} más para obtener tu certificación.`
+                        {clienteTime >= TARGET_TIME
+                          ? "¡Felicidades! Has completado la práctica de Role-Play Cliente requerida."
+                          : `Necesitas ${formatDuration(TARGET_TIME - clienteTime)} más de Role-Play Cliente para obtener tu certificación.`
                         }
+                      </p>
+                      <p className="mt-1 text-center text-xs text-muted-foreground/70">
+                        Sólo cuenta el tiempo de Role-Play Cliente (incluye Prospección).
                       </p>
                     </CardContent>
                   </Card>
+
+                  {/* Desglose de tiempo por modo */}
+                  <TimeByModeBreakdown data={timeByMode} title="Tu tiempo de práctica por modo" />
 
                   {/* Mini Milestones */}
                   <Card>

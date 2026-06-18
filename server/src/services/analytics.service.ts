@@ -5,6 +5,103 @@
 import prisma from '../db/index.js';
 import { AuthUser } from '../types/index.js';
 import { getSedeScope } from '../middleware/sedeScope.js';
+import { DateRange, createdAtWhere } from '../utils/dateRange.js';
+
+// ============================================
+// Desglose de tiempo de práctica por modo
+// ============================================
+//
+// La "primera parte" (Nivel 1) cuenta SÓLO la familia Role-Play Cliente, dentro
+// de la cual Prospección es un sub-modo. Los exámenes finales se reportan aparte
+// (no son práctica). Las sesiones previas a esta feature no tienen practiceMode
+// y caen en `sinClasificar`.
+
+export interface TimeByMode {
+  roleplayClienteSeconds: number;   // familia Cliente = cliente + prospección (métrica Nivel 1)
+  prospeccionSeconds: number;       // sub-modo de Cliente
+  clienteOtrosSeconds: number;      // Cliente que no es prospección
+  roleplayObjecionesSeconds: number;
+  roleplayAsesorSeconds: number;
+  coachSeconds: number;
+  examenProspeccionSeconds: number;
+  examenObjecionesSeconds: number;
+  sinClasificarSeconds: number;
+  totalSeconds: number;
+}
+
+type SessionModeRow = {
+  durationSeconds: number;
+  practiceMode: string | null;
+  examType: string | null;
+};
+
+// Suma puro de duraciones por modo. practiceMode tiene precedencia sobre
+// examType (una sesión de práctica nunca trae examType, y viceversa), pero el
+// orden lo deja explícito por robustez.
+export function aggregateTimeByMode(sessions: SessionModeRow[]): TimeByMode {
+  const acc: TimeByMode = {
+    roleplayClienteSeconds: 0,
+    prospeccionSeconds: 0,
+    clienteOtrosSeconds: 0,
+    roleplayObjecionesSeconds: 0,
+    roleplayAsesorSeconds: 0,
+    coachSeconds: 0,
+    examenProspeccionSeconds: 0,
+    examenObjecionesSeconds: 0,
+    sinClasificarSeconds: 0,
+    totalSeconds: 0,
+  };
+
+  for (const s of sessions) {
+    const d = s.durationSeconds || 0;
+    acc.totalSeconds += d;
+
+    switch (s.practiceMode) {
+      case 'cliente':
+        acc.clienteOtrosSeconds += d;
+        acc.roleplayClienteSeconds += d;
+        continue;
+      case 'cliente_prospeccion':
+        acc.prospeccionSeconds += d;
+        acc.roleplayClienteSeconds += d;
+        continue;
+      case 'objeciones':
+        acc.roleplayObjecionesSeconds += d;
+        continue;
+      case 'asesor':
+        acc.roleplayAsesorSeconds += d;
+        continue;
+      case 'coach':
+        acc.coachSeconds += d;
+        continue;
+    }
+
+    if (s.examType === 'prospeccion') acc.examenProspeccionSeconds += d;
+    else if (s.examType === 'objeciones') acc.examenObjecionesSeconds += d;
+    else acc.sinClasificarSeconds += d;
+  }
+
+  return acc;
+}
+
+// Construye el filtro de sesiones (sólo learners) según el caller:
+//   - admin global: todas las sedes (o una si pasa overrideSedeId);
+//   - coach (no admin): SÓLO sus alumnos asignados (user.coachId === caller.id);
+//   - resto (instructor, etc.): scoped a su sede.
+function buildLearnerSessionWhere(caller: AuthUser, overrideSedeId?: string | null) {
+  const userWhere: any = { roles: { some: { role: 'learner' } } };
+
+  if (caller.roles.includes('admin')) {
+    if (overrideSedeId) userWhere.sedeId = overrideSedeId;
+  } else if (caller.roles.includes('coach')) {
+    userWhere.coachId = caller.id;
+  } else {
+    const scope = getSedeScope(caller);
+    if (scope.scope === 'sede') userWhere.sedeId = scope.sedeId;
+  }
+
+  return { user: userWhere };
+}
 
 // ============================================
 // User Analytics
@@ -13,7 +110,7 @@ import { getSedeScope } from '../middleware/sedeScope.js';
 export async function getUserAnalytics(userId: string) {
   const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
 
-  const [sessions, breakdownAvg, latestBreakdown, activityRaw] = await Promise.all([
+  const [sessions, breakdownAvg, latestBreakdown, activityRaw, modeRows] = await Promise.all([
     // Score progression with breakdowns
     prisma.practiceSession.findMany({
       where: { userId, score: { not: null } },
@@ -47,6 +144,12 @@ export async function getUserAnalytics(userId: string) {
       where: { userId, createdAt: { gte: ninetyDaysAgo } },
       select: { createdAt: true },
       orderBy: { createdAt: 'asc' },
+    }),
+
+    // Todas las sesiones (cualquier puntaje) para el desglose de tiempo por modo.
+    prisma.practiceSession.findMany({
+      where: { userId },
+      select: { durationSeconds: true, practiceMode: true, examType: true },
     }),
   ]);
 
@@ -83,6 +186,7 @@ export async function getUserAnalytics(userId: string) {
       cierre: latestBreakdown.cierre,
     } : null,
     activityHeatmap,
+    timeByMode: aggregateTimeByMode(modeRows),
   };
 }
 
@@ -200,10 +304,11 @@ async function getPerStudentAverages(caller: AuthUser) {
 // alcance de sede: admin global ve todas las sedes; un coach/instructor sólo
 // la suya. No incluye ningún dato de puntajes/competencias por diseño.
 
-export async function getUsageAnalytics(caller: AuthUser) {
+export async function getUsageAnalytics(caller: AuthUser, range?: DateRange) {
   const scope = getSedeScope(caller);
   const userSedeWhere = scope.scope === 'sede' ? { sedeId: scope.sedeId } : {};
   const sessionSedeWhere = scope.scope === 'sede' ? { user: { sedeId: scope.sedeId } } : {};
+  const hasRange = !!(range && (range.from || range.to));
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
   const [sedes, learners, sessions] = await Promise.all([
@@ -217,7 +322,7 @@ export async function getUsageAnalytics(caller: AuthUser) {
       select: { id: true, sedeId: true },
     }),
     prisma.practiceSession.findMany({
-      where: { user: { roles: { some: { role: 'learner' } } }, ...sessionSedeWhere },
+      where: { user: { roles: { some: { role: 'learner' } } }, ...sessionSedeWhere, ...createdAtWhere(range) },
       select: { durationSeconds: true, userId: true, createdAt: true },
     }),
   ]);
@@ -260,7 +365,9 @@ export async function getUsageAnalytics(caller: AuthUser) {
       acc.totalSessions++;
       acc.activeStudentIds.add(sess.userId);
     }
-    if (sess.createdAt >= thirtyDaysAgo) {
+    // Con rango explícito la tendencia cubre todo el período; sin rango se
+    // mantiene la ventana de 30 días.
+    if (hasRange || sess.createdAt >= thirtyDaysAgo) {
       const dateKey = sess.createdAt.toISOString().split('T')[0];
       dailyCounts[dateKey] = (dailyCounts[dateKey] || 0) + 1;
     }
@@ -289,6 +396,56 @@ export async function getUsageAnalytics(caller: AuthUser) {
     .sort((a, b) => a.date.localeCompare(b.date));
 
   return { totals, bySede, activityTrend };
+}
+
+// ============================================
+// Tiempo por modo (admin/coach) — totales + por alumno
+// ============================================
+//
+// Respeta el alcance del caller (ver buildLearnerSessionWhere). Devuelve el
+// desglose total y por alumno para poder mostrar tablas en /admin y en la vista
+// del coach (sus alumnos asignados).
+export async function getTimeByModeAnalytics(caller: AuthUser, overrideSedeId?: string | null, range?: DateRange) {
+  const where = { ...buildLearnerSessionWhere(caller, overrideSedeId), ...createdAtWhere(range) };
+
+  const sessions = await prisma.practiceSession.findMany({
+    where,
+    select: { durationSeconds: true, practiceMode: true, examType: true, userId: true },
+  });
+
+  const totals = aggregateTimeByMode(sessions);
+
+  const byUser = new Map<string, SessionModeRow[]>();
+  for (const s of sessions) {
+    if (!byUser.has(s.userId)) byUser.set(s.userId, []);
+    byUser.get(s.userId)!.push(s);
+  }
+
+  const users = byUser.size
+    ? await prisma.user.findMany({
+        where: { id: { in: [...byUser.keys()] } },
+        select: { id: true, firstName: true, lastName: true, email: true },
+      })
+    : [];
+
+  const byStudent = users
+    .map(u => ({
+      id: u.id,
+      name: [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email,
+      ...aggregateTimeByMode(byUser.get(u.id)!),
+    }))
+    .sort((a, b) => b.totalSeconds - a.totalSeconds);
+
+  return { totals, byStudent };
+}
+
+// Desglose de tiempo por modo para un único alumno (dashboard del estudiante).
+export async function getUserTimeByMode(userId: string): Promise<TimeByMode> {
+  const sessions = await prisma.practiceSession.findMany({
+    where: { userId },
+    select: { durationSeconds: true, practiceMode: true, examType: true },
+  });
+  return aggregateTimeByMode(sessions);
 }
 
 async function getActivityTrend(caller: AuthUser) {

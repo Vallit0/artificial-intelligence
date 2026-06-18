@@ -11,7 +11,7 @@ import { FreeTierTimer } from "@/components/practice/FreeTierTimer";
 import MobileNavigation from "@/components/MobileNavigation";
 import { TimeUpModal } from "@/components/practice/TimeUpModal";
 import { useElevenLabsConversation } from "@/hooks/useElevenLabsConversation";
-import { usePracticeSessions } from "@/hooks/usePracticeSessions";
+import { usePracticeSessions, type PracticeMode } from "@/hooks/usePracticeSessions";
 import { useAuth } from "@/hooks/useAuth";
 import { useLevelMode, useDidLevelJustChange } from "@/hooks/useLevelMode";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -329,6 +329,25 @@ const Practice = () => {
     setSessionState("timeup");
   }, [disconnect]);
 
+  // Deriva el modo de práctica que se persiste en la sesión para el desglose de
+  // tiempo en analítica. Prospección es sub-modo de Cliente; cualquier práctica
+  // en Nivel 2 cuenta como Role-Play Objeciones. Si no se reconoce el agente, se
+  // deja sin clasificar (null) en vez de inventar un modo.
+  const derivePracticeMode = (agent?: AgentSuggestion): PracticeMode | undefined => {
+    if (prospectingParam || agent?.id.startsWith("prospecting-")) return "cliente_prospeccion";
+    if (isLevel2) return "objeciones";
+    switch (agent?.id) {
+      case "roleplay-cliente":
+        return "cliente";
+      case "roleplay-asesor":
+        return "asesor";
+      case "coach":
+        return "coach";
+      default:
+        return undefined;
+    }
+  };
+
   const handleStart = async (agent?: AgentSuggestion) => {
     console.log("[TRACE] handleStart called, agent:", agent?.id, agent?.agentSecretName);
     if (agent) setSelectedAgent(agent);
@@ -349,7 +368,15 @@ const Practice = () => {
       setAgentEvaluation(null);
 
       if (user) {
-        const sessionId = await savePracticeSession(0, undefined, scenarioId || undefined, variantId || undefined);
+        const practiceMode = derivePracticeMode(agent);
+        const sessionId = await savePracticeSession(
+          0,
+          undefined,
+          scenarioId || undefined,
+          variantId || undefined,
+          undefined,
+          practiceMode,
+        );
         setCurrentSessionId(sessionId);
       } else {
         setCurrentSessionId(null);

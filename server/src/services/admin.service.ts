@@ -6,6 +6,7 @@ import { Prisma } from '@prisma/client';
 import prisma from '../db/index.js';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '../utils/errors.js';
 import { hashPassword } from '../utils/passwordHash.js';
+import { DateRange, createdAtWhere } from '../utils/dateRange.js';
 import { AuthUser, AppRole } from '../types/index.js';
 import { canCreateCoachIn, isGlobalAdmin, getSedeScope } from '../middleware/sedeScope.js';
 
@@ -331,12 +332,16 @@ export async function updateUserPassword(userId: string, newPassword: string, ca
 // Student Management
 // ============================================
 
-export async function getAllStudents(caller: AuthUser): Promise<StudentWithStats[]> {
+export async function getAllStudents(caller: AuthUser, range?: DateRange): Promise<StudentWithStats[]> {
   // Coach/instructor ven sólo learners de su sede. Admin global ve todos
   // los learners (o todos los users si pasa override — no implementado acá
   // todavía; el override por ?sedeId= se aplicaría en el route).
   const scope = getSedeScope(caller);
   const sedeFilter = scope.scope === 'sede' ? { sedeId: scope.sedeId } : {};
+  // Filtro de período OPCIONAL: cuando viene, las métricas derivadas de sesiones
+  // (sesiones, tiempo, promedios, intentos de examen) se acotan al rango. La
+  // nota final (studentGrade) no depende de fecha y queda intacta.
+  const sessionDateWhere = createdAtWhere(range);
 
   const users = await prisma.user.findMany({
     where: {
@@ -350,6 +355,7 @@ export async function getAllStudents(caller: AuthUser): Promise<StudentWithStats
     },
     include: {
       practiceSessions: {
+        where: sessionDateWhere,
         select: { durationSeconds: true, score: true, scenarioId: true },
       },
       studentGrade: {

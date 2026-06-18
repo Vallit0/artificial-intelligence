@@ -103,6 +103,7 @@ export interface PracticeSession {
   transcript?: TranscriptMessage[];
   abVariantId?: string;
   examType?: ExamType;
+  practiceMode?: PracticeMode;
   breakdown?: EvaluationBreakdown;
   createdAt: Date;
 }
@@ -111,6 +112,21 @@ export interface PracticeSession {
 // 'prospeccion' = Examen Final del módulo de Prospección (Nivel 1);
 // 'objeciones' = Examen Final del módulo de Manejo de Objeciones (Nivel 2).
 export type ExamType = 'prospeccion' | 'objeciones';
+
+// Modo de práctica con el que corrió una sesión (se fija al crearla). Permite
+// desglosar el tiempo de práctica por modo en analítica:
+// 'cliente'             = Role-Play Cliente (Nivel 1);
+// 'cliente_prospeccion' = Prospección, sub-modo de Role-Play Cliente;
+// 'asesor'              = Role-Play Asesor;
+// 'objeciones'          = Role-Play Objeciones (Nivel 2);
+// 'coach'               = sesión con el Coach.
+// Los exámenes finales se siguen distinguiendo con ExamType, no acá.
+export type PracticeMode =
+  | 'cliente'
+  | 'cliente_prospeccion'
+  | 'asesor'
+  | 'objeciones'
+  | 'coach';
 
 // 'real' = LLM produced a valid evaluation
 // 'too_short' = transcript below MIN_TURNS_FOR_REAL_EVAL — score is 0
@@ -142,6 +158,7 @@ export interface CreateSessionInput {
   rating?: number | null;
   abVariantId?: string | null;
   examType?: ExamType | null;
+  practiceMode?: PracticeMode | null;
 }
 
 export interface UpdateSessionInput {

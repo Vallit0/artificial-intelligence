@@ -24,10 +24,14 @@ import CoachStudentsPanel from "@/components/admin/CoachStudentsPanel";
 import LeftSidebar from "@/components/scenarios/LeftSidebar";
 import MobileNavigation from "@/components/MobileNavigation";
 import { useAdminUsage } from "@/hooks/useAdminUsage";
+import { useTimeByMode } from "@/hooks/useTimeByMode";
 import { useCoaches } from "@/hooks/useCoaches";
 import { UsageAnalytics } from "@/components/analytics/UsageAnalytics";
+import { TimeByModeAnalytics } from "@/components/analytics/TimeByModeAnalytics";
+import { PeriodFilter } from "@/components/analytics/PeriodFilter";
 import { exportStudentsToExcel } from "@/lib/export-students";
-import { exportUsageToCsv } from "@/lib/export-usage";
+import { exportUsageToExcel } from "@/lib/export-usage";
+import { EMPTY_PERIOD, type Period } from "@/lib/period";
 
 export default function Admin() {
   const navigate = useNavigate();
@@ -37,12 +41,16 @@ export default function Admin() {
   const isCoachOnly = isCoach && !isAdmin;
   const canSeeProspecting = !isCoachOnly || !!user?.coachPermissions?.canEditPrompts;
   const canSeeCoachesTab = isAdmin || !!user?.coachPermissions?.canCreateCoaches;
-  const { students, isLoading: studentsLoading, assignGrade, toggleExamenFinal, bulkToggleExamenFinal, assignCoach, updateUser, refetch } = useStudents();
+  // Filtro de período compartido por las analíticas de uso, el listado de
+  // estudiantes y el export a Excel. Vacío = histórico.
+  const [period, setPeriod] = useState<Period>(EMPTY_PERIOD);
+  const { students, isLoading: studentsLoading, assignGrade, toggleExamenFinal, bulkToggleExamenFinal, assignCoach, updateUser, refetch } = useStudents(period);
   // Sólo admin global puede asignar coaches; gateamos el fetch para no
   // disparar un 403 en coaches sin permiso de listado.
   const { coaches } = useCoaches(isAdmin);
 
-  const { data: usageData, isLoading: usageLoading } = useAdminUsage();
+  const { data: usageData, isLoading: usageLoading } = useAdminUsage(period);
+  const { data: timeByModeData, isLoading: timeByModeLoading, error: timeByModeError } = useTimeByMode(period);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -151,6 +159,11 @@ export default function Admin() {
           </TabsList>
 
           <TabsContent value="students">
+        {/* Filtro de período: acota sesiones/tiempo del listado al rango. */}
+        <div className="mb-4">
+          <PeriodFilter value={period} onChange={setPeriod} />
+        </div>
+
         {/* Stats Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
           <Card>
@@ -339,17 +352,23 @@ export default function Admin() {
               </div>
             ) : usageData ? (
               <div className="space-y-4">
-                <div className="flex justify-end">
+                <div className="flex flex-wrap items-end justify-between gap-3">
+                  <PeriodFilter value={period} onChange={setPeriod} />
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => exportUsageToCsv(usageData, students)}
+                    onClick={() => exportUsageToExcel(usageData, timeByModeData, students, period)}
                   >
                     <Download className="w-4 h-4 mr-2" />
-                    Exportar CSV
+                    Exportar Excel
                   </Button>
                 </div>
                 <UsageAnalytics data={usageData} />
+                <TimeByModeAnalytics
+                  data={timeByModeData}
+                  isLoading={timeByModeLoading}
+                  error={timeByModeError}
+                />
               </div>
             ) : (
               <p className="text-center text-muted-foreground py-8">No hay datos analíticos disponibles</p>

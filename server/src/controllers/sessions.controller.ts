@@ -21,6 +21,12 @@ const createSessionSchema = z.object({
   // permite separar los dos exámenes en analítica. No influye en score/passed,
   // que se computan server-side desde el breakdown.
   examType: z.enum(['prospeccion', 'objeciones']).nullable().optional(),
+  // Modo de práctica para desglose de tiempo en analítica. No influye en
+  // score/passed. Whitelist cerrada: cualquier otro valor se rechaza.
+  practiceMode: z
+    .enum(['cliente', 'cliente_prospeccion', 'asesor', 'objeciones', 'coach'])
+    .nullable()
+    .optional(),
 });
 
 const updateSessionSchema = z.object({

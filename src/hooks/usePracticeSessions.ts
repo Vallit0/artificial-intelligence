@@ -2,6 +2,16 @@ import { useState, useEffect, useCallback } from "react";
 import { api } from "@/lib/api-client";
 import { useAuth } from "@/hooks/useAuth";
 
+// Modo de práctica con el que corrió la sesión (debe coincidir con la whitelist
+// del backend en sessions.controller.ts). 'cliente_prospeccion' es sub-modo de
+// 'cliente'. Permite desglosar el tiempo de práctica por modo en analítica.
+export type PracticeMode =
+  | "cliente"
+  | "cliente_prospeccion"
+  | "asesor"
+  | "objeciones"
+  | "coach";
+
 interface PracticeSession {
   id: string;
   user_id: string;
@@ -11,6 +21,8 @@ interface PracticeSession {
   passed: boolean;
   ai_feedback: string | null;
   scenario_id: string | null;
+  practice_mode: string | null;
+  exam_type: string | null;
   created_at: string;
 }
 
@@ -43,7 +55,8 @@ interface UsePracticeSessionsReturn {
     rating?: number,
     scenarioId?: string,
     abVariantId?: string,
-    examType?: "prospeccion" | "objeciones"
+    examType?: "prospeccion" | "objeciones",
+    practiceMode?: PracticeMode
   ) => Promise<string | null>;
   evaluateSession: (
     sessionId: string,
@@ -64,6 +77,8 @@ function mapApiSession(s: any): PracticeSession {
     passed: s.passed,
     ai_feedback: s.aiFeedback ?? null,
     scenario_id: s.scenarioId ?? null,
+    practice_mode: s.practiceMode ?? null,
+    exam_type: s.examType ?? null,
     created_at: s.createdAt,
   };
 }
@@ -98,7 +113,7 @@ export const usePracticeSessions = (): UsePracticeSessionsReturn => {
   }, [fetchSessions]);
 
   const savePracticeSession = useCallback(
-    async (durationSeconds: number, rating?: number, scenarioId?: string, abVariantId?: string, examType?: "prospeccion" | "objeciones"): Promise<string | null> => {
+    async (durationSeconds: number, rating?: number, scenarioId?: string, abVariantId?: string, examType?: "prospeccion" | "objeciones", practiceMode?: PracticeMode): Promise<string | null> => {
       if (!user) return null;
 
       try {
@@ -108,6 +123,7 @@ export const usePracticeSessions = (): UsePracticeSessionsReturn => {
           scenarioId: scenarioId || null,
           abVariantId: abVariantId || null,
           examType: examType || null,
+          practiceMode: practiceMode || null,
         });
         return data?.id || null;
       } catch (error) {
