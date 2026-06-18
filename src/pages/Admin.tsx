@@ -28,10 +28,13 @@ import { useTimeByMode } from "@/hooks/useTimeByMode";
 import { useCoaches } from "@/hooks/useCoaches";
 import { UsageAnalytics } from "@/components/analytics/UsageAnalytics";
 import { TimeByModeAnalytics } from "@/components/analytics/TimeByModeAnalytics";
+import { TimeByModeBreakdown } from "@/components/analytics/TimeByModeBreakdown";
 import { PeriodFilter } from "@/components/analytics/PeriodFilter";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { exportStudentsToExcel } from "@/lib/export-students";
 import { exportUsageToExcel } from "@/lib/export-usage";
 import { EMPTY_PERIOD, type Period } from "@/lib/period";
+import { EMPTY_TIME_BY_MODE } from "@/lib/time-by-mode";
 
 export default function Admin() {
   const navigate = useNavigate();
@@ -54,6 +57,9 @@ export default function Admin() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  // Buscador + detalle por asesor en la tarjeta "Minutos de Práctica por Asesor".
+  const [advisorSearch, setAdvisorSearch] = useState("");
+  const [selectedAdvisorId, setSelectedAdvisorId] = useState<string | null>(null);
 
   // Show loading while checking auth and admin status
   if (authLoading || adminLoading) {
@@ -84,6 +90,23 @@ export default function Admin() {
   const totalDurationSeconds = students.reduce((sum, s) => sum + s.totalDuration, 0);
   const totalHours = Math.floor(totalDurationSeconds / 3600);
   const totalMinutes = Math.floor((totalDurationSeconds % 3600) / 60);
+
+  // Ranking de asesores por tiempo (rank fijo antes de filtrar por búsqueda).
+  const advisorQuery = advisorSearch.trim().toLowerCase();
+  const rankedAdvisors = [...students]
+    .sort((a, b) => b.totalDuration - a.totalDuration)
+    .map((student, rank) => ({ student, rank }))
+    .filter(({ student }) => {
+      if (!advisorQuery) return true;
+      const name = [student.first_name, student.last_name].filter(Boolean).join(" ").toLowerCase();
+      return name.includes(advisorQuery) || (student.email ?? "").toLowerCase().includes(advisorQuery);
+    });
+
+  // Asesor seleccionado + su desglose por modo (del endpoint time-by-mode, que
+  // ya respeta el período). Si no tiene sesiones, no aparece en byStudent → ceros.
+  const selectedAdvisor = students.find((s) => s.id === selectedAdvisorId) ?? null;
+  const selectedAdvisorTime =
+    timeByModeData?.byStudent.find((s) => s.id === selectedAdvisorId) ?? EMPTY_TIME_BY_MODE;
 
   return (
     <div className="min-h-screen bg-background">
@@ -221,51 +244,69 @@ export default function Admin() {
                 <Loader2 className="w-6 h-6 animate-spin text-primary" />
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {[...students]
-                  .sort((a, b) => b.totalDuration - a.totalDuration)
-                  .map((student, index) => {
-                    const minutes = Math.floor(student.totalDuration / 60);
-                    const hours = Math.floor(minutes / 60);
-                    const remainingMins = minutes % 60;
-                    const timeStr = hours > 0 ? `${hours}h ${remainingMins}m` : `${minutes}m`;
-                    return (
-                      <div
-                        key={student.id}
-                        className="flex items-center gap-3 p-3 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors"
-                      >
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                          index === 0
-                            ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
-                            : index === 1
-                            ? "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
-                            : index === 2
-                            ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400"
-                            : "bg-muted text-muted-foreground"
-                        }`}>
-                          {index + 1}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">
-                            {[student.first_name, student.last_name].filter(Boolean).join(' ') || student.email}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {student.totalSessions} sesiones
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-1 text-sm font-bold text-primary">
-                          <Clock className="w-3.5 h-3.5" />
-                          {timeStr}
-                        </div>
-                      </div>
-                    );
-                  })}
-                {students.length === 0 && (
-                  <p className="text-sm text-muted-foreground col-span-full text-center py-4">
-                    No hay asesores registrados
-                  </p>
-                )}
-              </div>
+              <>
+                <div className="relative mb-4">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar asesor por nombre o email..."
+                    value={advisorSearch}
+                    onChange={(e) => setAdvisorSearch(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <div className="max-h-[28rem] overflow-y-auto pr-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {rankedAdvisors.map(({ student, rank }) => {
+                      const minutes = Math.floor(student.totalDuration / 60);
+                      const hours = Math.floor(minutes / 60);
+                      const remainingMins = minutes % 60;
+                      const timeStr = hours > 0 ? `${hours}h ${remainingMins}m` : `${minutes}m`;
+                      return (
+                        <button
+                          type="button"
+                          key={student.id}
+                          onClick={() => setSelectedAdvisorId(student.id)}
+                          className="flex items-center gap-3 p-3 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors text-left w-full"
+                        >
+                          <div className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-sm font-bold ${
+                            rank === 0
+                              ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                              : rank === 1
+                              ? "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                              : rank === 2
+                              ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400"
+                              : "bg-muted text-muted-foreground"
+                          }`}>
+                            {rank + 1}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">
+                              {[student.first_name, student.last_name].filter(Boolean).join(' ') || student.email}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {student.totalSessions} sesiones
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1 text-sm font-bold text-primary">
+                            <Clock className="w-3.5 h-3.5" />
+                            {timeStr}
+                          </div>
+                        </button>
+                      );
+                    })}
+                    {students.length === 0 && (
+                      <p className="text-sm text-muted-foreground col-span-full text-center py-4">
+                        No hay asesores registrados
+                      </p>
+                    )}
+                    {students.length > 0 && rankedAdvisors.length === 0 && (
+                      <p className="text-sm text-muted-foreground col-span-full text-center py-4">
+                        Sin resultados para "{advisorSearch}"
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
@@ -423,6 +464,27 @@ export default function Admin() {
         onOpenChange={setShowBulkModal}
         onSuccess={refetch}
       />
+
+      {/* Detalle de tiempo por modo del asesor seleccionado */}
+      <Dialog open={!!selectedAdvisorId} onOpenChange={(open) => { if (!open) setSelectedAdvisorId(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedAdvisor
+                ? [selectedAdvisor.first_name, selectedAdvisor.last_name].filter(Boolean).join(" ") || selectedAdvisor.email
+                : "Asesor"}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedAdvisor && (
+            <p className="-mt-2 mb-1 text-sm text-muted-foreground">
+              {selectedAdvisor.totalSessions} sesiones · {Math.floor(selectedAdvisor.totalDuration / 3600) > 0
+                ? `${Math.floor(selectedAdvisor.totalDuration / 3600)}h ${Math.floor((selectedAdvisor.totalDuration % 3600) / 60)}m`
+                : `${Math.floor(selectedAdvisor.totalDuration / 60)}m`} en total
+            </p>
+          )}
+          <TimeByModeBreakdown data={selectedAdvisorTime} title="Tiempo por modo" />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
