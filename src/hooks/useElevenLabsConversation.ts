@@ -233,7 +233,7 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
       "saludo_ok" in parameters ||
       "identificacion_ok" in parameters ||
       "justificacion_ok" in parameters ||
-      "permiso_para_avanzar_ok" in parameters ||
+      "uso_frases_neutralizantes_ok" in parameters ||
       "ofrece_valor_legado_ok" in parameters ||
       "pide_cita_ok" in parameters;
 
@@ -248,7 +248,7 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
         saludo_ok: toBool(parameters.saludo_ok),
         identificacion_ok: toBool(parameters.identificacion_ok),
         justificacion_ok: toBool(parameters.justificacion_ok),
-        permiso_para_avanzar_ok: toBool(parameters.permiso_para_avanzar_ok),
+        uso_frases_neutralizantes_ok: toBool(parameters.uso_frases_neutralizantes_ok),
         ofrece_valor_legado_ok: toBool(parameters.ofrece_valor_legado_ok),
         pide_cita_ok: toBool(parameters.pide_cita_ok),
       };
@@ -261,7 +261,7 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
         saludo_ok: "Saludo",
         identificacion_ok: "Identificación (nombre + Señoriales)",
         justificacion_ok: "Justificación del motivo",
-        permiso_para_avanzar_ok: "Permiso para avanzar",
+        uso_frases_neutralizantes_ok: "Uso de frases neutralizantes",
         ofrece_valor_legado_ok: "Presenta Legado de Vida",
         pide_cita_ok: "Pide cita",
       };
