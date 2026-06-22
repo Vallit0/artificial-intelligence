@@ -3,6 +3,7 @@ import Joyride, { CallBackProps, STATUS, Step } from "react-joyride";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { api } from "@/lib/api-client";
+import { TUTORIAL_EVENT, consumePendingTutorial, clearPendingTutorial } from "@/lib/tutorial";
 
 /**
  * Tour guiado que se dispara en el primer login (mientras
@@ -20,22 +21,47 @@ const OnboardingTour = () => {
   const { user, patchUser } = useAuth();
   const isMobile = useIsMobile();
   const [run, setRun] = useState(false);
+  // Reproducción manual (botón "Tutorial"): corre el tour aunque el usuario ya
+  // lo haya completado. `tourKey` fuerza un Joyride fresco en cada re-arranque.
+  const [manualRun, setManualRun] = useState(false);
+  const [tourKey, setTourKey] = useState(0);
 
   // Esperamos a que el perfil cargue y el flag esté explícitamente en false.
   // Si es undefined (respuesta vieja sin el campo) no corremos el tour para no
   // molestar; el siguiente /auth/me ya traerá el valor real.
-  const shouldRun = !!user && user.tutorialCompleted === false;
+  const autoRun = !!user && user.tutorialCompleted === false;
+  // El tour se monta/renderiza si es el primer login (autoRun) o si lo pidió el
+  // botón Tutorial (manualRun).
+  const shouldRun = autoRun || manualRun;
+
+  // Arranque manual: dispara el tour desde el paso 0 con un Joyride nuevo.
+  const startManual = () => {
+    setTourKey((k) => k + 1);
+    setManualRun(true);
+    // Delay para que el DOM de /practice esté montado antes de calcular spots.
+    setTimeout(() => setRun(true), 300);
+  };
+
+  // 1) Al montar (p.ej. tras navegar a /practice desde el botón), consume el
+  //    flag pendiente. 2) Mientras esté montado, escucha el evento en vivo
+  //    (cuando ya estabas en /practice).
+  useEffect(() => {
+    if (consumePendingTutorial()) startManual();
+    const handler = () => {
+      clearPendingTutorial();
+      startManual();
+    };
+    window.addEventListener(TUTORIAL_EVENT, handler);
+    return () => window.removeEventListener(TUTORIAL_EVENT, handler);
+  }, []);
 
   useEffect(() => {
-    if (!shouldRun) {
-      setRun(false);
-      return;
-    }
+    if (!autoRun) return;
     // Pequeño delay para que el DOM de /practice termine de montar antes de
     // que Joyride calcule las posiciones de los spotlights.
     const t = setTimeout(() => setRun(true), 600);
     return () => clearTimeout(t);
-  }, [shouldRun]);
+  }, [autoRun]);
 
   const steps: Step[] = [
     {
@@ -76,7 +102,10 @@ const OnboardingTour = () => {
     const { status } = data;
     if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
       setRun(false);
-      markComplete();
+      setManualRun(false);
+      // Sólo el primer login necesita persistir el flag; en replay manual es
+      // idempotente y no molesta.
+      if (autoRun) markComplete();
     }
   };
 
@@ -84,6 +113,7 @@ const OnboardingTour = () => {
 
   return (
     <Joyride
+      key={tourKey}
       steps={steps}
       run={run}
       continuous

@@ -154,7 +154,14 @@
       "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\('name:',p.name\\); console.log\\(JSON.stringify\\({...p.dependencies},null,0\\)\\);\")",
       "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\(JSON.stringify\\({...p.devDependencies},null,0\\)\\);\")",
       "Bash(node -e \"const p=require\\('./server/package.json'\\); console.log\\(JSON.stringify\\({...p.dependencies},null,0\\)\\);\")",
-      "Bash(echo \"EXIT\\(grep\\): $?\")"
+      "Bash(echo \"EXIT\\(grep\\): $?\")",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(npx eslint *)",
+      "Bash(echo \"exit:$?\")",
+      "Bash(npx dotenv *)",
+      "Bash(STRESS_ADMIN_EMAIL=x STRESS_ADMIN_PASSWORD=y node stress/stress-exam.mjs --dry-run)",
+      "Bash(grep -nA3 \"user .*User .*fields: \\\\[userId\\\\]\" server/prisma/schema.prisma)",
+      "Bash(STRESS_BASE_URL=http://localhost:3000 STRESS_ADMIN_EMAIL=admin@gmail.com STRESS_ADMIN_PASSWORD=admin node stress/stress-exam.mjs --pool=3 --stages=5,15 --stage-secs=4)"
     ]
   },
   "hooks": {

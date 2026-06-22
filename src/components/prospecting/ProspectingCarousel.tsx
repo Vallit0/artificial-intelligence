@@ -121,14 +121,27 @@ interface ProspectingCarouselProps {
 }
 
 const ProspectingCarousel = ({ onStartPractice }: ProspectingCarouselProps) => {
-  const { visible } = useMyVisibleScenarios();
+  const { visible, overrides } = useMyVisibleScenarios();
   const { isAdmin } = useAdmin();
-  const scenarios = prospectingScenarios.filter((s) => {
-    if (isAdmin) return true;
-    if (!s.agentId) return true;
-    if (!visible) return true; // while loading
-    return visible.has(s.agentId);
-  });
+  const scenarios = prospectingScenarios
+    .filter((s) => {
+      if (isAdmin) return true;
+      if (!s.agentId) return true;
+      if (!visible) return true; // while loading
+      return visible.has(s.agentId);
+    })
+    // Fusiona los overrides editables desde admin (nombre/descripción/video)
+    // sobre los valores por defecto definidos en código.
+    .map((s) => {
+      const o = s.agentId ? overrides.get(s.agentId) : undefined;
+      if (!o) return s;
+      return {
+        ...s,
+        title: o.label || s.title,
+        description: o.description || s.description,
+        videoUrl: o.videoUrl || s.videoUrl,
+      };
+    });
   const [selectedScenario, setSelectedScenario] = useState<number | null>(null);
   const [previewScenario, setPreviewScenario] = useState<(ProspectingScenario & { agentId?: string }) | null>(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);

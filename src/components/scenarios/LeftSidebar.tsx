@@ -10,10 +10,12 @@ import {
   ArrowRightLeft,
   Building2,
   GraduationCap,
+  HelpCircle,
 } from "lucide-react";
 import logoSenoriales from "@/assets/logo-senoriales.png";
 import { useAuth } from "@/hooks/useAuth";
 import { useLevelMode, useDidLevelJustChange } from "@/hooks/useLevelMode";
+import { startTutorial } from "@/lib/tutorial";
 
 interface NavItem {
   icon: React.ElementType;
@@ -66,6 +68,13 @@ const LeftSidebar = () => {
   const handleLogout = async () => {
     await signOut();
     navigate("/auth");
+  };
+
+  // Reproduce el tour guiado on-demand. Navega a /practice (donde viven los
+  // anclajes data-tour); OnboardingTour consume el flag al montarse.
+  const handleTutorial = () => {
+    startTutorial();
+    navigate("/practice");
   };
 
   return (
@@ -218,8 +227,17 @@ const LeftSidebar = () => {
         </div>
       )}
 
-      {/* Logout */}
+      {/* Tutorial + Logout */}
       <div className="px-3 pb-3" style={{ borderTop: "1px solid hsl(var(--sidebar-border))" }}>
+        <button
+          onClick={handleTutorial}
+          className="flex items-center gap-3 w-full px-4 py-3 mt-3 rounded-2xl text-sm font-medium transition-all duration-200 hover:bg-white/[0.06]"
+          style={{ color: "hsl(var(--sidebar-foreground) / 0.7)" }}
+          title="Ver el tutorial guiado paso a paso"
+        >
+          <HelpCircle className="w-5 h-5" />
+          <span>Tutorial</span>
+        </button>
         <button
           onClick={handleLogout}
           className="flex items-center gap-3 w-full px-4 py-3 mt-3 rounded-2xl text-sm font-medium transition-all duration-200 hover:bg-white/[0.06]"

@@ -1267,6 +1267,8 @@ adminRouter.get('/prospecting-scenarios', async (req: AuthRequest, res: Response
  *             properties:
  *               secretName: { type: string }
  *               label: { type: string }
+ *               description: { type: string }
+ *               videoUrl: { type: string }
  *               systemPrompt: { type: string }
  *               firstMessage: { type: string }
  *               isActiveGlobal: { type: boolean }
@@ -1299,13 +1301,15 @@ adminRouter.put('/prospecting-scenarios', async (req: AuthRequest, res: Response
     if (!canEditPrompts(req.user)) {
       throw new ForbiddenError('No tenés permiso para editar prompts');
     }
-    const { secretName, label, systemPrompt, firstMessage, isActiveGlobal, builderParams } = req.body;
+    const { secretName, label, description, videoUrl, systemPrompt, firstMessage, isActiveGlobal, builderParams } = req.body;
     if (!secretName) {
       res.status(400).json({ error: 'secretName required' });
       return;
     }
     const config = await prospectingScenariosService.upsertConfig(secretName, {
       label,
+      description,
+      videoUrl,
       systemPrompt,
       firstMessage,
       isActiveGlobal,

@@ -562,12 +562,24 @@ apiRouter.post('/users/me/complete-tutorial', async (req: AuthRequest, res: Resp
  *                 visible:
  *                   type: array
  *                   items: { type: string }
+ *                 overrides:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       secretName: { type: string }
+ *                       label: { type: string, nullable: true }
+ *                       description: { type: string, nullable: true }
+ *                       videoUrl: { type: string, nullable: true }
  */
 apiRouter.get('/prospecting-scenarios/me', async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id;
-    const visible = await prospectingScenariosService.getVisibleSecretNamesForUser(userId);
-    res.json({ visible });
+    const [visible, overrides] = await Promise.all([
+      prospectingScenariosService.getVisibleSecretNamesForUser(userId),
+      prospectingScenariosService.getDisplayOverrides(),
+    ]);
+    res.json({ visible, overrides });
   } catch (error) {
     const appError = handleError(error);
     res.status(appError.statusCode).json({ error: appError.message });

@@ -435,6 +435,12 @@ model ProspectingScenarioConfig {
   id             String   @id @default(uuid())
   secretName     String   @unique @map("secret_name")
   label          String?
+  // Texto descriptivo y video de preview que ve el alumno en el carrusel.
+  // Cuando son null, el carrusel cae al valor por defecto definido en código
+  // (prospectingScenarios en ProspectingCarousel.tsx). Sólo aplican a los
+  // escenarios de prospección; los agentes de Nivel 1/2 los ignoran.
+  description    String?
+  videoUrl       String?  @map("video_url")
   systemPrompt   String?  @map("system_prompt")
   firstMessage   String?  @map("first_message")
   isActiveGlobal Boolean  @default(true) @map("is_active_global")

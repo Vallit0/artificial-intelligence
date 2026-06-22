@@ -16,6 +16,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLevelMode, useDidLevelJustChange } from "@/hooks/useLevelMode";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useCallSounds } from "@/hooks/useCallSounds";
+import { useConnectionQuality } from "@/hooks/useConnectionQuality";
 import { api } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import {
@@ -310,6 +311,12 @@ const Practice = () => {
 
   sessionDurationRef.current = sessionTime;
 
+  // Indicador de red en vivo (estilo "Internet bajo" de WhatsApp). Solo sondea
+  // mientras la llamada está activa.
+  const { quality: connectionQuality } = useConnectionQuality({
+    active: sessionState === "active",
+  });
+
   useEffect(() => {
     if (isConnected && sessionState === "connecting") {
       setSessionState("active");
@@ -577,6 +584,31 @@ const Practice = () => {
           <div className="absolute top-20 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 bg-muted rounded-full z-10">
             <Loader2 className="h-4 w-4 animate-spin text-primary" />
             <span className="text-sm font-semibold text-muted-foreground">{connectionStatus}</span>
+          </div>
+        )}
+
+        {/* Indicador de red en vivo durante la llamada (estilo WhatsApp). Solo
+            aparece cuando la conexión se degrada; en verde no molesta. */}
+        {sessionState === "active" && connectionQuality !== "good" && (
+          <div
+            className={`absolute top-20 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full z-10 shadow-md animate-fade-in ${
+              connectionQuality === "offline"
+                ? "bg-red-500/15 text-red-600 dark:text-red-300 border border-red-500/30"
+                : "bg-amber-500/15 text-amber-600 dark:text-amber-300 border border-amber-500/30"
+            }`}
+            role="status"
+            aria-live="polite"
+          >
+            {connectionQuality === "offline" ? (
+              <WifiOff className="h-4 w-4 shrink-0" />
+            ) : (
+              <Wifi className="h-4 w-4 shrink-0" />
+            )}
+            <span className="text-sm font-semibold whitespace-nowrap">
+              {connectionQuality === "offline"
+                ? "Sin conexión a internet"
+                : "Internet bajo · la voz puede entrecortarse"}
+            </span>
           </div>
         )}
 

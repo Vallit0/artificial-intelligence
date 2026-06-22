@@ -24,6 +24,19 @@ import {
   buildProspectingPrompt,
 } from "@/lib/prospectingPromptBuilder";
 import ProspectingPromptBuilder from "./ProspectingPromptBuilder";
+import { prospectingScenarios } from "@/components/prospecting/ProspectingCarousel";
+
+// Valores por defecto de presentación (nombre/descripción/video) tomados del
+// carrusel del alumno, que es la fuente única. El admin edita sobre estos; al
+// dejar un campo vacío, el carrusel cae de nuevo a este default.
+const DEFAULT_DISPLAY = new Map(
+  prospectingScenarios
+    .filter((s) => s.agentId)
+    .map((s) => [
+      s.agentId as string,
+      { title: s.title, description: s.description, videoUrl: s.videoUrl ?? "" },
+    ]),
+);
 
 const PROMPT_TEMPLATE = `Eres "Coach de Ventas Señoriales — Alvaro". Tu único rol es responder preguntas y dar tips breves sobre prospección telefónica en frío.
 IMPORTANTE:
@@ -82,6 +95,10 @@ const OBJECTIONS: Array<{ secretName: string; label: string }> = [
 ];
 
 interface RowState {
+  // Presentación del carrusel (sólo aplica a escenarios de prospección).
+  label: string;
+  description: string;
+  videoUrl: string;
   systemPrompt: string;
   firstMessage: string;
   isActiveGlobal: boolean;
@@ -141,7 +158,11 @@ export default function ProspectingScenariosPanel() {
     const agentMap = new Map(agentConfigs.map((c) => [c.secretName, c.agentId]));
     const merged: Record<string, RowState> = {};
     for (const s of [...SCENARIOS, ...LEVEL1_AGENTS, ...OBJECTIONS]) {
+      const def = DEFAULT_DISPLAY.get(s.secretName);
       merged[s.secretName] = {
+        label: def?.title ?? s.label,
+        description: def?.description ?? "",
+        videoUrl: def?.videoUrl ?? "",
         systemPrompt: "",
         firstMessage: "",
         isActiveGlobal: true,
@@ -155,7 +176,13 @@ export default function ProspectingScenariosPanel() {
       const systemPrompt = cfg.systemPrompt || "";
       // If builderParams are present, detect if user manually edited the text after generation.
       const manualEdit = !!builderParams && systemPrompt.trim() !== buildProspectingPrompt(builderParams).trim();
+      const prev = merged[cfg.secretName];
+      const def = DEFAULT_DISPLAY.get(cfg.secretName);
       merged[cfg.secretName] = {
+        // DB override gana; si está vacío, cae al default de presentación.
+        label: cfg.label || def?.title || prev?.label || "",
+        description: cfg.description || def?.description || prev?.description || "",
+        videoUrl: cfg.videoUrl || def?.videoUrl || prev?.videoUrl || "",
         systemPrompt,
         firstMessage: cfg.firstMessage || "",
         isActiveGlobal: cfg.isActiveGlobal,
@@ -173,7 +200,8 @@ export default function ProspectingScenariosPanel() {
 
   const handleSave = async (secretName: string) => {
     const row = rows[secretName];
-    const label = [...SCENARIOS, ...LEVEL1_AGENTS, ...OBJECTIONS].find((s) => s.secretName === secretName)?.label;
+    const isProspecting = SCENARIOS.some((s) => s.secretName === secretName);
+    const label = row.label?.trim() || undefined;
     setSavingKey(secretName);
 
     const trimmedAgentId = row.agentId.trim();
@@ -183,6 +211,10 @@ export default function ProspectingScenariosPanel() {
     const [okScenario, okAgent] = await Promise.all([
       saveConfig(secretName, {
         label,
+        // El nombre/descripción/video sólo aplican al carrusel de prospección.
+        ...(isProspecting
+          ? { description: row.description, videoUrl: row.videoUrl }
+          : {}),
         systemPrompt: row.systemPrompt,
         firstMessage: row.firstMessage,
         isActiveGlobal: row.isActiveGlobal,
@@ -195,7 +227,7 @@ export default function ProspectingScenariosPanel() {
     setSavingKey(null);
 
     const ok = okScenario && okAgent;
-    if (ok) toast({ title: "Guardado", description: `${label} actualizado.` });
+    if (ok) toast({ title: "Guardado", description: `${label ?? secretName} actualizado.` });
     else toast({ title: "Error", description: "No se pudo guardar.", variant: "destructive" });
   };
 
@@ -228,7 +260,7 @@ export default function ProspectingScenariosPanel() {
             <Icon className="w-4 h-4" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold leading-tight">{s.label}</p>
+            <p className="text-sm font-semibold leading-tight">{rows[s.secretName]?.label || s.label}</p>
             <p className="text-[10px] text-muted-foreground font-mono truncate mt-0.5">{s.secretName}</p>
           </div>
           {configured && (
@@ -268,10 +300,46 @@ export default function ProspectingScenariosPanel() {
   const renderConfigForm = (s: { secretName: string; label: string }, sectionKey: SectionKey) => {
     const row =
       rows[s.secretName] ||
-      ({ systemPrompt: "", firstMessage: "", isActiveGlobal: true, agentId: "", builderParams: null, manualEdit: false } as RowState);
+      ({ label: s.label, description: "", videoUrl: "", systemPrompt: "", firstMessage: "", isActiveGlobal: true, agentId: "", builderParams: null, manualEdit: false } as RowState);
     const agentConfigured = !!agentConfigs.find((c) => c.secretName === s.secretName)?.agentId;
     const isProspecting = sectionKey === "prospecting";
     const currentParams = row.builderParams ?? DEFAULT_BUILDER_PARAMS;
+
+    // Presentación del carrusel (sólo prospección): nombre, descripción y video
+    // de preview que ve el alumno. Vacío = usa el valor por defecto del código.
+    const displayFields = (
+      <div className="space-y-3 p-3 rounded-lg border bg-muted/20">
+        <p className="text-xs font-semibold text-muted-foreground">Tarjeta del carrusel (lo que ve el alumno)</p>
+        <div className="space-y-1">
+          <Label className="text-xs">Nombre</Label>
+          <Input
+            placeholder="Nombre del escenario"
+            value={row.label}
+            onChange={(e) => updateRow(s.secretName, { label: e.target.value })}
+            className="text-sm"
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Descripción</Label>
+          <Textarea
+            rows={3}
+            placeholder="Descripción que se muestra en la tarjeta"
+            value={row.description}
+            onChange={(e) => updateRow(s.secretName, { description: e.target.value })}
+            className="text-sm"
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Video de preview (URL)</Label>
+          <Input
+            placeholder="/videos/prospecting/escenario.mp4 — vacío para quitar el video"
+            value={row.videoUrl}
+            onChange={(e) => updateRow(s.secretName, { videoUrl: e.target.value })}
+            className="text-sm font-mono"
+          />
+        </div>
+      </div>
+    );
 
     const promptField = (
       <div className="space-y-1">
@@ -363,6 +431,8 @@ export default function ProspectingScenariosPanel() {
     return (
       <div className="space-y-4">
         {sharedHeaderAndAgentId}
+
+        {isProspecting && displayFields}
 
         {isProspecting ? (
           <Tabs defaultValue={row.builderParams ? "builder" : "text"} className="space-y-3">
@@ -524,7 +594,7 @@ export default function ProspectingScenariosPanel() {
                       </span>
                     );
                   })()}
-                  {openCard.label}
+                  {rows[openCard.secretName]?.label || openCard.label}
                 </DialogTitle>
               </DialogHeader>
               {renderConfigForm({ secretName: openCard.secretName, label: openCard.label }, openCard.sectionKey)}

@@ -13,13 +13,23 @@ export async function getAllConfigs() {
 
 export async function upsertConfig(
   secretName: string,
-  data: { label?: string; systemPrompt?: string; firstMessage?: string; isActiveGlobal?: boolean; builderParams?: unknown }
+  data: {
+    label?: string;
+    description?: string;
+    videoUrl?: string;
+    systemPrompt?: string;
+    firstMessage?: string;
+    isActiveGlobal?: boolean;
+    builderParams?: unknown;
+  }
 ) {
   return prisma.prospectingScenarioConfig.upsert({
     where: { secretName },
     create: {
       secretName,
       label: data.label ?? null,
+      description: data.description ?? null,
+      videoUrl: data.videoUrl ?? null,
       systemPrompt: data.systemPrompt ?? null,
       firstMessage: data.firstMessage ?? null,
       isActiveGlobal: data.isActiveGlobal ?? true,
@@ -27,12 +37,24 @@ export async function upsertConfig(
     },
     update: {
       label: data.label ?? undefined,
+      description: data.description ?? undefined,
+      videoUrl: data.videoUrl ?? undefined,
       systemPrompt: data.systemPrompt ?? undefined,
       firstMessage: data.firstMessage ?? undefined,
       isActiveGlobal: data.isActiveGlobal ?? undefined,
       builderParams: data.builderParams !== undefined ? (data.builderParams as any) : undefined,
     },
   });
+}
+
+// Overrides de presentación (nombre/descripción/video) que el carrusel del
+// alumno fusiona sobre los valores por defecto definidos en código. Sólo
+// devuelve filas que tengan al menos un campo de display seteado.
+export async function getDisplayOverrides() {
+  const configs = await prisma.prospectingScenarioConfig.findMany({
+    select: { secretName: true, label: true, description: true, videoUrl: true },
+  });
+  return configs.filter((c) => c.label || c.description || c.videoUrl);
 }
 
 export async function resolveConfig(secretName: string) {

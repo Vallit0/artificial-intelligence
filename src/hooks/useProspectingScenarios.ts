@@ -5,10 +5,21 @@ export interface ProspectingScenarioConfig {
   id: string;
   secretName: string;
   label: string | null;
+  description: string | null;
+  videoUrl: string | null;
   systemPrompt: string | null;
   firstMessage: string | null;
   isActiveGlobal: boolean;
   builderParams?: unknown | null;
+}
+
+// Override de presentación del carrusel para un escenario (campos que el alumno
+// ve). Cualquier campo null cae al valor por defecto definido en código.
+export interface ProspectingDisplayOverride {
+  secretName: string;
+  label: string | null;
+  description: string | null;
+  videoUrl: string | null;
 }
 
 export interface UserScenarioAccessEntry {
@@ -93,17 +104,25 @@ export const useUserScenarioAccess = (userId: string | null) => {
   return { access, isLoading, saveAccess, refetch: fetchAccess };
 };
 
-// Learner: visible scenarios for current user
+// Learner: visible scenarios for current user, plus per-scenario display
+// overrides (nombre/descripción/video) que el carrusel fusiona sobre los
+// valores por defecto en código.
 export const useMyVisibleScenarios = () => {
   const [visible, setVisible] = useState<Set<string> | null>(null);
+  const [overrides, setOverrides] = useState<Map<string, ProspectingDisplayOverride>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const data = await api.get<{ visible: string[] }>("/api/prospecting-scenarios/me");
-        if (!cancelled) setVisible(new Set(data?.visible || []));
+        const data = await api.get<{ visible: string[]; overrides?: ProspectingDisplayOverride[] }>(
+          "/api/prospecting-scenarios/me"
+        );
+        if (!cancelled) {
+          setVisible(new Set(data?.visible || []));
+          setOverrides(new Map((data?.overrides || []).map((o) => [o.secretName, o])));
+        }
       } catch (err) {
         console.error("Error fetching visible scenarios:", err);
         if (!cancelled) setVisible(null);
@@ -116,5 +135,5 @@ export const useMyVisibleScenarios = () => {
     };
   }, []);
 
-  return { visible, isLoading };
+  return { visible, overrides, isLoading };
 };
