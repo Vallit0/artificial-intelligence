@@ -438,7 +438,7 @@ const Progress = () => {
                               <div className="flex items-center gap-2">
                                 {session.score !== null && (
                                   <span className={`text-sm font-bold px-2 py-1 rounded-full ${
-                                    session.score >= 75
+                                    session.passed
                                       ? "text-green-700 bg-green-100 dark:text-green-400 dark:bg-green-900/30"
                                       : "text-red-700 bg-red-100 dark:text-red-400 dark:bg-red-900/30"
                                   }`}>

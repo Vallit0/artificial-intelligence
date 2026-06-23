@@ -40,6 +40,10 @@ interface UseElevenLabsConversationOptions {
   agentSecretName?: string | null;
   userId?: string | null;
   userName?: string | null;
+  // Umbral de aprobación (score 0-100) que gatea el certificado/avance en la UI.
+  // Debe coincidir con el umbral autoritativo del backend (passThresholdForExam):
+  // Objeciones=80, Prospección/práctica=75. Si se omite, default 75.
+  passThreshold?: number;
   onTranscript?: (text: string, isUser: boolean) => void;
   onEvaluation?: (evaluation: EvaluationResult) => void;
   onError?: (error: string) => void;
@@ -59,6 +63,7 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
   const agentSecretNameRef = useRef(options.agentSecretName);
   const userIdRef = useRef(options.userId);
   const userNameRef = useRef(options.userName);
+  const passThresholdRef = useRef(options.passThreshold);
 
   useEffect(() => {
     // Invalidate prefetched URL when agent or scenario changes
@@ -75,7 +80,8 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     agentSecretNameRef.current = options.agentSecretName;
     userIdRef.current = options.userId;
     userNameRef.current = options.userName;
-  }, [options.onTranscript, options.onEvaluation, options.onError, options.onAgentDisconnected, options.onLatency, options.scenarioId, options.sessionId, options.agentSecretName, options.userId, options.userName]);
+    passThresholdRef.current = options.passThreshold;
+  }, [options.onTranscript, options.onEvaluation, options.onError, options.onAgentDisconnected, options.onLatency, options.scenarioId, options.sessionId, options.agentSecretName, options.userId, options.userName, options.passThreshold]);
 
   const [isConnecting, setIsConnecting] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -212,7 +218,10 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
       breakdown.manejo_objeciones +
       breakdown.propuesta_valor +
       breakdown.cierre;
-    const passed = score >= 75;
+    // Umbral por examen, igual que el backend (passThresholdForExam):
+    // Objeciones=80, Prospección=75. Default 75 si la página no lo pasa.
+    const passThreshold = passThresholdRef.current ?? 75;
+    const passed = score >= passThreshold;
     const evaluation: EvaluationResult = {
       score,
       passed,

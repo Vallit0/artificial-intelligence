@@ -144,16 +144,18 @@ export async function saveAgentEvaluation(req: AuthRequest, res: Response, next:
       breakdown.propuesta_valor +
       breakdown.cierre,
     );
-    const passed = score >= PASS_THRESHOLD;
 
-    await sessionsService.saveEvaluation(sessionId, req.user!.id, {
+    // El passed autoritativo lo decide saveEvaluation según el examType de la
+    // sesión (Objeciones=80, Prospección=75). El passed que mandamos aquí es
+    // provisional; la respuesta refleja el valor recomputado y persistido.
+    const saved = await sessionsService.saveEvaluation(sessionId, req.user!.id, {
       score,
-      passed,
+      passed: score >= PASS_THRESHOLD,
       feedback,
       breakdown,
     });
 
-    res.json({ success: true, evaluation: { score, passed, feedback, breakdown } });
+    res.json({ success: true, evaluation: { score, passed: saved.passed, feedback, breakdown } });
   } catch (error) {
     const appError = handleError(error);
     res.status(appError.statusCode).json({ error: appError.message });

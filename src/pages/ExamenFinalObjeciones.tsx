@@ -93,6 +93,8 @@ export default function ExamenFinalObjeciones() {
     sessionId: currentSessionId,
     userId: user?.id || null,
     userName: user?.firstName || null,
+    // Examen de Objeciones (Nivel 2): mínimo para aprobar = 80 (Prospección usa 75).
+    passThreshold: 80,
     onTranscript: handleTranscript,
     onEvaluation: handleAgentEvaluation,
     onError: handleError,

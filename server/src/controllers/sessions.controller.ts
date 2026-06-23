@@ -89,13 +89,18 @@ export async function update(req: AuthRequest, res: Response, next: NextFunction
 export async function evaluate(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const { sessionId, transcript, scenarioId, durationSeconds } = req.body;
-    
+
     // Get AI evaluation
     const evaluation = await sessionsService.evaluateSession(transcript, scenarioId);
-    
-    // Save to session if ID provided
+
+    // Save to session if ID provided. saveEvaluation recomputa el passed
+    // autoritativo según el examType (Objeciones=80, Prospección=75); reflejamos
+    // ese valor en la respuesta para que el front no muestre aprobado un score
+    // que en la DB quedó reprobado.
     if (sessionId) {
-      await sessionsService.saveEvaluation(sessionId, req.user!.id, evaluation);
+      const saved = await sessionsService.saveEvaluation(sessionId, req.user!.id, evaluation);
+      res.json({ ...evaluation, passed: saved.passed });
+      return;
     }
 
     res.json(evaluation);

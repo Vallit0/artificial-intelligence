@@ -189,6 +189,24 @@ describe('Flujo de Examen Final (Nivel 1 y Nivel 2)', () => {
       expect(r74.body.evaluation.score).toBe(74);
     });
 
+    it('Objeciones: umbral 80 — 80 aprueba, 75 reprueba', async () => {
+      // Nivel 2 exige 80 (Prospección usa 75). Mismo score (75) aprueba en
+      // Prospección pero reprueba en Objeciones: el umbral depende del examType.
+      const s80 = (await createExamSession(token, 'objeciones')).body;
+      const r80 = await evalSession(token, s80.id, { breakdown: breakdownFor(80) });
+      expect(r80.body.evaluation.score).toBe(80);
+      expect(r80.body.evaluation.passed).toBe(true);
+      const row80 = await prisma.practiceSession.findUnique({ where: { id: s80.id } });
+      expect(row80?.passed).toBe(true);
+
+      const s75 = (await createExamSession(token, 'objeciones')).body;
+      const r75 = await evalSession(token, s75.id, { breakdown: breakdownFor(75) });
+      expect(r75.body.evaluation.score).toBe(75);
+      expect(r75.body.evaluation.passed).toBe(false);
+      const row75 = await prisma.practiceSession.findUnique({ where: { id: s75.id } });
+      expect(row75?.passed).toBe(false);
+    });
+
     it('IGNORA score/passed que mande el cliente y recomputa desde el breakdown', async () => {
       // Vector anti-trampa: el agente (o un cliente malicioso) afirma passed:true
       // y score:100, pero el breakdown real suma 40. Debe quedar reprobado.
