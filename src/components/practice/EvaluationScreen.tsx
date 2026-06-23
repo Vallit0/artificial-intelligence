@@ -28,6 +28,10 @@ interface EvaluationScreenProps {
   onContinue: () => void;
   onRetry: () => void;
   continueLabel?: string;
+  // Puntaje mínimo (0-100) para aprobar, mostrado en los textos de la pantalla.
+  // Debe coincidir con el umbral real del examen: Objeciones=80, Prospección/
+  // práctica=75. Default 75.
+  passThreshold?: number;
 }
 
 const EvaluationScreen = ({
@@ -38,6 +42,7 @@ const EvaluationScreen = ({
   onContinue,
   onRetry,
   continueLabel,
+  passThreshold = 75,
 }: EvaluationScreenProps) => {
   const navigate = useNavigate();
   const [showDetails, setShowDetails] = useState(false);
@@ -161,7 +166,7 @@ const EvaluationScreen = ({
                 ¡Sigue practicando!
               </h1>
               <p className="text-sm text-muted-foreground">
-                Necesitas 50+ puntos para pasar
+                Necesitas {passThreshold}+ puntos para pasar
               </p>
             </>
           )}
@@ -189,7 +194,7 @@ const EvaluationScreen = ({
           />
           <div className="flex justify-between mt-2 text-xs text-muted-foreground">
             <span>0</span>
-            <span className="text-secondary font-bold">50 (mínimo)</span>
+            <span className="text-secondary font-bold">{passThreshold} (mínimo)</span>
             <span>100</span>
           </div>
         </div>

@@ -330,6 +330,7 @@ export default function ExamenFinalObjeciones() {
         onContinue={handleContinue}
         onRetry={handleRetry}
         continueLabel={evaluation?.passed ? "Ver mi certificado" : undefined}
+        passThreshold={80}
       />
     );
   }
