@@ -171,18 +171,35 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
         cierre?: number;
       };
     };
-    // Defensive clamp to 0–20 per rubric: the server validates this range
-    // with zod (elevenlabs.controller.ts) and rejects anything else with a
-    // 400, which would silently break the unlock flow downstream. Some
-    // agent variants send 0–100 per rubric; clamping keeps both sides in
-    // agreement instead of letting the request bounce on validation.
-    const clamp = (n: number) => Math.max(0, Math.min(20, Math.round(n)));
+    // El servidor valida cada rúbrica en 0–20 con zod (elevenlabs.controller.ts)
+    // y rechaza con 400 cualquier otra cosa. PERO las tools de ElevenLabs
+    // (submit_evaluation[_objeciones].tool.json) le piden al agente cada
+    // dimensión en escala 0–100, no 0–20. Truncar (clamp) 0–100 → 0–20 hacía
+    // que toda rúbrica ≥20 cayera a 20, dando score=100 casi siempre: ese era
+    // el bug del "100 fijo". Aquí reescalamos en vez de truncar.
+    const raw = {
+      apertura: p.breakdown?.apertura ?? p.apertura ?? 0,
+      escucha_activa: p.breakdown?.escucha_activa ?? p.escucha_activa ?? 0,
+      manejo_objeciones: p.breakdown?.manejo_objeciones ?? p.manejo_objeciones ?? 0,
+      propuesta_valor: p.breakdown?.propuesta_valor ?? p.propuesta_valor ?? 0,
+      cierre: p.breakdown?.cierre ?? p.cierre ?? 0,
+    };
+    // Detecta la escala: si alguna rúbrica supera 20, el agente está usando la
+    // escala 0–100 de la tool y hay que dividir entre 5 para mapear a 0–20. Si
+    // todas ya están en 0–20, se usan tal cual (variantes que ya envían 0–20).
+    const isHundredScale = Object.values(raw).some((n) => Number(n) > 20);
+    const toRubric = (n: unknown) => {
+      const num = Number(n) || 0;
+      const scaled = isHundredScale ? num / 5 : num;
+      return Math.max(0, Math.min(20, Math.round(scaled)));
+    };
+    console.log("[DEBUG][EVAL] rúbricas crudas del agente:", raw, "→ escala", isHundredScale ? "0-100 (÷5)" : "0-20");
     const breakdown = {
-      apertura: clamp(p.breakdown?.apertura ?? p.apertura ?? 0),
-      escucha_activa: clamp(p.breakdown?.escucha_activa ?? p.escucha_activa ?? 0),
-      manejo_objeciones: clamp(p.breakdown?.manejo_objeciones ?? p.manejo_objeciones ?? 0),
-      propuesta_valor: clamp(p.breakdown?.propuesta_valor ?? p.propuesta_valor ?? 0),
-      cierre: clamp(p.breakdown?.cierre ?? p.cierre ?? 0),
+      apertura: toRubric(raw.apertura),
+      escucha_activa: toRubric(raw.escucha_activa),
+      manejo_objeciones: toRubric(raw.manejo_objeciones),
+      propuesta_valor: toRubric(raw.propuesta_valor),
+      cierre: toRubric(raw.cierre),
     };
     // Mirror the server-side recompute (elevenlabs.controller.ts:124-132):
     // score/passed are derived from the breakdown, ignoring whatever the

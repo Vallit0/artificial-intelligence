@@ -161,7 +161,12 @@
       "Bash(npx dotenv *)",
       "Bash(STRESS_ADMIN_EMAIL=x STRESS_ADMIN_PASSWORD=y node stress/stress-exam.mjs --dry-run)",
       "Bash(grep -nA3 \"user .*User .*fields: \\\\[userId\\\\]\" server/prisma/schema.prisma)",
-      "Bash(STRESS_BASE_URL=http://localhost:3000 STRESS_ADMIN_EMAIL=admin@gmail.com STRESS_ADMIN_PASSWORD=admin node stress/stress-exam.mjs --pool=3 --stages=5,15 --stage-secs=4)"
+      "Bash(STRESS_BASE_URL=http://localhost:3000 STRESS_ADMIN_EMAIL=admin@gmail.com STRESS_ADMIN_PASSWORD=admin node stress/stress-exam.mjs --pool=3 --stages=5,15 --stage-secs=4)",
+      "Read(//c/c/Users/estua/Documents/ai/senoriales-48152aa7/server/prisma/**)",
+      "Read(//c/c/Users/estua/Documents/ai/senoriales-48152aa7/server/**)",
+      "Bash(grep -v -E '^Loaded Prisma|^$|skipping environment')",
+      "Bash(echo \"backup exit: $?\")",
+      "Read(//c/c/Users/estua/Documents/ai/**)"
     ]
   },
   "hooks": {

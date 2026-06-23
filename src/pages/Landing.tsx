@@ -14,7 +14,7 @@ import logoSenoriales from "@/assets/logo-senoriales.png";
 
 type SessionState = "idle" | "connecting" | "active" | "timeup";
 
-const FREE_TIER_MAX_SECONDS = 600; // 10 minutes
+const FREE_TIER_MAX_SECONDS = 180; // 3 minutos de demo libre (sin usuario)
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -122,7 +122,6 @@ const Landing = () => {
     setOrbGrowing(false);
     setOrbWinking(false);
     setConnectionStatus("");
-    setTranscriptMessages([]);
   };
 
   const handleTimeUp = useCallback(() => {
