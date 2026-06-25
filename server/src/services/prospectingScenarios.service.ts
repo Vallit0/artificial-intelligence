@@ -17,6 +17,8 @@ export async function upsertConfig(
     label?: string;
     description?: string;
     videoUrl?: string;
+    location?: string;
+    targetAge?: string;
     systemPrompt?: string;
     firstMessage?: string;
     isActiveGlobal?: boolean;
@@ -30,6 +32,8 @@ export async function upsertConfig(
       label: data.label ?? null,
       description: data.description ?? null,
       videoUrl: data.videoUrl ?? null,
+      location: data.location ?? null,
+      targetAge: data.targetAge ?? null,
       systemPrompt: data.systemPrompt ?? null,
       firstMessage: data.firstMessage ?? null,
       isActiveGlobal: data.isActiveGlobal ?? true,
@@ -39,6 +43,8 @@ export async function upsertConfig(
       label: data.label ?? undefined,
       description: data.description ?? undefined,
       videoUrl: data.videoUrl ?? undefined,
+      location: data.location ?? undefined,
+      targetAge: data.targetAge ?? undefined,
       systemPrompt: data.systemPrompt ?? undefined,
       firstMessage: data.firstMessage ?? undefined,
       isActiveGlobal: data.isActiveGlobal ?? undefined,
@@ -52,9 +58,9 @@ export async function upsertConfig(
 // devuelve filas que tengan al menos un campo de display seteado.
 export async function getDisplayOverrides() {
   const configs = await prisma.prospectingScenarioConfig.findMany({
-    select: { secretName: true, label: true, description: true, videoUrl: true },
+    select: { secretName: true, label: true, description: true, videoUrl: true, location: true, targetAge: true },
   });
-  return configs.filter((c) => c.label || c.description || c.videoUrl);
+  return configs.filter((c) => c.label || c.description || c.videoUrl || c.location || c.targetAge);
 }
 
 export async function resolveConfig(secretName: string) {

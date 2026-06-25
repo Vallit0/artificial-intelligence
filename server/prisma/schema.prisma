@@ -441,6 +441,11 @@ model ProspectingScenarioConfig {
   // escenarios de prospección; los agentes de Nivel 1/2 los ignoran.
   description    String?
   videoUrl       String?  @map("video_url")
+  // Ubicación (insignia con el pin) y edad objetivo que ve el alumno en la
+  // tarjeta. Igual que los demás campos de display: null = usa el valor por
+  // defecto en código y sólo aplican a escenarios de prospección.
+  location       String?
+  targetAge      String?  @map("target_age")
   systemPrompt   String?  @map("system_prompt")
   firstMessage   String?  @map("first_message")
   isActiveGlobal Boolean  @default(true) @map("is_active_global")
@@ -449,6 +454,26 @@ model ProspectingScenarioConfig {
   updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@map("prospecting_scenario_configs")
+}
+
+// Configuración global de la plataforma, editable por el admin. Fila única
+// (singleton, id="singleton"). Los valores tienen defaults que replican los que
+// antes estaban fijos en código, así que ausencia de fila = comportamiento previo.
+model AppConfig {
+  id                         String   @id @default("singleton")
+  // Duración máxima de llamada por módulo, en segundos.
+  callDurationProspeccionSec Int      @default(300) @map("call_duration_prospeccion_sec")
+  callDurationObjecionesSec  Int      @default(600) @map("call_duration_objeciones_sec")
+  // Umbral de aprobación (0-100) por examen.
+  passThresholdProspeccion   Int      @default(75) @map("pass_threshold_prospeccion")
+  passThresholdObjeciones    Int      @default(80) @map("pass_threshold_objeciones")
+  // Datos de firma del certificado (vacío = línea sin nombre, como hoy).
+  certificateInstructorName  String?  @map("certificate_instructor_name")
+  certificateDirectorName    String?  @map("certificate_director_name")
+  certificateCourseName      String?  @map("certificate_course_name")
+  updatedAt                  DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("app_config")
 }
 
 model UserScenarioAccess {

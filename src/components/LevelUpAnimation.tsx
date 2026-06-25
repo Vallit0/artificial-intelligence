@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import confetti from "canvas-confetti";
 import { Trophy, Sparkles, ArrowRight } from "lucide-react";
+import { levelLabel, type Level } from "@/hooks/useLevelMode";
 
 interface LevelUpAnimationProps {
   onDone: () => void;
@@ -97,7 +98,7 @@ const LevelUpAnimation = ({
               textShadow: "0 4px 24px rgba(168,85,247,0.6)",
             }}
           >
-            Nivel {level}
+            {levelLabel(level as Level)}
           </h1>
           <p className="text-base text-white/80 max-w-xs">{subtitle}</p>
         </div>
@@ -114,7 +115,7 @@ const LevelUpAnimation = ({
               fontFamily: "'Nunito', 'DIN Rounded', -apple-system, sans-serif",
             }}
           >
-            Avanzar de nivel
+            Continuar
             <ArrowRight className="w-5 h-5" />
           </button>
         )}

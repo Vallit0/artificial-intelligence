@@ -44,6 +44,12 @@ interface UseElevenLabsConversationOptions {
   // Debe coincidir con el umbral autoritativo del backend (passThresholdForExam):
   // Objeciones=80, Prospección/práctica=75. Si se omite, default 75.
   passThreshold?: number;
+  // Duración máxima de la llamada en segundos. Al alcanzarla, se dispara
+  // onMaxDuration una sola vez (la página decide cómo cerrar: la práctica
+  // termina la llamada, el examen finaliza y evalúa). Si se omite o es null/0,
+  // no hay límite. Prospección usa 300 (5 min) y Objeciones 600 (10 min).
+  maxDurationSec?: number | null;
+  onMaxDuration?: () => void;
   onTranscript?: (text: string, isUser: boolean) => void;
   onEvaluation?: (evaluation: EvaluationResult) => void;
   onError?: (error: string) => void;
@@ -64,6 +70,10 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
   const userIdRef = useRef(options.userId);
   const userNameRef = useRef(options.userName);
   const passThresholdRef = useRef(options.passThreshold);
+  const maxDurationSecRef = useRef(options.maxDurationSec);
+  const onMaxDurationRef = useRef(options.onMaxDuration);
+  // One-shot guard: el cierre por tiempo se dispara una sola vez por sesión.
+  const maxReachedRef = useRef(false);
 
   useEffect(() => {
     // Invalidate prefetched URL when agent or scenario changes
@@ -81,7 +91,9 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     userIdRef.current = options.userId;
     userNameRef.current = options.userName;
     passThresholdRef.current = options.passThreshold;
-  }, [options.onTranscript, options.onEvaluation, options.onError, options.onAgentDisconnected, options.onLatency, options.scenarioId, options.sessionId, options.agentSecretName, options.userId, options.userName, options.passThreshold]);
+    maxDurationSecRef.current = options.maxDurationSec;
+    onMaxDurationRef.current = options.onMaxDuration;
+  }, [options.onTranscript, options.onEvaluation, options.onError, options.onAgentDisconnected, options.onLatency, options.scenarioId, options.sessionId, options.agentSecretName, options.userId, options.userName, options.passThreshold, options.maxDurationSec, options.onMaxDuration]);
 
   const [isConnecting, setIsConnecting] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -439,6 +451,7 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
 
     setIsConnecting(true);
     setSessionTime(0);
+    maxReachedRef.current = false;
     setIsMuted(false);
     connectStartRef.current = performance.now();
     userSpeechEndRef.current = null;
@@ -545,6 +558,19 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
       }
     };
   }, []);
+
+  // Auto-cierre por límite de duración. Cuando la sesión activa alcanza
+  // maxDurationSec, dispara onMaxDuration una sola vez. El hook no termina la
+  // sesión por su cuenta: la página decide cómo cerrar (la práctica cuelga; el
+  // examen finaliza y evalúa) llamando a su propio handler desde onMaxDuration.
+  useEffect(() => {
+    const max = maxDurationSecRef.current;
+    if (!max || max <= 0) return;
+    if (isConnectedRef.current && sessionTime >= max && !maxReachedRef.current) {
+      maxReachedRef.current = true;
+      onMaxDurationRef.current?.();
+    }
+  }, [sessionTime]);
 
   // TTFA: measure from last user-transcript event to the moment the agent starts speaking
   useEffect(() => {

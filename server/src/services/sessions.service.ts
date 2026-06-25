@@ -5,6 +5,7 @@
 import prisma from '../db/index.js';
 import { PracticeSession, CreateSessionInput, UpdateSessionInput, SessionEvaluation, UserStats } from '../types/index.js';
 import { NotFoundError } from '../utils/errors.js';
+import { getAppConfig } from './appConfig.service.js';
 
 // ============================================
 // Session Operations
@@ -67,11 +68,17 @@ export async function updateSession(
   return mapToSession(session);
 }
 
-// Umbral de aprobación por examen. Objeciones (Nivel 2) exige 80; Prospección
-// (Nivel 1) mantiene 75. Punto único de verdad del lado servidor para que el
-// camino del agente (agent-evaluation) y el de fallback (OpenAI) coincidan.
+// Umbral de aprobación por examen. Defaults: Objeciones=80, Prospección=75.
+// Fallback síncrono; la autoridad real (saveEvaluation) lee los umbrales
+// configurables de AppConfig vía passThresholdForExamConfigured.
 export function passThresholdForExam(examType: string | null): number {
   return examType === 'objeciones' ? 80 : 75;
+}
+
+// Versión autoritativa: lee los umbrales editables por el admin (AppConfig).
+export async function passThresholdForExamConfigured(examType: string | null): Promise<number> {
+  const cfg = await getAppConfig();
+  return examType === 'objeciones' ? cfg.passThresholdObjeciones : cfg.passThresholdProspeccion;
 }
 
 export async function saveEvaluation(
@@ -95,7 +102,7 @@ export async function saveEvaluation(
   // del evaluador, que aplica el fallback indulgente (score 50 → passed) para
   // no dejar varado al alumno si la IA no está disponible.
   const passed = owned.examType
-    ? (evaluation.score ?? 0) >= passThresholdForExam(owned.examType)
+    ? (evaluation.score ?? 0) >= (await passThresholdForExamConfigured(owned.examType))
     : evaluation.passed;
 
   const session = await prisma.practiceSession.update({

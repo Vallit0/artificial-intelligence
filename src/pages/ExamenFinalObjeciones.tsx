@@ -11,6 +11,7 @@ import VoiceControls from "@/components/VoiceControls";
 import EvaluationScreen from "@/components/practice/EvaluationScreen";
 import CertificatePreview from "@/components/admin/CertificatePreview";
 import { useToast } from "@/hooks/use-toast";
+import { usePlatformConfig } from "@/hooks/useAppConfig";
 import LeftSidebar from "@/components/scenarios/LeftSidebar";
 import MobileNavigation from "@/components/MobileNavigation";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -38,6 +39,9 @@ interface EvaluationResult {
 
 type ExamState = "idle" | "active" | "evaluating" | "evaluated" | "certificate";
 
+// Examen de Objeciones: la llamada se cierra (y evalúa) al llegar a 10 min.
+const EXAM_MAX_SECONDS = 10 * 60;
+
 export default function ExamenFinalObjeciones() {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -49,6 +53,12 @@ export default function ExamenFinalObjeciones() {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const sessionDurationRef = useRef(0);
   const certificateRef = useRef<HTMLDivElement>(null);
+
+  // Duración y umbral configurables por el admin (AppConfig); fallback a los
+  // defaults históricos de Objeciones mientras la config carga.
+  const { config: platformConfig } = usePlatformConfig();
+  const examMaxSeconds = platformConfig?.callDurationObjecionesSec ?? EXAM_MAX_SECONDS;
+  const passThreshold = platformConfig?.passThresholdObjeciones ?? 80;
 
   const studentName =
     [user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.email || "Estudiante";
@@ -93,12 +103,16 @@ export default function ExamenFinalObjeciones() {
     sessionId: currentSessionId,
     userId: user?.id || null,
     userName: user?.firstName || null,
-    // Examen de Objeciones (Nivel 2): mínimo para aprobar = 80 (Prospección usa 75).
-    passThreshold: 80,
+    // Umbral de aprobación configurable (default Objeciones=80).
+    passThreshold,
     onTranscript: handleTranscript,
     onEvaluation: handleAgentEvaluation,
     onError: handleError,
     onAgentDisconnected: () => {
+      handleEndExamRef.current();
+    },
+    maxDurationSec: examMaxSeconds,
+    onMaxDuration: () => {
       handleEndExamRef.current();
     },
   });
@@ -435,7 +449,7 @@ export default function ExamenFinalObjeciones() {
                     </span>
                   </div>
                   <div className="text-lg font-mono font-bold text-primary">
-                    {formatTime(sessionTime)}
+                    {formatTime(Math.max(0, examMaxSeconds - sessionTime))}
                   </div>
                 </div>
 

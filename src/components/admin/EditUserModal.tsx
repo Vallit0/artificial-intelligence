@@ -54,7 +54,7 @@ interface EditableUser {
 
 const FLAGS: { key: keyof EditableUser; label: string }[] = [
   { key: "examenFinalEnabled", label: "Examen final habilitado" },
-  { key: "level2Unlocked", label: "Nivel 2 desbloqueado" },
+  { key: "level2Unlocked", label: "Objeciones desbloqueado" },
   { key: "courseCompleted", label: "Curso completado" },
   { key: "tutorialCompleted", label: "Tutorial completado" },
   { key: "emailVerified", label: "Email verificado" },

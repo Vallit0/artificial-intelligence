@@ -14,6 +14,7 @@ import * as sedesService from '../services/sedes.service.js';
 import * as coachesService from '../services/coaches.service.js';
 import * as agentConfigService from '../services/agentConfig.service.js';
 import * as prospectingScenariosService from '../services/prospectingScenarios.service.js';
+import * as appConfigService from '../services/appConfig.service.js';
 import * as sessionsService from '../services/sessions.service.js';
 import * as analyticsController from '../controllers/analytics.controller.js';
 import * as abTestingController from '../controllers/abTesting.controller.js';
@@ -1301,7 +1302,7 @@ adminRouter.put('/prospecting-scenarios', async (req: AuthRequest, res: Response
     if (!canEditPrompts(req.user)) {
       throw new ForbiddenError('No tenés permiso para editar prompts');
     }
-    const { secretName, label, description, videoUrl, systemPrompt, firstMessage, isActiveGlobal, builderParams } = req.body;
+    const { secretName, label, description, videoUrl, location, targetAge, systemPrompt, firstMessage, isActiveGlobal, builderParams } = req.body;
     if (!secretName) {
       res.status(400).json({ error: 'secretName required' });
       return;
@@ -1310,6 +1311,8 @@ adminRouter.put('/prospecting-scenarios', async (req: AuthRequest, res: Response
       label,
       description,
       videoUrl,
+      location,
+      targetAge,
       systemPrompt,
       firstMessage,
       isActiveGlobal,
@@ -1348,6 +1351,28 @@ adminRouter.put('/prospecting-scenarios', async (req: AuthRequest, res: Response
  *                   enabled: { type: boolean }
  *       403: { description: No es admin global, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
  */
+// ============================================
+// GET/PUT /api/admin/config — configuración global (admin global)
+// ============================================
+adminRouter.get('/config', requireGlobalAdmin, async (_req: AuthRequest, res: Response) => {
+  try {
+    res.json(await appConfigService.getAppConfig());
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
+adminRouter.put('/config', requireGlobalAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const config = await appConfigService.updateAppConfig(req.body ?? {});
+    res.json({ success: true, config });
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
 adminRouter.get('/user-scenario-access/:userId', requireGlobalAdmin, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const access = await prospectingScenariosService.getUserAccess(req.params.userId);

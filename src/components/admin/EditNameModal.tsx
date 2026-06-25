@@ -14,8 +14,12 @@ import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api-client";
 import { Student } from "@/hooks/useStudents";
 
+// Acepta cualquier usuario editable (estudiante o coach): sólo se usan
+// id/email/nombre, y el endpoint /users/:id/name aplica a cualquier rol.
+type EditableUserRef = Pick<Student, "id" | "email" | "first_name" | "last_name">;
+
 interface EditNameModalProps {
-  student: Student | null;
+  student: EditableUserRef | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;

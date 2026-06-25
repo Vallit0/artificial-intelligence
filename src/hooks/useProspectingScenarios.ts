@@ -7,6 +7,8 @@ export interface ProspectingScenarioConfig {
   label: string | null;
   description: string | null;
   videoUrl: string | null;
+  location: string | null;
+  targetAge: string | null;
   systemPrompt: string | null;
   firstMessage: string | null;
   isActiveGlobal: boolean;
@@ -20,6 +22,8 @@ export interface ProspectingDisplayOverride {
   label: string | null;
   description: string | null;
   videoUrl: string | null;
+  location: string | null;
+  targetAge: string | null;
 }
 
 export interface UserScenarioAccessEntry {

@@ -19,11 +19,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { type Coach, coachDisplayName } from "@/hooks/useCoaches";
-import { Award, Check, ChevronDown, ChevronUp, Clock, Eye, FileText, KeyRound, Lock, Pencil, Trash2, Unlock, UserCog, UserPen } from "lucide-react";
+import { Award, Check, ChevronDown, ChevronUp, Clock, Eye, FileText, KeyRound, Lock, Pencil, Unlock, UserCog, UserPen } from "lucide-react";
 import StudentDetailModal from "./StudentDetailModal";
 import GradeModal from "./GradeModal";
 import CertificateModal from "./CertificateModal";
-import DeleteUserModal from "./DeleteUserModal";
 import EditNameModal from "./EditNameModal";
 import EditUserModal from "./EditUserModal";
 import ResetStudentPasswordModal from "./ResetStudentPasswordModal";
@@ -62,7 +61,6 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [gradeStudent, setGradeStudent] = useState<Student | null>(null);
   const [certificateStudent, setCertificateStudent] = useState<Student | null>(null);
-  const [deleteStudent, setDeleteStudent] = useState<Student | null>(null);
   const [editNameStudent, setEditNameStudent] = useState<Student | null>(null);
   const [editUserStudent, setEditUserStudent] = useState<Student | null>(null);
   const [resetPasswordStudent, setResetPasswordStudent] = useState<Student | null>(null);
@@ -303,12 +301,6 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
             <TableHead className="text-center">Tiempo Total</TableHead>
             <TableHead className="text-center">Examen Final</TableHead>
             <TableHead className="text-center">Nivel</TableHead>
-            <TableHead
-              className="cursor-pointer hover:text-foreground text-center"
-              onClick={() => handleSort("grade")}
-            >
-              Nota Final <SortIcon column="grade" />
-            </TableHead>
             <TableHead className="text-right">Acciones</TableHead>
           </TableRow>
         </TableHeader>
@@ -366,23 +358,11 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
                 </Button>
               </TableCell>
               <TableCell className="text-center">
-                {/* Read-only — el ascenso a Nivel 2 solo se logra aprobando
-                    el examen final con 50+ puntos. Sin override manual. */}
+                {/* Read-only — refleja si el alumno aprobó el examen de
+                    Prospección. Ambos módulos están abiertos para todos. */}
                 <Badge variant={student.level2Unlocked ? "default" : "secondary"} className="font-medium">
-                  {student.level2Unlocked ? "Nivel 2" : "Nivel 1"}
+                  {student.level2Unlocked ? "Objeciones" : "Prospección"}
                 </Badge>
-              </TableCell>
-              <TableCell className="text-center">
-                {student.finalGrade !== null ? (
-                  <Badge
-                    variant={student.finalGrade >= 70 ? "default" : "secondary"}
-                    className="font-bold"
-                  >
-                    {student.finalGrade}
-                  </Badge>
-                ) : (
-                  <span className="text-muted-foreground">Sin calificar</span>
-                )}
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex items-center justify-end gap-1">
@@ -433,15 +413,6 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
                     title="Editar calificación"
                   >
                     <Pencil className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-destructive hover:text-destructive"
-                    onClick={() => setDeleteStudent(student)}
-                    title="Eliminar usuario"
-                  >
-                    <Trash2 className="w-4 h-4" />
                   </Button>
                   {student.finalGrade !== null ? (
                     <Button
@@ -497,13 +468,6 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
         student={certificateStudent}
         open={!!certificateStudent}
         onOpenChange={(open) => !open && setCertificateStudent(null)}
-      />
-
-      <DeleteUserModal
-        student={deleteStudent}
-        open={!!deleteStudent}
-        onOpenChange={(open) => !open && setDeleteStudent(null)}
-        onSuccess={onRefetch}
       />
 
       <EditNameModal

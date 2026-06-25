@@ -75,7 +75,7 @@ export function TimeByModeBreakdown({ data, title = "Tiempo de práctica por mod
             {/* Familia Role-Play Cliente (Nivel 1) con Prospección como sub-modo */}
             <Row
               icon={<Swords className="h-4 w-4" />}
-              label="Role-Play Cliente (Nivel 1)"
+              label="Role-Play Cliente (Prospección)"
               seconds={data.roleplayClienteSeconds}
               total={total}
               highlight

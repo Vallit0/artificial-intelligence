@@ -19,16 +19,30 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { AlertCircle, GraduationCap, Loader2, Search, ShieldCheck, ShieldOff } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { AlertCircle, GraduationCap, KeyRound, Loader2, Search, ShieldCheck, ShieldOff, UserPen } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCoaches, Coach } from "@/hooks/useCoaches";
+import EditCoachModal from "./EditCoachModal";
+import ResetStudentPasswordModal from "./ResetStudentPasswordModal";
+
+// Adapta un Coach a la forma mínima de usuario que espera el modal de reseteo
+// de contraseña (reusado de la gestión de estudiantes).
+const toUserRef = (c: Coach) => ({
+  id: c.id,
+  email: c.email,
+  first_name: c.firstName,
+  last_name: c.lastName,
+});
 
 export default function CoachesPanel() {
-  const { coaches, isLoading, error, updatePermissions } = useCoaches();
+  const { coaches, isLoading, error, updatePermissions, refetch } = useCoaches();
   const { toast } = useToast();
   const [query, setQuery] = useState("");
   const [sedeFilter, setSedeFilter] = useState<string>("all");
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [editCoach, setEditCoach] = useState<Coach | null>(null);
+  const [resetCoach, setResetCoach] = useState<Coach | null>(null);
 
   const sedeOptions = useMemo(() => {
     const map = new Map<string, { id: string; name: string }>();
@@ -142,6 +156,7 @@ export default function CoachesPanel() {
                   <TableHead className="hidden md:table-cell">Sede</TableHead>
                   <TableHead className="text-center">Crear coaches</TableHead>
                   <TableHead className="text-center">Editar prompts</TableHead>
+                  <TableHead className="text-center">Cuenta</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -198,6 +213,28 @@ export default function CoachesPanel() {
                           }
                         />
                       </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => setEditCoach(coach)}
+                            title="Editar coach (nombre, email, sede)"
+                          >
+                            <UserPen className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => setResetCoach(coach)}
+                            title="Resetear contraseña"
+                          >
+                            <KeyRound className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
                     </TableRow>
                   );
                 })}
@@ -218,6 +255,19 @@ export default function CoachesPanel() {
           </p>
         </div>
       </CardContent>
+
+      <EditCoachModal
+        coach={editCoach}
+        open={!!editCoach}
+        onOpenChange={(open) => !open && setEditCoach(null)}
+        onSuccess={refetch}
+      />
+
+      <ResetStudentPasswordModal
+        student={resetCoach ? toUserRef(resetCoach) : null}
+        open={!!resetCoach}
+        onOpenChange={(open) => !open && setResetCoach(null)}
+      />
     </Card>
   );
 }

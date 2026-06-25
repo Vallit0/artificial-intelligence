@@ -140,6 +140,8 @@ const ProspectingCarousel = ({ onStartPractice }: ProspectingCarouselProps) => {
         title: o.label || s.title,
         description: o.description || s.description,
         videoUrl: o.videoUrl || s.videoUrl,
+        location: o.location || s.location,
+        targetAge: o.targetAge || s.targetAge,
       };
     });
   const [selectedScenario, setSelectedScenario] = useState<number | null>(null);

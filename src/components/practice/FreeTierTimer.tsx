@@ -8,12 +8,16 @@ interface FreeTierTimerProps {
   maxSeconds: number;
   currentSeconds: number;
   onTimeUp: () => void;
+  // Muestra el CTA "Más tiempo" (registro) cuando queda poco. Solo aplica al
+  // free tier anónimo; para alumnos autenticados con límite por módulo se oculta.
+  showUpgrade?: boolean;
 }
 
 export const FreeTierTimer = ({
   maxSeconds,
   currentSeconds,
   onTimeUp,
+  showUpgrade = true,
 }: FreeTierTimerProps) => {
   const navigate = useNavigate();
   const [hasTriggered, setHasTriggered] = useState(false);
@@ -70,7 +74,7 @@ export const FreeTierTimer = ({
         <span className="text-xs text-muted-foreground">restantes</span>
       </div>
       
-      {isLow && (
+      {isLow && showUpgrade && (
         <Button
           size="sm"
           variant="outline"

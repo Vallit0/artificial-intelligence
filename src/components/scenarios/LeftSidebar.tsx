@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import logoSenoriales from "@/assets/logo-senoriales.png";
 import { useAuth } from "@/hooks/useAuth";
-import { useLevelMode, useDidLevelJustChange } from "@/hooks/useLevelMode";
+import { useLevelMode, useDidLevelJustChange, levelLabel } from "@/hooks/useLevelMode";
 import { startTutorial } from "@/lib/tutorial";
 
 interface NavItem {
@@ -110,12 +110,12 @@ const LeftSidebar = () => {
               : undefined,
           }}
         >
-          Nivel {currentLevel} · {currentLevel === 1 ? "Álvaro" : "Alvaro"}
+          {levelLabel(currentLevel)}
         </div>
       </div>
 
-      {/* Level toggle — visible to admins and to advisors who unlocked Nivel 2
-          so they can revisit Nivel 1 (Prospección, Legado de Vida) any time. */}
+      {/* Module toggle — todos los usuarios pueden alternar entre Prospección y
+          Objeciones. */}
       {canSwitchLevel && (
         <div className="px-3 pt-3">
           <button
@@ -125,21 +125,17 @@ const LeftSidebar = () => {
               color: "hsl(var(--sidebar-foreground) / 0.7)",
               border: "1px dashed hsl(var(--sidebar-border))",
             }}
-            title={
-              isAdmin
-                ? "Cambiar entre Nivel 1 y Nivel 2 (admin)"
-                : "Cambiar entre Nivel 1 y Nivel 2"
-            }
+            title="Cambiar entre Prospección y Objeciones"
           >
             <span className="flex items-center gap-2">
               <ArrowRightLeft className="w-3.5 h-3.5" />
-              Cambiar a Nivel {currentLevel === 1 ? 2 : 1}
+              Cambiar a {levelLabel(currentLevel === 1 ? 2 : 1)}
             </span>
             <span
               className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase"
               style={{ background: accentBg, color: "white" }}
             >
-              N{currentLevel}
+              {levelLabel(currentLevel)}
             </span>
           </button>
         </div>

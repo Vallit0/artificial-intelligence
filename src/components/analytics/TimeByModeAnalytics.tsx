@@ -62,7 +62,7 @@ export function TimeByModeAnalytics({ data, isLoading, error }: TimeByModeAnalyt
                 <TableHeader>
                   <TableRow>
                     <TableHead>Alumno</TableHead>
-                    <TableHead className="text-center">Cliente (Nivel 1)</TableHead>
+                    <TableHead className="text-center">Cliente (Prospección)</TableHead>
                     <TableHead className="text-center">· Prospección</TableHead>
                     <TableHead className="text-center">Objeciones</TableHead>
                     <TableHead className="text-center">Asesor</TableHead>

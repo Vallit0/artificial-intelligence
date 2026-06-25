@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Download, FileImage, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { usePlatformConfig } from "@/hooks/useAppConfig";
 import CertificatePreview from "./CertificatePreview";
 
 interface CertificateModalProps {
@@ -24,6 +25,7 @@ export default function CertificateModal({
   onOpenChange,
 }: CertificateModalProps) {
   const { toast } = useToast();
+  const { config } = usePlatformConfig();
   const certificateRef = useRef<HTMLDivElement>(null);
 
   const downloadAsImage = async () => {
@@ -114,6 +116,9 @@ export default function CertificateModal({
             ref={certificateRef}
             studentName={[student.first_name, student.last_name].filter(Boolean).join(' ') || student.email || "Estudiante"}
             grade={student.finalGrade}
+            instructorName={config?.certificateInstructorName}
+            directorName={config?.certificateDirectorName}
+            courseName={config?.certificateCourseName}
           />
         </div>
 

@@ -34,7 +34,13 @@ const DEFAULT_DISPLAY = new Map(
     .filter((s) => s.agentId)
     .map((s) => [
       s.agentId as string,
-      { title: s.title, description: s.description, videoUrl: s.videoUrl ?? "" },
+      {
+        title: s.title,
+        description: s.description,
+        videoUrl: s.videoUrl ?? "",
+        location: s.location ?? "",
+        targetAge: s.targetAge ?? "",
+      },
     ]),
 );
 
@@ -99,6 +105,8 @@ interface RowState {
   label: string;
   description: string;
   videoUrl: string;
+  location: string;
+  targetAge: string;
   systemPrompt: string;
   firstMessage: string;
   isActiveGlobal: boolean;
@@ -163,6 +171,8 @@ export default function ProspectingScenariosPanel() {
         label: def?.title ?? s.label,
         description: def?.description ?? "",
         videoUrl: def?.videoUrl ?? "",
+        location: def?.location ?? "",
+        targetAge: def?.targetAge ?? "",
         systemPrompt: "",
         firstMessage: "",
         isActiveGlobal: true,
@@ -183,6 +193,8 @@ export default function ProspectingScenariosPanel() {
         label: cfg.label || def?.title || prev?.label || "",
         description: cfg.description || def?.description || prev?.description || "",
         videoUrl: cfg.videoUrl || def?.videoUrl || prev?.videoUrl || "",
+        location: cfg.location || def?.location || prev?.location || "",
+        targetAge: cfg.targetAge || def?.targetAge || prev?.targetAge || "",
         systemPrompt,
         firstMessage: cfg.firstMessage || "",
         isActiveGlobal: cfg.isActiveGlobal,
@@ -213,7 +225,12 @@ export default function ProspectingScenariosPanel() {
         label,
         // El nombre/descripción/video sólo aplican al carrusel de prospección.
         ...(isProspecting
-          ? { description: row.description, videoUrl: row.videoUrl }
+          ? {
+              description: row.description,
+              videoUrl: row.videoUrl,
+              location: row.location,
+              targetAge: row.targetAge,
+            }
           : {}),
         systemPrompt: row.systemPrompt,
         firstMessage: row.firstMessage,
@@ -300,7 +317,7 @@ export default function ProspectingScenariosPanel() {
   const renderConfigForm = (s: { secretName: string; label: string }, sectionKey: SectionKey) => {
     const row =
       rows[s.secretName] ||
-      ({ label: s.label, description: "", videoUrl: "", systemPrompt: "", firstMessage: "", isActiveGlobal: true, agentId: "", builderParams: null, manualEdit: false } as RowState);
+      ({ label: s.label, description: "", videoUrl: "", location: "", targetAge: "", systemPrompt: "", firstMessage: "", isActiveGlobal: true, agentId: "", builderParams: null, manualEdit: false } as RowState);
     const agentConfigured = !!agentConfigs.find((c) => c.secretName === s.secretName)?.agentId;
     const isProspecting = sectionKey === "prospecting";
     const currentParams = row.builderParams ?? DEFAULT_BUILDER_PARAMS;
@@ -328,6 +345,26 @@ export default function ProspectingScenariosPanel() {
             onChange={(e) => updateRow(s.secretName, { description: e.target.value })}
             className="text-sm"
           />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs">Ubicación</Label>
+            <Input
+              placeholder="Ej. Supermercado — vacío para usar el valor por defecto"
+              value={row.location}
+              onChange={(e) => updateRow(s.secretName, { location: e.target.value })}
+              className="text-sm"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Edad objetivo</Label>
+            <Input
+              placeholder="Ej. 40 años — vacío para usar el valor por defecto"
+              value={row.targetAge}
+              onChange={(e) => updateRow(s.secretName, { targetAge: e.target.value })}
+              className="text-sm"
+            />
+          </div>
         </div>
         <div className="space-y-1">
           <Label className="text-xs">Video de preview (URL)</Label>
@@ -532,7 +569,8 @@ export default function ProspectingScenariosPanel() {
                     <h3 className="text-sm font-semibold">Prospección</h3>
                   </div>
                   <p className="text-[11px] text-muted-foreground">
-                    Escenarios de prospección telefónica y presencial. Toca una tarjeta para editar su prompt.
+                    Escenarios de prospección telefónica y presencial. Toca una tarjeta para editar los textos que
+                    ve el alumno (nombre, descripción, ubicación, edad objetivo, video) y su prompt.
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {SCENARIOS.map((s) => renderConfigCard(s, "prospecting"))}

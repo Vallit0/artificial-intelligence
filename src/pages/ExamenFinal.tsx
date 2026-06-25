@@ -11,6 +11,7 @@ import VoiceControls from "@/components/VoiceControls";
 import EvaluationScreen from "@/components/practice/EvaluationScreen";
 import LevelUpAnimation from "@/components/LevelUpAnimation";
 import { useToast } from "@/hooks/use-toast";
+import { usePlatformConfig } from "@/hooks/useAppConfig";
 import LeftSidebar from "@/components/scenarios/LeftSidebar";
 import MobileNavigation from "@/components/MobileNavigation";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -39,6 +40,9 @@ interface EvaluationResult {
 
 type ExamState = "idle" | "active" | "evaluating" | "evaluated" | "leveling-up";
 
+// Examen de Prospección: la llamada se cierra (y evalúa) al llegar a 5 min.
+const EXAM_MAX_SECONDS = 5 * 60;
+
 export default function ExamenFinal() {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -49,6 +53,12 @@ export default function ExamenFinal() {
   const [evaluation, setEvaluation] = useState<EvaluationResult | null>(null);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const sessionDurationRef = useRef(0);
+
+  // Duración y umbral configurables por el admin (AppConfig); fallback a los
+  // defaults históricos de Prospección mientras la config carga.
+  const { config: platformConfig } = usePlatformConfig();
+  const examMaxSeconds = platformConfig?.callDurationProspeccionSec ?? EXAM_MAX_SECONDS;
+  const passThreshold = platformConfig?.passThresholdProspeccion ?? 75;
 
   const isLocked = !isAdmin && !user?.examenFinalEnabled;
 
@@ -93,10 +103,15 @@ export default function ExamenFinal() {
     sessionId: currentSessionId,
     userId: user?.id || null,
     userName: user?.firstName || null,
+    passThreshold,
     onTranscript: handleTranscript,
     onEvaluation: handleAgentEvaluation,
     onError: handleError,
     onAgentDisconnected: () => {
+      handleEndExamRef.current();
+    },
+    maxDurationSec: examMaxSeconds,
+    onMaxDuration: () => {
       handleEndExamRef.current();
     },
   });
@@ -219,7 +234,7 @@ export default function ExamenFinal() {
           : "Hubo un problema al desbloquear el siguiente nivel. Intentá de nuevo en unos segundos.";
         toast({
           variant: "destructive",
-          title: "No se pudo desbloquear el Nivel 2",
+          title: "No se pudo desbloquear Objeciones",
           description: detail,
         });
         return;
@@ -261,7 +276,7 @@ export default function ExamenFinal() {
         sessionDuration={sessionDurationRef.current}
         onContinue={handleContinue}
         onRetry={handleRetry}
-        continueLabel={evaluation?.passed ? "Avanzar de nivel" : undefined}
+        continueLabel={evaluation?.passed ? "Continuar a Objeciones" : undefined}
       />
     );
   }
@@ -392,7 +407,7 @@ export default function ExamenFinal() {
                     </span>
                   </div>
                   <div className="text-lg font-mono font-bold text-primary">
-                    {formatTime(sessionTime)}
+                    {formatTime(Math.max(0, examMaxSeconds - sessionTime))}
                   </div>
                 </div>
 

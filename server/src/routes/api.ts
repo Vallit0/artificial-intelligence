@@ -9,6 +9,7 @@ import * as sessionsController from '../controllers/sessions.controller.js';
 import * as progressController from '../controllers/progress.controller.js';
 import * as analyticsController from '../controllers/analytics.controller.js';
 import * as prospectingScenariosService from '../services/prospectingScenarios.service.js';
+import * as appConfigService from '../services/appConfig.service.js';
 import * as sedesService from '../services/sedes.service.js';
 import * as coachesService from '../services/coaches.service.js';
 import { AuthRequest } from '../types/index.js';
@@ -537,6 +538,18 @@ apiRouter.post('/users/me/complete-tutorial', async (req: AuthRequest, res: Resp
       select: { tutorialCompleted: true },
     });
     res.json({ success: true, tutorialCompleted: updated.tutorialCompleted });
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
+// Configuración global de la plataforma (lectura para cualquier usuario
+// autenticado): duraciones de llamada, umbrales y datos del certificado. La
+// escritura es admin-only vía PUT /api/admin/config. Ningún campo es sensible.
+apiRouter.get('/config', async (_req: AuthRequest, res: Response) => {
+  try {
+    res.json(await appConfigService.getAppConfig());
   } catch (error) {
     const appError = handleError(error);
     res.status(appError.statusCode).json({ error: appError.message });

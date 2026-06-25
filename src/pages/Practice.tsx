@@ -14,6 +14,7 @@ import { useElevenLabsConversation } from "@/hooks/useElevenLabsConversation";
 import { usePracticeSessions, type PracticeMode } from "@/hooks/usePracticeSessions";
 import { useAuth } from "@/hooks/useAuth";
 import { useLevelMode, useDidLevelJustChange } from "@/hooks/useLevelMode";
+import { usePlatformConfig } from "@/hooks/useAppConfig";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useCallSounds } from "@/hooks/useCallSounds";
 import { useConnectionQuality } from "@/hooks/useConnectionQuality";
@@ -154,7 +155,10 @@ const objectionsAgentSuggestions: AgentSuggestion[] = practiceAgentSuggestions
     return next;
   });
 
-const FREE_TIER_MAX_SECONDS = 600;
+// Tope de duración por módulo. Toda llamada se cierra automáticamente al
+// alcanzarlo: Prospección 5 min, Objeciones 10 min.
+const PROSPECCION_MAX_SECONDS = 5 * 60;
+const OBJECIONES_MAX_SECONDS = 10 * 60;
 
 const Practice = () => {
   const navigate = useNavigate();
@@ -167,6 +171,12 @@ const Practice = () => {
 
   const isLevel2 = currentLevel === 2;
   const agentSuggestions = isLevel2 ? objectionsAgentSuggestions : practiceAgentSuggestions;
+  // Tope de duración configurable por el admin (AppConfig); cae a los defaults
+  // históricos mientras la config carga.
+  const { config: platformConfig } = usePlatformConfig();
+  const callMaxSeconds = isLevel2
+    ? platformConfig?.callDurationObjecionesSec ?? OBJECIONES_MAX_SECONDS
+    : platformConfig?.callDurationProspeccionSec ?? PROSPECCION_MAX_SECONDS;
 
   const scenarioId = searchParams.get("scenario");
   const agentParam = searchParams.get("agent");
@@ -332,9 +342,20 @@ const Practice = () => {
   }, [isConnecting]);
 
   const handleTimeUp = useCallback(() => {
-    disconnect();
-    setSessionState("timeup");
-  }, [disconnect]);
+    if (isFreeTier) {
+      // Demo anónimo: cuelga y muestra el CTA de registro.
+      disconnect();
+      setSessionState("timeup");
+      return;
+    }
+    // Alumno autenticado: cierra la llamada como un fin normal (con evaluación
+    // si aplica) e informa que se alcanzó el tope de tiempo del módulo.
+    toast({
+      title: "Tiempo agotado",
+      description: `La llamada se cerró automáticamente al alcanzar el máximo de ${Math.round(callMaxSeconds / 60)} minutos.`,
+    });
+    handleEndCallRef.current();
+  }, [isFreeTier, disconnect, callMaxSeconds, toast]);
 
   // Deriva el modo de práctica que se persiste en la sesión para el desglose de
   // tiempo en analítica. Prospección es sub-modo de Cliente; cualquier práctica
@@ -570,8 +591,13 @@ const Practice = () => {
 
         {/* User menu / Free tier timer */}
         <div className="absolute top-6 right-6 z-10">
-          {isFreeTier && sessionState === "active" ? (
-            <FreeTierTimer maxSeconds={FREE_TIER_MAX_SECONDS} currentSeconds={sessionTime} onTimeUp={handleTimeUp} />
+          {sessionState === "active" ? (
+            <FreeTierTimer
+              maxSeconds={callMaxSeconds}
+              currentSeconds={sessionTime}
+              onTimeUp={handleTimeUp}
+              showUpgrade={isFreeTier}
+            />
           ) : user ? (
             <span data-tour="user-menu" className="inline-block">
               <UserMenu />

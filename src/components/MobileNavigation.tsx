@@ -2,7 +2,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Users, Phone, TrendingUp, Settings, Lock, ArrowRightLeft, Building2, GraduationCap, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
-import { useLevelMode, useDidLevelJustChange } from "@/hooks/useLevelMode";
+import { useLevelMode, useDidLevelJustChange, levelLabel } from "@/hooks/useLevelMode";
 import { startTutorial } from "@/lib/tutorial";
 
 interface NavItem {
@@ -124,7 +124,7 @@ const MobileNavigation = () => {
           <button
             onClick={toggle}
             className="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl transition-all duration-200 text-muted-foreground hover:text-foreground"
-            title={isAdmin ? "Cambiar de nivel (admin)" : "Cambiar de nivel"}
+            title={`Cambiar a ${levelLabel(currentLevel === 1 ? 2 : 1)}`}
             style={{
               animation: animateLevelChange
                 ? "mobileNavPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both"
@@ -132,7 +132,7 @@ const MobileNavigation = () => {
             }}
           >
             <ArrowRightLeft className="w-5 h-5" />
-            <span className="text-xs font-semibold">N{currentLevel === 1 ? "→2" : "→1"}</span>
+            <span className="text-xs font-semibold">{currentLevel === 1 ? "Objec." : "Prosp."}</span>
           </button>
         )}
       </div>

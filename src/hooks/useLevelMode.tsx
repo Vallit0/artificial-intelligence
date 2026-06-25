@@ -3,12 +3,16 @@ import { useAuth } from "./useAuth";
 
 export type Level = 1 | 2;
 
+// Nombre de cara al usuario de cada módulo. La plataforma ya no habla de
+// "niveles": el módulo 1 es "Prospección" y el módulo 2 "Objeciones".
+export const levelLabel = (level: Level): string =>
+  level === 1 ? "Prospección" : "Objeciones";
+
 interface LevelModeContextValue {
   currentLevel: Level;
-  // Sets a local override that persists in localStorage. Available to admins
-  // (who can preview either level) and to advisors who have unlocked Level 2
-  // (so they can still revisit Level 1 content like Prospección y Legado).
-  // For non-admins without level2Unlocked this is a no-op.
+  // Sets a local override that persists in localStorage. Disponible para
+  // cualquier usuario autenticado: todos pueden alternar entre Prospección y
+  // Objeciones. Para usuarios anónimos (free tier) es un no-op.
   setLevel: (level: Level) => void;
   toggle: () => void;
   // True when the user has manually overridden their level (so we know the
@@ -60,13 +64,13 @@ export const LevelModeProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [user]);
 
+  // Todos los usuarios tienen ambos módulos abiertos (Prospección y Objeciones).
+  // El flag level2Unlocked ya NO controla el acceso —cualquier usuario puede
+  // alternar—; solo define en qué módulo aterriza por defecto quien ya avanzó.
   const baseLevel: Level = user?.level2Unlocked ? 2 : 1;
-  // An advisor can switch between Level 1 and Level 2 once Level 2 is unlocked
-  // — Level 1 content (Prospección, Legado de Vida) stays available alongside
-  // the new Level 2 modules. Admins and coaches can always switch to preview
-  // either level: coaches evalúan ambos exámenes (Prospección y Objeciones),
-  // así que no dependen de level2Unlocked para alternar niveles.
-  const canSwitchLevel = isAdmin || isCoach || baseLevel === 2;
+  // Cualquier usuario autenticado puede alternar libremente entre Prospección
+  // (1) y Objeciones (2). Admins y coaches también, para previsualizar.
+  const canSwitchLevel = isAdmin || isCoach || !!user;
   const currentLevel: Level = canSwitchLevel && override !== null ? override : baseLevel;
 
   // When the underlying baseLevel flips (e.g., student passes the exam), bump

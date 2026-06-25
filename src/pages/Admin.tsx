@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAuth } from "@/hooks/useAuth";
 import { useStudents } from "@/hooks/useStudents";
-import { Activity, BarChart3, Building2, Clock, Download, GraduationCap, Loader2, Play, Plus, Search, Shield, Timer, Upload, UserCheck, Users } from "lucide-react";
+import { Activity, BarChart3, Building2, Clock, Download, GraduationCap, HelpCircle, Loader2, Play, Plus, Search, Settings, Shield, Timer, Upload, UserCheck, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -23,6 +23,8 @@ import PendingApprovalsPanel from "@/components/admin/PendingApprovalsPanel";
 import CoachStudentsPanel from "@/components/admin/CoachStudentsPanel";
 import LeftSidebar from "@/components/scenarios/LeftSidebar";
 import MobileNavigation from "@/components/MobileNavigation";
+import AdminTour, { startAdminTutorial } from "@/components/onboarding/AdminTour";
+import ConfigPanel from "@/components/admin/ConfigPanel";
 import { useAdminUsage } from "@/hooks/useAdminUsage";
 import { useTimeByMode } from "@/hooks/useTimeByMode";
 import { useCoaches } from "@/hooks/useCoaches";
@@ -110,13 +112,14 @@ export default function Admin() {
 
   return (
     <div className="min-h-screen bg-background">
+      {isAdmin && <AdminTour />}
       <LeftSidebar />
 
       <main className="lg:ml-60 min-h-screen animate-fade-in">
         <ScrollArea className="h-screen">
           <div className="max-w-7xl mx-auto px-4 py-6 pb-24 lg:pb-6">
             {/* Header */}
-            <div className="mb-6 flex items-center justify-between">
+            <div data-tour="admin-header" className="mb-6 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
                   <Shield className="w-5 h-5 text-primary" />
@@ -128,6 +131,12 @@ export default function Admin() {
                   <p className="text-sm text-muted-foreground">Gestión de estudiantes y certificados</p>
                 </div>
               </div>
+              {isAdmin && (
+                <Button variant="outline" size="sm" className="gap-2" onClick={startAdminTutorial}>
+                  <HelpCircle className="w-4 h-4" />
+                  Ver tutorial
+                </Button>
+              )}
             </div>
 
             {isAdmin && (
@@ -137,7 +146,7 @@ export default function Admin() {
             )}
 
         <Tabs defaultValue="students" className="space-y-4">
-          <TabsList className="flex-wrap h-auto">
+          <TabsList data-tour="admin-tabs" className="flex-wrap h-auto">
             <TabsTrigger value="students">Estudiantes</TabsTrigger>
             <TabsTrigger value="pending" className="flex items-center gap-1">
               <UserCheck className="w-3.5 h-3.5" />
@@ -179,9 +188,15 @@ export default function Admin() {
                 Performance Voz
               </TabsTrigger>
             )}
+            {isAdmin && (
+              <TabsTrigger value="config" className="flex items-center gap-1">
+                <Settings className="w-3.5 h-3.5" />
+                Configuración
+              </TabsTrigger>
+            )}
           </TabsList>
 
-          <TabsContent value="students">
+          <TabsContent value="students" data-tour="admin-students-table">
         {/* Filtro de período: acota sesiones/tiempo del listado al rango. */}
         <div className="mb-4">
           <PeriodFilter value={period} onChange={setPeriod} />
@@ -333,7 +348,7 @@ export default function Admin() {
                   </Button>
                 )}
                 {(isAdmin || !!user?.coachPermissions?.canCreateCoaches) && (
-                  <Button size="sm" onClick={() => setShowCreateModal(true)}>
+                  <Button data-tour="admin-new-user" size="sm" onClick={() => setShowCreateModal(true)}>
                     <Plus className="w-4 h-4 mr-2" />
                     Nuevo Usuario
                   </Button>
@@ -445,6 +460,12 @@ export default function Admin() {
           <TabsContent value="agent-perf">
             <AgentLatencyPanel />
           </TabsContent>
+
+          {isAdmin && (
+            <TabsContent value="config">
+              <ConfigPanel />
+            </TabsContent>
+          )}
         </Tabs>
           </div>
         </ScrollArea>

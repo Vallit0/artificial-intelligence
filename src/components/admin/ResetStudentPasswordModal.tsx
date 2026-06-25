@@ -22,8 +22,12 @@ import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api-client";
 import { Student } from "@/hooks/useStudents";
 
+// Acepta cualquier usuario (estudiante o coach): el endpoint
+// /users/:id/password aplica a cualquier rol.
+type ResettableUserRef = Pick<Student, "id" | "email" | "first_name" | "last_name">;
+
 interface ResetStudentPasswordModalProps {
-  student: Student | null;
+  student: ResettableUserRef | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }

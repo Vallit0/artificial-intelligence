@@ -6,10 +6,15 @@ import certificateBadge from "@/assets/certificate-badge.png";
 interface CertificatePreviewProps {
   studentName: string;
   grade: number;
+  // Datos configurables por el admin (AppConfig). Vacíos = comportamiento
+  // anterior: nombre de curso "Manejo de Objeciones" y líneas de firma sin nombre.
+  instructorName?: string | null;
+  directorName?: string | null;
+  courseName?: string | null;
 }
 
 const CertificatePreview = forwardRef<HTMLDivElement, CertificatePreviewProps>(
-  ({ studentName, grade }, ref) => {
+  ({ studentName, grade, instructorName, directorName, courseName }, ref) => {
     const currentDate = format(new Date(), "d 'de' MMMM 'de' yyyy", { locale: es });
 
     return (
@@ -58,7 +63,7 @@ const CertificatePreview = forwardRef<HTMLDivElement, CertificatePreviewProps>(
               ha completado satisfactoriamente el curso de
             </p>
             <h3 className="text-2xl font-bold text-amber-700 mb-4">
-              Manejo de Objeciones
+              {courseName?.trim() || "Manejo de Objeciones"}
             </h3>
             <p className="text-gray-600 text-base">
               Técnica y Persuasión
@@ -75,6 +80,9 @@ const CertificatePreview = forwardRef<HTMLDivElement, CertificatePreviewProps>(
           {/* Footer */}
           <div className="flex justify-between items-end w-full px-8">
             <div className="text-center">
+              {instructorName?.trim() && (
+                <p className="text-gray-800 text-sm font-semibold mb-0.5">{instructorName.trim()}</p>
+              )}
               <div className="w-40 border-t-2 border-gray-400 mb-1" />
               <p className="text-gray-600 text-sm">Instructor</p>
             </div>
@@ -82,6 +90,9 @@ const CertificatePreview = forwardRef<HTMLDivElement, CertificatePreviewProps>(
               <p>{currentDate}</p>
             </div>
             <div className="text-center">
+              {directorName?.trim() && (
+                <p className="text-gray-800 text-sm font-semibold mb-0.5">{directorName.trim()}</p>
+              )}
               <div className="w-40 border-t-2 border-gray-400 mb-1" />
               <p className="text-gray-600 text-sm">Director Académico</p>
             </div>
