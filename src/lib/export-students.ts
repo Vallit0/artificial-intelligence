@@ -38,3 +38,42 @@ export function exportStudentsToExcel(students: Student[], fileName = "estudiant
   XLSX.utils.book_append_sheet(workbook, worksheet, "Estudiantes");
   XLSX.writeFile(workbook, fileName);
 }
+
+export interface GroupSummaryRow {
+  group: string;
+  count: number;
+  sessions: number;
+  seconds: number;
+}
+
+/**
+ * Exporta el resumen de práctica agrupado (por división / país / sede) a .xlsx.
+ * Una hoja "Resumen" con Grupo, Estudiantes, Sesiones, Tiempo total (+min) y
+ * una fila TOTAL al pie. `groupByKey` se usa sólo para el nombre del archivo.
+ */
+export function exportStudentSummaryToExcel(
+  rows: GroupSummaryRow[],
+  groupLabel: string,
+  groupByKey: string,
+): void {
+  const data = rows.map((r) => ({
+    [groupLabel]: r.group,
+    Estudiantes: r.count,
+    Sesiones: r.sessions,
+    "Tiempo total": formatDuration(r.seconds),
+    "Tiempo total (min)": Math.round(r.seconds / 60),
+  }));
+
+  data.push({
+    [groupLabel]: "TOTAL",
+    Estudiantes: rows.reduce((a, r) => a + r.count, 0),
+    Sesiones: rows.reduce((a, r) => a + r.sessions, 0),
+    "Tiempo total": formatDuration(rows.reduce((a, r) => a + r.seconds, 0)),
+    "Tiempo total (min)": Math.round(rows.reduce((a, r) => a + r.seconds, 0) / 60),
+  });
+
+  const worksheet = XLSX.utils.json_to_sheet(data.length ? data : [{ [groupLabel]: "Sin datos" }]);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Resumen");
+  XLSX.writeFile(workbook, `resumen-por-${groupByKey}.xlsx`);
+}

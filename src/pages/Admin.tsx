@@ -22,6 +22,7 @@ import SedesPanel from "@/components/admin/SedesPanel";
 import DivisionsPanel from "@/components/admin/DivisionsPanel";
 import CoachesPanel from "@/components/admin/CoachesPanel";
 import PracticeByAgentModal, { type BreakdownMetric } from "@/components/admin/PracticeByAgentModal";
+import StudentGroupSummary from "@/components/admin/StudentGroupSummary";
 import PendingApprovalsPanel from "@/components/admin/PendingApprovalsPanel";
 import CoachStudentsPanel from "@/components/admin/CoachStudentsPanel";
 import LeftSidebar from "@/components/scenarios/LeftSidebar";
@@ -174,13 +175,14 @@ export default function Admin() {
     return <Navigate to="/scenarios" replace />;
   }
 
-  // Calculate summary stats
-  const totalStudents = students.length;
-  const studentsWithSessions = students.filter((s) => s.totalSessions > 0).length;
+  // Stats de las tarjetas: sobre la lista FILTRADA, así al filtrar por
+  // división/país/sede las tarjetas muestran el total de ese grupo.
+  const totalStudents = filteredStudents.length;
+  const studentsWithSessions = filteredStudents.filter((s) => s.totalSessions > 0).length;
 
   // Estadísticas agregadas
-  const totalSessions = students.reduce((sum, s) => sum + s.totalSessions, 0);
-  const totalDurationSeconds = students.reduce((sum, s) => sum + s.totalDuration, 0);
+  const totalSessions = filteredStudents.reduce((sum, s) => sum + s.totalSessions, 0);
+  const totalDurationSeconds = filteredStudents.reduce((sum, s) => sum + s.totalDuration, 0);
   const totalHours = Math.floor(totalDurationSeconds / 3600);
   const totalMinutes = Math.floor((totalDurationSeconds % 3600) / 60);
 
@@ -335,6 +337,9 @@ export default function Admin() {
           />
 
         </div>
+
+        {/* Resumen de práctica agrupado por división / país / sede (respeta filtros) */}
+        <StudentGroupSummary students={filteredStudents} />
 
         {/* Practice Minutes by Advisor */}
         <Card className="mb-6">
