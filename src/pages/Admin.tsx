@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import StudentList from "@/components/admin/StudentList";
 import CreateUserModal from "@/components/admin/CreateUserModal";
 import BulkUploadModal from "@/components/admin/BulkUploadModal";
@@ -107,11 +108,46 @@ export default function Admin() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  // Filtros de la lista de estudiantes (client-side; la fecha va por `period`).
+  const [sedeFilter, setSedeFilter] = useState<string>("all");
+  const [divisionFilter, setDivisionFilter] = useState<string>("all");
+  const [countryFilter, setCountryFilter] = useState<string>("all");
   // Buscador + detalle por asesor en la tarjeta "Minutos de Práctica por Asesor".
   const [advisorSearch, setAdvisorSearch] = useState("");
   const [selectedAdvisorId, setSelectedAdvisorId] = useState<string | null>(null);
   // Tarjeta de stats clickeada → métrica a resaltar en el desglose por agente.
   const [openBreakdownMetric, setOpenBreakdownMetric] = useState<BreakdownMetric | null>(null);
+
+  // Opciones de filtro derivadas de los estudiantes cargados (sede/división/país).
+  const studentFilterOptions = useMemo(() => {
+    const sedes = new Map<string, string>();
+    const divisions = new Map<string, string>();
+    const countries = new Set<string>();
+    for (const s of students) {
+      if (s.sedeId && s.sedeName) sedes.set(s.sedeId, s.sedeName);
+      if (s.divisionId && s.divisionName) divisions.set(s.divisionId, s.divisionName);
+      if (s.country) countries.add(s.country);
+    }
+    return {
+      sedes: Array.from(sedes, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name)),
+      divisions: Array.from(divisions, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name)),
+      countries: Array.from(countries).sort((a, b) => a.localeCompare(b)),
+    };
+  }, [students]);
+
+  // Lista filtrada (búsqueda por nombre/email + sede + división + país). La fecha
+  // ya viene aplicada server-side vía `period`. Se usa en la tabla y en el export.
+  const filteredStudents = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return students.filter((s) => {
+      if (sedeFilter !== "all" && s.sedeId !== sedeFilter) return false;
+      if (divisionFilter !== "all" && s.divisionId !== divisionFilter) return false;
+      if (countryFilter !== "all" && s.country !== countryFilter) return false;
+      if (!q) return true;
+      const name = [s.first_name, s.last_name].filter(Boolean).join(" ").toLowerCase();
+      return name.includes(q) || (s.email || "").toLowerCase().includes(q);
+    });
+  }, [students, searchQuery, sedeFilter, divisionFilter, countryFilter]);
 
   // Show loading while checking auth and admin status
   if (authLoading || adminLoading) {
@@ -375,8 +411,8 @@ export default function Admin() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => exportStudentsToExcel(students)}
-                  disabled={students.length === 0}
+                  onClick={() => exportStudentsToExcel(filteredStudents)}
+                  disabled={filteredStudents.length === 0}
                 >
                   <Download className="w-4 h-4 mr-2" />
                   Exportar Excel
@@ -395,14 +431,57 @@ export default function Admin() {
                 )}
               </div>
             </div>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nombre o email..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nombre o email..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              {/* Filtros: sólo aparecen si hay más de una opción (el coach
+                  mono-sede no ve sede/país, pero sí divisiones). */}
+              {studentFilterOptions.sedes.length > 1 && (
+                <Select value={sedeFilter} onValueChange={setSedeFilter}>
+                  <SelectTrigger className="sm:w-44">
+                    <SelectValue placeholder="Sede" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas las sedes</SelectItem>
+                    {studentFilterOptions.sedes.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {studentFilterOptions.divisions.length > 1 && (
+                <Select value={divisionFilter} onValueChange={setDivisionFilter}>
+                  <SelectTrigger className="sm:w-44">
+                    <SelectValue placeholder="División" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas las divisiones</SelectItem>
+                    {studentFilterOptions.divisions.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {studentFilterOptions.countries.length > 1 && (
+                <Select value={countryFilter} onValueChange={setCountryFilter}>
+                  <SelectTrigger className="sm:w-36">
+                    <SelectValue placeholder="País" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos los países</SelectItem>
+                    {studentFilterOptions.countries.map((c) => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           </CardHeader>
           <CardContent className="p-0">
@@ -413,14 +492,7 @@ export default function Admin() {
                 </div>
               ) : (
                 <StudentList
-                  students={students.filter((s) => {
-                    if (!searchQuery.trim()) return true;
-                    const q = searchQuery.toLowerCase();
-                    return (
-                      [s.first_name, s.last_name].filter(Boolean).join(' ').toLowerCase().includes(q) ||
-                      (s.email || "").toLowerCase().includes(q)
-                    );
-                  })}
+                  students={filteredStudents}
                   onAssignGrade={assignGrade}
                   onToggleExamen={toggleExamen}
                   onBulkToggleExamen={bulkToggleExamen}
@@ -466,6 +538,7 @@ export default function Admin() {
                   data={timeByModeData}
                   isLoading={timeByModeLoading}
                   error={timeByModeError}
+                  period={period}
                 />
               </div>
             ) : (

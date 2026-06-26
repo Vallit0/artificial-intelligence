@@ -184,8 +184,8 @@ export function exportUsageToExcel(
     ];
     const modoPorAlumno = timeByMode.byStudent.map((s) => ({
       Alumno: s.name,
-      "Cliente (Nivel 1) min": min(s.roleplayClienteSeconds),
-      "Prospección min": min(s.prospeccionSeconds),
+      "Cliente (Prospección) min": min(s.roleplayClienteSeconds),
+      "· Prospección min": min(s.prospeccionSeconds),
       "Objeciones min": min(s.roleplayObjecionesSeconds),
       "Asesor min": min(s.roleplayAsesorSeconds),
       "Coach min": min(s.coachSeconds),
@@ -217,4 +217,52 @@ export function exportUsageToExcel(
 
   const suffix = hasPeriod(period) ? `-${period.from ?? "inicio"}_${period.to ?? "hoy"}` : "";
   XLSX.writeFile(wb, fileName ?? `uso-analytics${suffix}.xlsx`);
+}
+
+/**
+ * Export dedicado de la tabla "Tiempo por alumno" (desglose por tipo de
+ * llamada/agente). Una hoja "Tiempo por alumno" con las mismas columnas que el
+ * UI (Cliente/Prospección, Prospección, Objeciones, Asesor, Coach, Total) en
+ * minutos y formateado, más una fila TOTAL al pie. Respeta el período (sólo
+ * para el nombre de archivo — los datos ya vienen filtrados por el hook).
+ */
+export function exportTimeByStudentToExcel(
+  timeByMode: TimeByModeData,
+  period: Period,
+  fileName?: string,
+): void {
+  const wb = XLSX.utils.book_new();
+
+  const rows = timeByMode.byStudent.map((s) => ({
+    Alumno: s.name,
+    "Cliente (Prospección)": formatDuration(s.roleplayClienteSeconds),
+    "· Prospección": formatDuration(s.prospeccionSeconds),
+    Objeciones: formatDuration(s.roleplayObjecionesSeconds),
+    Asesor: formatDuration(s.roleplayAsesorSeconds),
+    Coach: formatDuration(s.coachSeconds),
+    Total: formatDuration(s.totalSeconds),
+    "Total (min)": min(s.totalSeconds),
+  }));
+
+  // Fila TOTAL con los totales globales del período.
+  const t = timeByMode.totals;
+  rows.push({
+    Alumno: "TOTAL",
+    "Cliente (Prospección)": formatDuration(t.roleplayClienteSeconds),
+    "· Prospección": formatDuration(t.prospeccionSeconds),
+    Objeciones: formatDuration(t.roleplayObjecionesSeconds),
+    Asesor: formatDuration(t.roleplayAsesorSeconds),
+    Coach: formatDuration(t.coachSeconds),
+    Total: formatDuration(t.totalSeconds),
+    "Total (min)": min(t.totalSeconds),
+  });
+
+  XLSX.utils.book_append_sheet(
+    wb,
+    XLSX.utils.json_to_sheet(rows.length ? rows : [{ Alumno: "Sin datos" }]),
+    "Tiempo por alumno",
+  );
+
+  const suffix = hasPeriod(period) ? `-${period.from ?? "inicio"}_${period.to ?? "hoy"}` : "";
+  XLSX.writeFile(wb, fileName ?? `tiempo-por-alumno${suffix}.xlsx`);
 }

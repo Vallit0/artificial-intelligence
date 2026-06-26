@@ -1,5 +1,6 @@
-import { Clock, Users, Loader2 } from "lucide-react";
+import { Clock, Users, Loader2, Download } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -11,6 +12,8 @@ import {
 import { TimeByModeBreakdown } from "@/components/analytics/TimeByModeBreakdown";
 import type { TimeByModeData } from "@/hooks/useTimeByMode";
 import { formatDuration } from "@/lib/time-by-mode";
+import { exportTimeByStudentToExcel } from "@/lib/export-usage";
+import { EMPTY_PERIOD, type Period } from "@/lib/period";
 
 // Desglose de tiempo por modo para admin (todos / por sede) y coach (sus alumnos
 // asignados). El backend decide el alcance según el rol del caller. Recibe los
@@ -20,9 +23,11 @@ interface TimeByModeAnalyticsProps {
   data: TimeByModeData | null;
   isLoading: boolean;
   error: string | null;
+  // Para el nombre del archivo del export "Tiempo por alumno".
+  period?: Period;
 }
 
-export function TimeByModeAnalytics({ data, isLoading, error }: TimeByModeAnalyticsProps) {
+export function TimeByModeAnalytics({ data, isLoading, error, period = EMPTY_PERIOD }: TimeByModeAnalyticsProps) {
 
   if (isLoading) {
     return (
@@ -46,10 +51,21 @@ export function TimeByModeAnalytics({ data, isLoading, error }: TimeByModeAnalyt
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Users className="h-5 w-5 text-primary" />
-            Tiempo por alumno
-          </CardTitle>
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Users className="h-5 w-5 text-primary" />
+              Tiempo por alumno
+            </CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => exportTimeByStudentToExcel(data, period)}
+              disabled={data.byStudent.length === 0}
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Exportar Excel
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {data.byStudent.length === 0 ? (

@@ -35,6 +35,7 @@ export interface Student {
   phoneNumber: string | null;
   sedeId: string | null;
   sedeName: string | null;
+  country: string | null;
   coachId: string | null;
   coachName: string | null;
   divisionId: string | null;
@@ -105,6 +106,7 @@ export const useStudents = (period: Period = EMPTY_PERIOD): UseStudentsReturn =>
         phoneNumber: s.phoneNumber ?? null,
         sedeId: s.sedeId ?? null,
         sedeName: s.sedeName ?? null,
+        country: s.sedeCountry ?? null,
         coachId: s.coachId ?? null,
         coachName: s.coachName ?? null,
         divisionId: s.divisionId ?? null,

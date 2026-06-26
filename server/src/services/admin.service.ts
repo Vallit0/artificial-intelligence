@@ -49,6 +49,7 @@ interface StudentWithStats {
   phoneNumber: string | null;
   sedeId: string | null;
   sedeName: string | null;
+  sedeCountry: string | null;
   coachId: string | null;
   coachName: string | null;
   divisionId: string | null;
@@ -368,7 +369,7 @@ export async function getAllStudents(caller: AuthUser, range?: DateRange): Promi
         select: { id: true, firstName: true, lastName: true, email: true },
       },
       sede: {
-        select: { id: true, name: true },
+        select: { id: true, name: true, country: true },
       },
       division: {
         select: { id: true, name: true },
@@ -405,6 +406,7 @@ export async function getAllStudents(caller: AuthUser, range?: DateRange): Promi
       phoneNumber: user.phoneNumber,
       sedeId: user.sedeId,
       sedeName: user.sede?.name ?? null,
+      sedeCountry: user.sede?.country ?? null,
       coachId: user.coachId,
       coachName: user.coach
         ? [user.coach.firstName, user.coach.lastName].filter(Boolean).join(' ') || user.coach.email
