@@ -294,9 +294,19 @@ export default function Admin() {
           </TabsList>
 
           <TabsContent value="students" data-tour="admin-students-table">
-        {/* Filtro de período: acota sesiones/tiempo del listado al rango. */}
-        <div className="mb-4">
+        {/* Filtro de período: acota sesiones/tiempo del listado al rango.
+            El botón exporta la lista YA filtrada (período + sede/división/país). */}
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
           <PeriodFilter value={period} onChange={setPeriod} />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => exportStudentsToExcel(filteredStudents)}
+            disabled={filteredStudents.length === 0}
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Exportar Excel
+          </Button>
         </div>
 
         {/* Stats Cards — clickables: abren el desglose de práctica por agente
