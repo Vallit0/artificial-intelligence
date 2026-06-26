@@ -79,7 +79,8 @@ describe('Auth flow', () => {
     expect(res.body.error).toMatch(/sede/i);
   });
 
-  it('signup falla con 400 si no se manda división', async () => {
+  it('signup falla con 400 si la sede TIENE divisiones y no se manda ninguna', async () => {
+    // sedeSlug (test-sede) tiene una división creada en beforeEach.
     const res = await request(app).post('/auth/signup').send({
       email: 'nodiv@example.com',
       password: 'supersecret',
@@ -87,6 +88,25 @@ describe('Auth flow', () => {
     });
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/divisi/i);
+  });
+
+  it('signup OK sin división si la sede NO tiene divisiones', async () => {
+    // Sede nueva, sin ninguna división configurada.
+    const sinDiv = await ensureTestSede('sin-div', 'Sin Divisiones');
+
+    const res = await request(app).post('/auth/signup').send({
+      email: 'sindiv@example.com',
+      password: 'supersecret',
+      sede: sinDiv.slug,
+    });
+
+    expect(res.status).toBe(201);
+    expect(res.body.status).toBe('pending');
+
+    const created = await prisma.user.findUnique({ where: { email: 'sindiv@example.com' } });
+    expect(created?.sedeId).toBe(sinDiv.id);
+    expect(created?.divisionId).toBeNull();
+    expect(created?.coachId).toBeNull();
   });
 
   it('signup falla con 400 si la división es de otra sede', async () => {

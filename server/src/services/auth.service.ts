@@ -87,7 +87,7 @@ export async function signup(
   email: string,
   password: string,
   sedeIdOrSlug: string,
-  divisionId: string,
+  divisionId: string | undefined,
   firstName?: string,
   lastName?: string,
   phoneNumber?: string,
@@ -97,9 +97,6 @@ export async function signup(
   }
   if (!sedeIdOrSlug || typeof sedeIdOrSlug !== 'string') {
     throw new BadRequestError('Sede es requerida');
-  }
-  if (!divisionId || typeof divisionId !== 'string') {
-    throw new BadRequestError('División es requerida');
   }
 
   // Acepta sede como UUID o como slug — la UI puede mandar cualquiera.
@@ -116,15 +113,31 @@ export async function signup(
     throw new BadRequestError('Sede inválida o inactiva');
   }
 
-  // La división elegida debe existir, estar activa y pertenecer a la sede
-  // elegida (aislamiento duro entre sedes). El coach se deriva de la división
-  // y se denormaliza en el learner.
-  const division = await prisma.division.findFirst({
-    where: { id: divisionId, sedeId: sede.id, isActive: true },
-    select: { id: true, coachId: true },
+  // La división se pide SÓLO si la sede tiene divisiones activas configuradas
+  // (p. ej. Guatemala). Para sedes sin divisiones, el usuario se registra sin
+  // división ni coach y un admin se los asigna después.
+  const activeDivisions = await prisma.division.count({
+    where: { sedeId: sede.id, isActive: true },
   });
-  if (!division) {
-    throw new BadRequestError('División inválida para la sede seleccionada');
+
+  let resolvedDivisionId: string | null = null;
+  let resolvedCoachId: string | null = null;
+  if (activeDivisions > 0) {
+    if (!divisionId || typeof divisionId !== 'string') {
+      throw new BadRequestError('División es requerida');
+    }
+    // La división elegida debe existir, estar activa y pertenecer a la sede
+    // (aislamiento duro entre sedes). El coach se deriva de la división y se
+    // denormaliza en el learner.
+    const division = await prisma.division.findFirst({
+      where: { id: divisionId, sedeId: sede.id, isActive: true },
+      select: { id: true, coachId: true },
+    });
+    if (!division) {
+      throw new BadRequestError('División inválida para la sede seleccionada');
+    }
+    resolvedDivisionId = division.id;
+    resolvedCoachId = division.coachId;
   }
 
   const existing = await prisma.user.findUnique({ where: { email } });
@@ -147,8 +160,8 @@ export async function signup(
       phoneNumber: phoneNumber || null,
       status: 'pending',
       sedeId: sede.id,
-      divisionId: division.id,
-      coachId: division.coachId,
+      divisionId: resolvedDivisionId,
+      coachId: resolvedCoachId,
       roles: {
         create: { role: 'learner' },
       },

@@ -51,6 +51,8 @@ const Auth = () => {
   const { signIn, signUp } = useAuth();
   const { sedes, isLoading: sedesLoading } = usePublicSedes();
   const { divisions, isLoading: divisionsLoading } = usePublicDivisions(isLogin ? undefined : sedeId);
+  // La división se pide sólo si la sede elegida tiene divisiones (p. ej. Guatemala).
+  const sedeHasDivisions = divisions.length > 0;
 
   useEffect(() => {
     if (!sedeId && sedes.length > 0) {
@@ -94,7 +96,8 @@ const Auth = () => {
           setLoading(false);
           return;
         }
-        if (!divisionId) {
+        // La división se exige sólo si la sede elegida tiene divisiones.
+        if (sedeHasDivisions && !divisionId) {
           toast({
             variant: "destructive",
             title: "Falta división",
@@ -107,7 +110,7 @@ const Auth = () => {
           email,
           password,
           sedeId,
-          divisionId,
+          divisionId || undefined,
           firstName || undefined,
           lastName || undefined,
           phoneNumber || undefined,
@@ -241,34 +244,34 @@ const Auth = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="relative">
-                <UserCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10 pointer-events-none" />
-                <Select
-                  value={divisionId}
-                  onValueChange={setDivisionId}
-                  disabled={!sedeId || divisionsLoading}
-                >
-                  <SelectTrigger className="h-13 bg-card border border-border rounded-xl pl-10 pr-4 text-foreground focus:border-primary transition-colors">
-                    <SelectValue
-                      placeholder={
-                        divisionsLoading ? "Cargando divisiones..." : "Seleccionar división"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {divisions.length === 0 && !divisionsLoading && (
-                      <SelectItem value="__none__" disabled>
-                        No hay divisiones en esta sede
-                      </SelectItem>
-                    )}
-                    {divisions.map((division) => (
-                      <SelectItem key={division.id} value={division.id}>
-                        {division.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* La división se pide SÓLO si la sede tiene divisiones (p. ej.
+                  Guatemala). Mientras cargan, mostramos el selector; si la sede
+                  no tiene divisiones, se oculta y el signup no la exige. */}
+              {(divisionsLoading || sedeHasDivisions) && (
+                <div className="relative">
+                  <UserCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10 pointer-events-none" />
+                  <Select
+                    value={divisionId}
+                    onValueChange={setDivisionId}
+                    disabled={!sedeId || divisionsLoading}
+                  >
+                    <SelectTrigger className="h-13 bg-card border border-border rounded-xl pl-10 pr-4 text-foreground focus:border-primary transition-colors">
+                      <SelectValue
+                        placeholder={
+                          divisionsLoading ? "Cargando divisiones..." : "Seleccionar división"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {divisions.map((division) => (
+                        <SelectItem key={division.id} value={division.id}>
+                          {division.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </>
           )}
 
