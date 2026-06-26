@@ -96,15 +96,6 @@ export const prospectingScenarios: (ProspectingScenario & { agentId?: string })[
     agentId: "ELEVENLABS_AGENT_STAND1",
   },
   {
-    id: 9,
-    title: "Señora de Compras (Stand 2)",
-    description: "Usted se encuentra en un Stand de la empresa dentro de un centro comercial, a cierta distancia observa que pasará frente a usted una señora de 40 años, que refleja que viene de realizar varias compras.",
-    location: "Centro Comercial",
-    targetAge: "40 años",
-    icon: "mall",
-    agentId: "ELEVENLABS_AGENT_STAND2",
-  },
-  {
     id: 10,
     title: "Persona en Cementerio",
     description: "Usted se encuentra dentro de Cementerio Los Parques, en uno de los jardines se observa a una pareja joven de aproximadamente 30 años, la dama está con su perro, mientras colocan flores en una lápida.",

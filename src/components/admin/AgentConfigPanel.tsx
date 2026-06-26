@@ -25,7 +25,6 @@ const KNOWN_AGENTS = [
   { secretName: "ELEVENLABS_AGENT_FAMILIA", label: "Prospeccion: Familia en Stand" },
   { secretName: "ELEVENLABS_AGENT_PROSPECTING_CAMINANDO", label: "Prospeccion: Profesional Caminando" },
   { secretName: "ELEVENLABS_AGENT_STAND1", label: "Prospeccion: Senora Compras Stand 1" },
-  { secretName: "ELEVENLABS_AGENT_STAND2", label: "Prospeccion: Senora Compras Stand 2" },
   { secretName: "ELEVENLABS_AGENT_PROSPECTING_CEMENTERIO", label: "Prospeccion: Pareja en Cementerio" },
   { secretName: "ELEVENLABS_AGENT_PROSPECCION_FISICA", label: "Prospeccion Fisica" },
   { secretName: "ELEVENLABS_AGENT_LEGADO_VIDA", label: "Legado de Vida" },

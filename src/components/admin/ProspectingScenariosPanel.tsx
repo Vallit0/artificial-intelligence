@@ -82,7 +82,6 @@ const SCENARIOS: Array<{ secretName: string; label: string }> = [
   { secretName: "ELEVENLABS_AGENT_PROSPECTING_PARQUEO", label: "Señor en el Parqueo" },
   { secretName: "ELEVENLABS_AGENT_PROSPECTING_CAMINANDO", label: "Profesional Caminando" },
   { secretName: "ELEVENLABS_AGENT_STAND1", label: "Señora de Compras (Stand 1)" },
-  { secretName: "ELEVENLABS_AGENT_STAND2", label: "Señora de Compras (Stand 2)" },
   { secretName: "ELEVENLABS_AGENT_PROSPECTING_CEMENTERIO", label: "Pareja en Cementerio" },
 ];
 
