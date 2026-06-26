@@ -78,10 +78,42 @@ model Sede {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
-  users User[]
+  users     User[]
+  divisions Division[]
 
   @@index([isActive])
   @@map("sedes")
+}
+
+// ============================================
+// Divisiones (Divisions)
+// ============================================
+//
+// Nivel organizativo intermedio dentro de una Sede: una Sede tiene varias
+// Divisiones y cada División tiene UN coach a cargo. Los estudiantes se
+// asignan a una División y heredan el coach de esa división — `User.coachId`
+// se mantiene como campo denormalizado/sincronizado desde la división para
+// no romper el código existente (calificaciones, sidebar, /auth/me).
+model Division {
+  id        String   @id @default(uuid())
+  name      String
+  sedeId    String   @map("sede_id")
+  // Coach a cargo (User con rol coach de la MISMA sede). Nullable para poder
+  // crear la división antes de asignarle coach; al borrar el coach,
+  // onDelete: SetNull deja la división sin coach en vez de bloquear.
+  coachId   String?  @map("coach_id")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  sede     Sede   @relation(fields: [sedeId], references: [id], onDelete: Restrict)
+  coach    User?  @relation("DivisionCoach", fields: [coachId], references: [id], onDelete: SetNull)
+  learners User[] @relation("DivisionLearners")
+
+  @@unique([sedeId, name])
+  @@index([sedeId])
+  @@index([coachId])
+  @@map("divisions")
 }
 
 // ============================================
@@ -97,7 +129,12 @@ model User {
   avatarUrl          String?  @map("avatar_url")
   phoneNumber        String?  @map("phone_number")
   emailVerified      Boolean  @default(false) @map("email_verified")
+  // Gatea el examen final de Prospección (Nivel 1). Lo habilita un admin global
+  // (cualquier estudiante) o un coach (sólo sus estudiantes asignados).
   examenFinalEnabled Boolean  @default(false) @map("examen_final_enabled")
+  // Gatea el examen final de Objeciones (Nivel 2). Mismo control que Prospección.
+  // Default false = bloqueado para todos hasta que admin/coach lo habilite.
+  examenObjecionesEnabled Boolean @default(false) @map("examen_objeciones_enabled")
   level2Unlocked     Boolean  @default(false) @map("level2_unlocked")
   // Se marca al aprobar el examen final de Nivel 2 (Manejo de Objeciones).
   // Habilita la descarga del certificado de finalización del programa.
@@ -116,16 +153,23 @@ model User {
   approvedAt         DateTime? @map("approved_at")
   rejectedReason     String?  @map("rejected_reason")  // motivo opcional (rechazo)
   sedeId             String?  @map("sede_id")
-  // Coach asignado (auto-relación). Sólo lo asigna un admin global y debe ser
-  // un usuario con rol coach de la MISMA sede que el learner; al borrar el
-  // coach, onDelete: SetNull desasigna a sus alumnos en lugar de bloquear.
+  // Coach asignado (auto-relación). DENORMALIZADO: la fuente de verdad es
+  // `divisionId` — el coach se sincroniza desde el coach de la división del
+  // learner. Se conserva porque está cableado en calificaciones, sidebar,
+  // /auth/me y la relación `learners`. Al borrar el coach, onDelete: SetNull
+  // desasigna a sus alumnos en lugar de bloquear.
   coachId            String?  @map("coach_id")
+  // División a la que pertenece el learner (de su misma sede). Fuente de
+  // verdad de la asignación; el coach se deriva de la división.
+  divisionId         String?  @map("division_id")
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @default(now()) @updatedAt @map("updated_at")
 
   sede                Sede?                  @relation(fields: [sedeId], references: [id], onDelete: Restrict)
   coach               User?                  @relation("CoachLearners", fields: [coachId], references: [id], onDelete: SetNull)
   learners            User[]                 @relation("CoachLearners")
+  division            Division?              @relation("DivisionLearners", fields: [divisionId], references: [id], onDelete: SetNull)
+  divisionsCoached    Division[]             @relation("DivisionCoach")
   coachPermissions    CoachPermission?
   roles               UserRole[]
   refreshTokens       RefreshToken[]
@@ -142,6 +186,7 @@ model User {
   @@index([email])
   @@index([sedeId])
   @@index([coachId])
+  @@index([divisionId])
   @@index([status])
   @@map("users")
 }
@@ -155,6 +200,9 @@ model CoachPermission {
   userId           String   @unique @map("user_id")
   canCreateCoaches Boolean  @default(false) @map("can_create_coaches")
   canEditPrompts   Boolean  @default(false) @map("can_edit_prompts")
+  // Da acceso al panel de administrador COMPLETO y GLOBAL (atraviesa sedes,
+  // como un admin). Lo otorga sólo un admin global desde la pantalla de Coaches.
+  canAccessAdmin   Boolean  @default(false) @map("can_access_admin")
   grantedBy        String?  @map("granted_by")   // userId del admin que otorgó
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @default(now()) @updatedAt @map("updated_at")

@@ -17,7 +17,7 @@ async function loadAuthUser(userId: string): Promise<AuthUser | null> {
     include: {
       roles: { select: { role: true } },
       coachPermissions: {
-        select: { canCreateCoaches: true, canEditPrompts: true },
+        select: { canCreateCoaches: true, canEditPrompts: true, canAccessAdmin: true },
       },
     },
   });
@@ -29,9 +29,10 @@ async function loadAuthUser(userId: string): Promise<AuthUser | null> {
       ? {
           canCreateCoaches: user.coachPermissions.canCreateCoaches,
           canEditPrompts: user.coachPermissions.canEditPrompts,
+          canAccessAdmin: user.coachPermissions.canAccessAdmin,
         }
       : roles.includes('coach')
-        ? { canCreateCoaches: false, canEditPrompts: false }
+        ? { canCreateCoaches: false, canEditPrompts: false, canAccessAdmin: false }
         : undefined;
 
   return {
@@ -40,6 +41,7 @@ async function loadAuthUser(userId: string): Promise<AuthUser | null> {
     firstName: user.firstName || undefined,
     lastName: user.lastName || undefined,
     examenFinalEnabled: user.examenFinalEnabled,
+    examenObjecionesEnabled: user.examenObjecionesEnabled,
     level2Unlocked: user.level2Unlocked,
     courseCompleted: user.courseCompleted,
     tutorialCompleted: user.tutorialCompleted,
@@ -85,7 +87,7 @@ export async function signup(
   email: string,
   password: string,
   sedeIdOrSlug: string,
-  coachId: string,
+  divisionId: string,
   firstName?: string,
   lastName?: string,
   phoneNumber?: string,
@@ -96,8 +98,8 @@ export async function signup(
   if (!sedeIdOrSlug || typeof sedeIdOrSlug !== 'string') {
     throw new BadRequestError('Sede es requerida');
   }
-  if (!coachId || typeof coachId !== 'string') {
-    throw new BadRequestError('Coach es requerido');
+  if (!divisionId || typeof divisionId !== 'string') {
+    throw new BadRequestError('División es requerida');
   }
 
   // Acepta sede como UUID o como slug — la UI puede mandar cualquiera.
@@ -114,20 +116,15 @@ export async function signup(
     throw new BadRequestError('Sede inválida o inactiva');
   }
 
-  // El coach elegido debe existir, tener rol coach, estar aprobado y pertenecer
-  // a la sede elegida — mismo invariante que aplica el panel admin al asignar
-  // coaches (aislamiento duro entre sedes).
-  const coach = await prisma.user.findUnique({
-    where: { id: coachId },
-    select: { id: true, sedeId: true, status: true, roles: { select: { role: true } } },
+  // La división elegida debe existir, estar activa y pertenecer a la sede
+  // elegida (aislamiento duro entre sedes). El coach se deriva de la división
+  // y se denormaliza en el learner.
+  const division = await prisma.division.findFirst({
+    where: { id: divisionId, sedeId: sede.id, isActive: true },
+    select: { id: true, coachId: true },
   });
-  if (
-    !coach ||
-    coach.status !== 'approved' ||
-    !coach.roles.some((r) => r.role === 'coach') ||
-    coach.sedeId !== sede.id
-  ) {
-    throw new BadRequestError('Coach inválido para la sede seleccionada');
+  if (!division) {
+    throw new BadRequestError('División inválida para la sede seleccionada');
   }
 
   const existing = await prisma.user.findUnique({ where: { email } });
@@ -150,7 +147,8 @@ export async function signup(
       phoneNumber: phoneNumber || null,
       status: 'pending',
       sedeId: sede.id,
-      coachId: coach.id,
+      divisionId: division.id,
+      coachId: division.coachId,
       roles: {
         create: { role: 'learner' },
       },

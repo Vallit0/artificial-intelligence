@@ -23,10 +23,17 @@ async function seedCoach(email: string, sedeId: string) {
   return coach;
 }
 
+// Crea una división (con coach) en una sede — el estudiante se asigna a ella
+// en el signup y hereda su coach.
+async function seedDivision(name: string, sedeId: string, coachId: string) {
+  return prisma.division.create({ data: { name, sedeId, coachId } });
+}
+
 describe('Auth flow', () => {
   let sedeId: string;
   let sedeSlug: string;
   let coachId: string;
+  let divisionId: string;
 
   beforeEach(async () => {
     await resetDatabase();
@@ -35,6 +42,8 @@ describe('Auth flow', () => {
     sedeSlug = sede.slug;
     const coach = await seedCoach('coach@example.com', sedeId);
     coachId = coach.id;
+    const division = await seedDivision('División Test', sedeId, coachId);
+    divisionId = division.id;
   });
 
   it('signup crea un usuario PENDING sin emitir tokens', async () => {
@@ -44,7 +53,7 @@ describe('Auth flow', () => {
       firstName: 'Ana',
       lastName: 'López',
       sede: sedeSlug,
-      coachId,
+      divisionId,
     });
 
     expect(res.status).toBe(201);
@@ -55,6 +64,8 @@ describe('Auth flow', () => {
     const created = await prisma.user.findUnique({ where: { email: 'test1@example.com' } });
     expect(created?.status).toBe('pending');
     expect(created?.sedeId).toBe(sedeId);
+    expect(created?.divisionId).toBe(divisionId);
+    // El coach se hereda de la división (denormalizado).
     expect(created?.coachId).toBe(coachId);
   });
 
@@ -62,34 +73,35 @@ describe('Auth flow', () => {
     const res = await request(app).post('/auth/signup').send({
       email: 'nosedeyet@example.com',
       password: 'supersecret',
-      coachId,
+      divisionId,
     });
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/sede/i);
   });
 
-  it('signup falla con 400 si no se manda coach', async () => {
+  it('signup falla con 400 si no se manda división', async () => {
     const res = await request(app).post('/auth/signup').send({
-      email: 'nocoach@example.com',
+      email: 'nodiv@example.com',
       password: 'supersecret',
       sede: sedeSlug,
     });
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/coach/i);
+    expect(res.body.error).toMatch(/divisi/i);
   });
 
-  it('signup falla con 400 si el coach es de otra sede', async () => {
+  it('signup falla con 400 si la división es de otra sede', async () => {
     const otherSede = await ensureTestSede('otra-sede', 'Otra Sede');
     const otherCoach = await seedCoach('coach-otra@example.com', otherSede.id);
+    const otherDivision = await seedDivision('Otra Div', otherSede.id, otherCoach.id);
 
     const res = await request(app).post('/auth/signup').send({
-      email: 'crosscoach@example.com',
+      email: 'crossdiv@example.com',
       password: 'supersecret',
       sede: sedeSlug,
-      coachId: otherCoach.id,
+      divisionId: otherDivision.id,
     });
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/coach/i);
+    expect(res.body.error).toMatch(/divisi/i);
   });
 
   it('signup rechaza emails duplicados con 409', async () => {
@@ -97,14 +109,14 @@ describe('Auth flow', () => {
       email: 'dup@example.com',
       password: 'supersecret',
       sede: sedeSlug,
-      coachId,
+      divisionId,
     });
 
     const res = await request(app).post('/auth/signup').send({
       email: 'dup@example.com',
       password: 'anotherpass',
       sede: sedeSlug,
-      coachId,
+      divisionId,
     });
 
     expect(res.status).toBe(409);
@@ -116,7 +128,7 @@ describe('Auth flow', () => {
       email: 'pending@example.com',
       password: 'supersecret',
       sede: sedeSlug,
-      coachId,
+      divisionId,
     });
     const blocked = await request(app).post('/auth/login').send({
       email: 'pending@example.com',

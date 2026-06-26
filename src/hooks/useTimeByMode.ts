@@ -10,9 +10,27 @@ export interface StudentTimeByMode extends TimeByMode {
   name: string;
 }
 
+// Desglose de práctica por tipo de llamada (agente) con las 3 métricas que
+// muestran las tarjetas del panel admin. Espejo de ModeStat en el backend.
+export interface ModeStat {
+  key: string;
+  label: string;
+  students: number;
+  sessions: number;
+  seconds: number;
+}
+
+export interface TimeByModeSummary {
+  students: number;
+  sessions: number;
+  seconds: number;
+}
+
 export interface TimeByModeData {
   totals: TimeByMode;
   byStudent: StudentTimeByMode[];
+  byMode: ModeStat[];
+  summary: TimeByModeSummary;
 }
 
 export function useTimeByMode(period: Period = EMPTY_PERIOD) {

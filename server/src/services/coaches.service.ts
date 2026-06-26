@@ -58,7 +58,7 @@ export async function listCoaches(caller: AuthUser) {
     include: {
       sede: { select: { id: true, slug: true, name: true } },
       coachPermissions: {
-        select: { canCreateCoaches: true, canEditPrompts: true, grantedBy: true, updatedAt: true },
+        select: { canCreateCoaches: true, canEditPrompts: true, canAccessAdmin: true, grantedBy: true, updatedAt: true },
       },
     },
     orderBy: [{ sedeId: 'asc' }, { firstName: 'asc' }],
@@ -74,6 +74,7 @@ export async function listCoaches(caller: AuthUser) {
     permissions: {
       canCreateCoaches: c.coachPermissions?.canCreateCoaches ?? false,
       canEditPrompts: c.coachPermissions?.canEditPrompts ?? false,
+      canAccessAdmin: c.coachPermissions?.canAccessAdmin ?? false,
       grantedBy: c.coachPermissions?.grantedBy ?? null,
       updatedAt: c.coachPermissions?.updatedAt ?? null,
     },
@@ -83,6 +84,7 @@ export async function listCoaches(caller: AuthUser) {
 export interface UpdateCoachPermissionsInput {
   canCreateCoaches?: boolean;
   canEditPrompts?: boolean;
+  canAccessAdmin?: boolean;
 }
 
 export async function updateCoachPermissions(
@@ -116,11 +118,13 @@ export async function updateCoachPermissions(
       userId: coachUserId,
       canCreateCoaches: input.canCreateCoaches ?? false,
       canEditPrompts: input.canEditPrompts ?? false,
+      canAccessAdmin: input.canAccessAdmin ?? false,
       grantedBy: caller.id,
     },
     update: {
       canCreateCoaches: input.canCreateCoaches ?? undefined,
       canEditPrompts: input.canEditPrompts ?? undefined,
+      canAccessAdmin: input.canAccessAdmin ?? undefined,
       grantedBy: caller.id,
     },
   });
@@ -129,6 +133,7 @@ export async function updateCoachPermissions(
     userId: coachUserId,
     canCreateCoaches: updated.canCreateCoaches,
     canEditPrompts: updated.canEditPrompts,
+    canAccessAdmin: updated.canAccessAdmin,
     grantedBy: updated.grantedBy,
     updatedAt: updated.updatedAt,
   };

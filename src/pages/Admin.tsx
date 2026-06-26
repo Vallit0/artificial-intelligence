@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAuth } from "@/hooks/useAuth";
 import { useStudents } from "@/hooks/useStudents";
-import { Activity, BarChart3, Building2, Clock, Download, GraduationCap, HelpCircle, Loader2, Play, Plus, Search, Settings, Shield, Timer, Upload, UserCheck, Users } from "lucide-react";
+import { Activity, BarChart3, Boxes, Building2, ChevronRight, Clock, Download, GraduationCap, HelpCircle, Loader2, Play, Plus, Search, Settings, Shield, Timer, Upload, UserCheck, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -18,7 +18,9 @@ import AiAccessPanel from "@/components/admin/AiAccessPanel";
 import LatencyTesterPanel from "@/components/admin/LatencyTesterPanel";
 import AgentLatencyPanel from "@/components/admin/AgentLatencyPanel";
 import SedesPanel from "@/components/admin/SedesPanel";
+import DivisionsPanel from "@/components/admin/DivisionsPanel";
 import CoachesPanel from "@/components/admin/CoachesPanel";
+import PracticeByAgentModal, { type BreakdownMetric } from "@/components/admin/PracticeByAgentModal";
 import PendingApprovalsPanel from "@/components/admin/PendingApprovalsPanel";
 import CoachStudentsPanel from "@/components/admin/CoachStudentsPanel";
 import LeftSidebar from "@/components/scenarios/LeftSidebar";
@@ -27,7 +29,7 @@ import AdminTour, { startAdminTutorial } from "@/components/onboarding/AdminTour
 import ConfigPanel from "@/components/admin/ConfigPanel";
 import { useAdminUsage } from "@/hooks/useAdminUsage";
 import { useTimeByMode } from "@/hooks/useTimeByMode";
-import { useCoaches } from "@/hooks/useCoaches";
+import { useDivisions } from "@/hooks/useDivisions";
 import { UsageAnalytics } from "@/components/analytics/UsageAnalytics";
 import { TimeByModeAnalytics } from "@/components/analytics/TimeByModeAnalytics";
 import { TimeByModeBreakdown } from "@/components/analytics/TimeByModeBreakdown";
@@ -37,6 +39,52 @@ import { exportStudentsToExcel } from "@/lib/export-students";
 import { exportUsageToExcel } from "@/lib/export-usage";
 import { EMPTY_PERIOD, type Period } from "@/lib/period";
 import { EMPTY_TIME_BY_MODE } from "@/lib/time-by-mode";
+
+// Tarjeta de stat clickeable: abre el desglose por agente al click o con
+// Enter/Espacio (accesible vía teclado). Muestra un chevron como afford.
+function StatCard({
+  icon,
+  label,
+  value,
+  hint,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  hint: string;
+  onClick: () => void;
+}) {
+  return (
+    <Card
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      className="cursor-pointer transition-colors hover:border-primary/50 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      title="Ver desglose por tipo de llamada (agente)"
+    >
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between gap-2">
+          <span className="flex items-center gap-2">
+            {icon}
+            {label}
+          </span>
+          <ChevronRight className="w-4 h-4 opacity-50" />
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="text-2xl font-bold text-foreground">{value}</p>
+        <p className="text-xs text-muted-foreground">{hint}</p>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function Admin() {
   const navigate = useNavigate();
@@ -49,10 +97,10 @@ export default function Admin() {
   // Filtro de período compartido por las analíticas de uso, el listado de
   // estudiantes y el export a Excel. Vacío = histórico.
   const [period, setPeriod] = useState<Period>(EMPTY_PERIOD);
-  const { students, isLoading: studentsLoading, assignGrade, toggleExamenFinal, bulkToggleExamenFinal, assignCoach, updateUser, refetch } = useStudents(period);
-  // Sólo admin global puede asignar coaches; gateamos el fetch para no
-  // disparar un 403 en coaches sin permiso de listado.
-  const { coaches } = useCoaches(isAdmin);
+  const { students, isLoading: studentsLoading, assignGrade, toggleExamen, bulkToggleExamen, assignDivision, updateUser, refetch } = useStudents(period);
+  // Sólo admin global asigna divisiones a estudiantes; gateamos el fetch para
+  // no disparar un 403 sin permiso de listado.
+  const { divisions } = useDivisions({ enabled: isAdmin });
 
   const { data: usageData, isLoading: usageLoading } = useAdminUsage(period);
   const { data: timeByModeData, isLoading: timeByModeLoading, error: timeByModeError } = useTimeByMode(period);
@@ -62,6 +110,8 @@ export default function Admin() {
   // Buscador + detalle por asesor en la tarjeta "Minutos de Práctica por Asesor".
   const [advisorSearch, setAdvisorSearch] = useState("");
   const [selectedAdvisorId, setSelectedAdvisorId] = useState<string | null>(null);
+  // Tarjeta de stats clickeada → métrica a resaltar en el desglose por agente.
+  const [openBreakdownMetric, setOpenBreakdownMetric] = useState<BreakdownMetric | null>(null);
 
   // Show loading while checking auth and admin status
   if (authLoading || adminLoading) {
@@ -158,6 +208,12 @@ export default function Admin() {
                 Sedes
               </TabsTrigger>
             )}
+            {isAdmin && (
+              <TabsTrigger value="divisions" className="flex items-center gap-1">
+                <Boxes className="w-3.5 h-3.5" />
+                Divisiones
+              </TabsTrigger>
+            )}
             {canSeeCoachesTab && (
               <TabsTrigger value="coaches" className="flex items-center gap-1">
                 <GraduationCap className="w-3.5 h-3.5" />
@@ -202,46 +258,30 @@ export default function Admin() {
           <PeriodFilter value={period} onChange={setPeriod} />
         </div>
 
-        {/* Stats Cards */}
+        {/* Stats Cards — clickables: abren el desglose de práctica por agente
+            (tipo de llamada) resaltando la métrica de la tarjeta. */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Users className="w-4 h-4" />
-                Estudiantes
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-foreground">{totalStudents}</p>
-              <p className="text-xs text-muted-foreground">{studentsWithSessions} activos</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Play className="w-4 h-4" />
-                Sesiones
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-foreground">{totalSessions}</p>
-              <p className="text-xs text-muted-foreground">totales</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Clock className="w-4 h-4" />
-                Tiempo Total
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-foreground">{totalHours}h {totalMinutes}m</p>
-              <p className="text-xs text-muted-foreground">de práctica</p>
-            </CardContent>
-          </Card>
+          <StatCard
+            icon={<Users className="w-4 h-4" />}
+            label="Estudiantes"
+            value={`${totalStudents}`}
+            hint={`${studentsWithSessions} activos`}
+            onClick={() => setOpenBreakdownMetric("students")}
+          />
+          <StatCard
+            icon={<Play className="w-4 h-4" />}
+            label="Sesiones"
+            value={`${totalSessions}`}
+            hint="totales"
+            onClick={() => setOpenBreakdownMetric("sessions")}
+          />
+          <StatCard
+            icon={<Clock className="w-4 h-4" />}
+            label="Tiempo Total"
+            value={`${totalHours}h ${totalMinutes}m`}
+            hint="de práctica"
+            onClick={() => setOpenBreakdownMetric("time")}
+          />
 
         </div>
 
@@ -382,12 +422,14 @@ export default function Admin() {
                     );
                   })}
                   onAssignGrade={assignGrade}
-                  onToggleExamenFinal={toggleExamenFinal}
-                  onBulkToggleExamenFinal={bulkToggleExamenFinal}
+                  onToggleExamen={toggleExamen}
+                  onBulkToggleExamen={bulkToggleExamen}
                   onRefetch={refetch}
-                  coaches={coaches}
-                  canAssignCoach={isAdmin}
-                  onAssignCoach={assignCoach}
+                  divisions={divisions}
+                  canAssignDivision={isAdmin}
+                  onAssignDivision={assignDivision}
+                  isAdmin={isAdmin}
+                  currentUserId={user.id}
                   canEditUser={isAdmin}
                   onUpdateUser={updateUser}
                 />
@@ -439,6 +481,10 @@ export default function Admin() {
             <SedesPanel />
           </TabsContent>
 
+          <TabsContent value="divisions">
+            <DivisionsPanel />
+          </TabsContent>
+
           <TabsContent value="coaches">
             <CoachesPanel />
           </TabsContent>
@@ -484,6 +530,17 @@ export default function Admin() {
         open={showBulkModal}
         onOpenChange={setShowBulkModal}
         onSuccess={refetch}
+      />
+
+      {/* Desglose de práctica por tipo de llamada (agente) — abierto desde las
+          tarjetas de stats, resaltando la métrica de la tarjeta clickeada. */}
+      <PracticeByAgentModal
+        open={openBreakdownMetric !== null}
+        metric={openBreakdownMetric ?? "time"}
+        data={timeByModeData?.byMode ?? []}
+        summary={timeByModeData?.summary ?? { students: 0, sessions: 0, seconds: 0 }}
+        isLoading={timeByModeLoading}
+        onOpenChange={(o) => !o && setOpenBreakdownMetric(null)}
       />
 
       {/* Detalle de tiempo por modo del asesor seleccionado */}

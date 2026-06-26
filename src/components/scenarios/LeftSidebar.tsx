@@ -9,6 +9,7 @@ import {
   Lock,
   ArrowRightLeft,
   Building2,
+  Boxes,
   GraduationCap,
   HelpCircle,
 } from "lucide-react";
@@ -194,8 +195,8 @@ const LeftSidebar = () => {
         })}
       </nav>
 
-      {/* Sede + coach asignado */}
-      {user && (user.sede || isLearner || user.coach) && (
+      {/* Sede + división + coach asignado */}
+      {user && (user.sede || isLearner || user.coach || user.division) && (
         <div
           className="px-4 pt-3 space-y-1.5"
           style={{ borderTop: "1px solid hsl(var(--sidebar-border))" }}
@@ -207,6 +208,15 @@ const LeftSidebar = () => {
             >
               <Building2 className="w-3.5 h-3.5 shrink-0" />
               <span className="truncate font-medium">{user.sede.name}</span>
+            </div>
+          )}
+          {user.division && (
+            <div
+              className="flex items-center gap-2 text-xs"
+              style={{ color: "hsl(var(--sidebar-foreground) / 0.65)" }}
+            >
+              <Boxes className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">{user.division.name}</span>
             </div>
           )}
           {(user.coach || isLearner) && (

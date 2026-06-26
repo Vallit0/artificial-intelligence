@@ -25,6 +25,8 @@ export interface User {
 export interface CoachPermissionFlags {
   canCreateCoaches: boolean;
   canEditPrompts: boolean;
+  // Da acceso al panel admin global (atraviesa sedes, como un admin).
+  canAccessAdmin: boolean;
 }
 
 export interface AuthUser {
@@ -33,6 +35,7 @@ export interface AuthUser {
   firstName?: string;
   lastName?: string;
   examenFinalEnabled?: boolean;
+  examenObjecionesEnabled?: boolean;
   level2Unlocked?: boolean;
   courseCompleted?: boolean;
   tutorialCompleted?: boolean;

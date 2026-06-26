@@ -112,6 +112,37 @@ describe('GET /api/admin/analytics/time-by-mode', () => {
     expect(res.body.byStudent).toHaveLength(2);
   });
 
+  it('expone el desglose por tipo de llamada (byMode) y el summary TOTAL', async () => {
+    // 2 learners: el asignado practica cliente+prospección, otro objeciones.
+    // El asignado además hace una 2da sesión de prospección → 2 sesiones, 1 alumno.
+    await seedSession(learnerAsignado.id, 60, { practiceMode: 'cliente' });
+    await seedSession(learnerAsignado.id, 30, { practiceMode: 'cliente_prospeccion' });
+    await seedSession(learnerAsignado.id, 10, { practiceMode: 'cliente_prospeccion' });
+    await seedSession(learnerOtro.id, 20, { practiceMode: 'objeciones' });
+
+    const token = await loginAs(admin.email, admin.password);
+    const res = await request(app)
+      .get('/api/admin/analytics/time-by-mode')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    const byMode: Array<{ key: string; students: number; sessions: number; seconds: number }> =
+      res.body.byMode;
+
+    const prospeccion = byMode.find((m) => m.key === 'cliente_prospeccion');
+    expect(prospeccion).toMatchObject({ students: 1, sessions: 2, seconds: 40 });
+
+    const cliente = byMode.find((m) => m.key === 'cliente');
+    expect(cliente).toMatchObject({ students: 1, sessions: 1, seconds: 60 });
+
+    const objeciones = byMode.find((m) => m.key === 'objeciones');
+    expect(objeciones).toMatchObject({ students: 1, sessions: 1, seconds: 20 });
+
+    // summary: estudiantes DISTINTOS globales (2, no la suma 3 por modo), total
+    // de sesiones y segundos.
+    expect(res.body.summary).toMatchObject({ students: 2, sessions: 4, seconds: 120 });
+  });
+
   it('un coach ve SÓLO sus alumnos asignados', async () => {
     await seedSession(learnerAsignado.id, 100, { practiceMode: 'cliente' });
     await seedSession(learnerOtro.id, 999, { practiceMode: 'cliente' });

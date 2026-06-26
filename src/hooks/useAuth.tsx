@@ -11,7 +11,7 @@ interface AuthContextType {
     email: string,
     password: string,
     sede: string,
-    coachId: string,
+    divisionId: string,
     firstName?: string,
     lastName?: string,
     phoneNumber?: string,
@@ -28,7 +28,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [roles, setRoles] = useState<string[]>([]);
 
-  const isAdmin = roles.includes("admin");
+  // El toggle `canAccessAdmin` de un coach le da acceso al panel admin global
+  // (atraviesa sedes, como un admin), así que lo tratamos como admin en la UI.
+  const isAdmin = roles.includes("admin") || !!user?.coachPermissions?.canAccessAdmin;
 
   // Validate session on mount
   useEffect(() => {
@@ -88,14 +90,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     email: string,
     password: string,
     sede: string,
-    coachId: string,
+    divisionId: string,
     firstName?: string,
     lastName?: string,
     phoneNumber?: string,
   ) => {
     const data = await api.post<{ status: string; email: string; message?: string }>(
       "/auth/signup",
-      { email, password, sede, coachId, firstName, lastName, phoneNumber },
+      { email, password, sede, divisionId, firstName, lastName, phoneNumber },
     );
     return { status: data.status, message: data.message };
   }, []);

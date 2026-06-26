@@ -4,6 +4,7 @@ import { api } from "@/lib/api-client";
 export interface CoachPermissions {
   canCreateCoaches: boolean;
   canEditPrompts: boolean;
+  canAccessAdmin: boolean;
   grantedBy: string | null;
   updatedAt: string | null;
 }
@@ -25,6 +26,7 @@ export interface Coach {
 export interface UpdateCoachPermissionsInput {
   canCreateCoaches?: boolean;
   canEditPrompts?: boolean;
+  canAccessAdmin?: boolean;
 }
 
 export const coachDisplayName = (c: Pick<Coach, "firstName" | "lastName" | "email">): string =>

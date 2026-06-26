@@ -45,11 +45,14 @@ interface StudentWithStats {
   gradedBy: string | null;
   gradeNotes: string | null;
   examenFinalEnabled: boolean;
+  examenObjecionesEnabled: boolean;
   phoneNumber: string | null;
   sedeId: string | null;
   sedeName: string | null;
   coachId: string | null;
   coachName: string | null;
+  divisionId: string | null;
+  divisionName: string | null;
 }
 
 // ============================================
@@ -367,6 +370,9 @@ export async function getAllStudents(caller: AuthUser, range?: DateRange): Promi
       sede: {
         select: { id: true, name: true },
       },
+      division: {
+        select: { id: true, name: true },
+      },
     },
     orderBy: { createdAt: 'desc' },
   });
@@ -394,6 +400,7 @@ export async function getAllStudents(caller: AuthUser, range?: DateRange): Promi
       gradedBy: user.studentGrade?.gradedBy || null,
       gradeNotes: user.studentGrade?.notes || null,
       examenFinalEnabled: user.examenFinalEnabled,
+      examenObjecionesEnabled: user.examenObjecionesEnabled,
       level2Unlocked: user.level2Unlocked,
       phoneNumber: user.phoneNumber,
       sedeId: user.sedeId,
@@ -402,6 +409,8 @@ export async function getAllStudents(caller: AuthUser, range?: DateRange): Promi
       coachName: user.coach
         ? [user.coach.firstName, user.coach.lastName].filter(Boolean).join(' ') || user.coach.email
         : null,
+      divisionId: user.divisionId,
+      divisionName: user.division?.name ?? null,
     };
   });
 }
@@ -456,30 +465,74 @@ export async function assignCoach(learnerId: string, coachId: string | null, cal
   };
 }
 
-export async function toggleExamenFinal(userId: string, enabled: boolean, caller: AuthUser) {
-  await loadUserScopedOrThrow(userId, caller);
+// ============================================
+// Habilitar / deshabilitar exámenes (admin global o coach)
+// ============================================
+// Hay DOS exámenes finales, cada uno con su flag gate en User:
+//   - 'prospeccion' (Nivel 1) → examenFinalEnabled
+//   - 'objeciones'  (Nivel 2) → examenObjecionesEnabled
+// Alcance: el admin global puede habilitar a cualquier estudiante; un coach
+// SÓLO a sus estudiantes asignados (user.coachId === coach.id), no a toda la
+// sede. La ruta ya está gateada a requireRole('admin','coach').
+export type ExamKind = 'prospeccion' | 'objeciones';
 
-  return prisma.user.update({
-    where: { id: userId },
-    data: { examenFinalEnabled: enabled },
-    select: { id: true, examenFinalEnabled: true },
-  });
+const EXAM_COLUMN: Record<ExamKind, 'examenFinalEnabled' | 'examenObjecionesEnabled'> = {
+  prospeccion: 'examenFinalEnabled',
+  objeciones: 'examenObjecionesEnabled',
+};
+
+// Valida que el caller puede togglear el examen del target. Devuelve void.
+// Usa 404 (no 403) para no filtrar existencia entre sedes/coaches.
+function assertExamToggleAccess(target: { coachId: string | null }, caller: AuthUser) {
+  if (isGlobalAdmin(caller)) return;
+  // No admin global: sólo coach, y sólo sobre sus estudiantes asignados.
+  if (caller.roles.includes('coach') && target.coachId === caller.id) return;
+  throw new NotFoundError('Usuario no encontrado');
 }
 
-export async function bulkToggleExamenFinal(userIds: string[], enabled: boolean, caller: AuthUser) {
-  // Filtramos a sólo IDs dentro del scope del caller. Si un ID del lote
-  // pertenece a otra sede, se ignora silenciosamente (count será menor).
-  const scope = getSedeScope(caller);
+export async function toggleExamen(
+  userId: string,
+  exam: ExamKind,
+  enabled: boolean,
+  caller: AuthUser,
+) {
+  const target = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, coachId: true },
+  });
+  if (!target) throw new NotFoundError('Usuario no encontrado');
+  assertExamToggleAccess(target, caller);
+
+  const column = EXAM_COLUMN[exam];
+  const updated = await prisma.user.update({
+    where: { id: userId },
+    data: { [column]: enabled },
+    select: { id: true, examenFinalEnabled: true, examenObjecionesEnabled: true },
+  });
+  return { exam, enabled, ...updated };
+}
+
+export async function bulkToggleExamen(
+  userIds: string[],
+  exam: ExamKind,
+  enabled: boolean,
+  caller: AuthUser,
+) {
+  // Filtramos a sólo IDs dentro del alcance del caller. Admin global: todos.
+  // Coach: sólo sus asignados. IDs fuera de alcance se ignoran (count menor).
   const where: any = { id: { in: userIds } };
-  if (scope.scope === 'sede') {
-    where.sedeId = scope.sedeId;
+  if (!isGlobalAdmin(caller)) {
+    if (caller.roles.includes('coach')) {
+      where.coachId = caller.id;
+    } else {
+      const scope = getSedeScope(caller);
+      if (scope.scope === 'sede') where.sedeId = scope.sedeId;
+    }
   }
 
-  const result = await prisma.user.updateMany({
-    where,
-    data: { examenFinalEnabled: enabled },
-  });
-  return { count: result.count, enabled };
+  const column = EXAM_COLUMN[exam];
+  const result = await prisma.user.updateMany({ where, data: { [column]: enabled } });
+  return { count: result.count, enabled, exam };
 }
 
 export async function upsertGrade(userId: string, gradedBy: string, finalGrade: number, caller: AuthUser, notes?: string) {
@@ -519,8 +572,13 @@ export interface UpdateUserInput {
   firstName?: string | null;
   lastName?: string | null;
   phoneNumber?: string | null;
-  coachId?: string | null;    // obligatorio (puede ser null) cuando cambia la sede
+  coachId?: string | null;    // legacy: asignación directa de coach. Si se pasa
+                              // divisionId, éste manda y sincroniza coachId.
+  divisionId?: string | null; // división del estudiante; sincroniza coachId con
+                              // el coach de la división. Decisión requerida al
+                              // cambiar de sede.
   examenFinalEnabled?: boolean;
+  examenObjecionesEnabled?: boolean;
   level2Unlocked?: boolean;
   courseCompleted?: boolean;
   tutorialCompleted?: boolean;
@@ -539,6 +597,7 @@ export async function getEditableUser(userId: string, caller: AuthUser) {
     include: {
       sede: { select: { id: true, name: true } },
       coach: { select: { id: true, firstName: true, lastName: true, email: true } },
+      division: { select: { id: true, name: true } },
       roles: { select: { role: true } },
     },
   });
@@ -558,8 +617,11 @@ export async function getEditableUser(userId: string, caller: AuthUser) {
     coachName: user.coach
       ? [user.coach.firstName, user.coach.lastName].filter(Boolean).join(' ') || user.coach.email
       : null,
+    divisionId: user.divisionId,
+    divisionName: user.division?.name ?? null,
     roles: user.roles.map((r) => r.role),
     examenFinalEnabled: user.examenFinalEnabled,
+    examenObjecionesEnabled: user.examenObjecionesEnabled,
     level2Unlocked: user.level2Unlocked,
     courseCompleted: user.courseCompleted,
     tutorialCompleted: user.tutorialCompleted,
@@ -583,6 +645,7 @@ export async function updateUser(userId: string, input: UpdateUserInput, caller:
       email: true,
       sedeId: true,
       coachId: true,
+      divisionId: true,
       roles: { select: { role: true } },
     },
   });
@@ -617,15 +680,33 @@ export async function updateUser(userId: string, input: UpdateUserInput, caller:
         'Este usuario es coach con alumnos asignados. Reasigná sus alumnos antes de cambiarlo de sede.',
       );
     }
-    // El coach previo es de la sede vieja → ya no es válido. Exigir decisión
-    // explícita: un coach de la sede destino, o null (sin coach).
-    if (input.coachId === undefined) {
-      throw new BadRequestError('Al cambiar de sede debés indicar el coach de la sede destino (o null).');
+    // La división/coach previos son de la sede vieja → ya no son válidos.
+    // Exigir decisión explícita: una división de la sede destino, o null.
+    if (input.divisionId === undefined && input.coachId === undefined) {
+      throw new BadRequestError('Al cambiar de sede debés indicar la división de la sede destino (o null).');
     }
   }
 
-  // --- Coach ---
-  if (input.coachId !== undefined) {
+  // --- División (fuente de verdad; sincroniza coachId) ---
+  // Tiene precedencia sobre `coachId`: si se pasa divisionId, el coach se deriva
+  // del coach de la división. `coachId` directo se mantiene sólo para callers
+  // legacy que no pasan divisionId.
+  if (input.divisionId !== undefined) {
+    if (input.divisionId === null) {
+      data.divisionId = null;
+      data.coachId = null;
+    } else {
+      const division = await prisma.division.findUnique({
+        where: { id: input.divisionId },
+        select: { id: true, sedeId: true, coachId: true },
+      });
+      if (!division || division.sedeId !== newSedeId) {
+        throw new BadRequestError('La división debe pertenecer a la sede del usuario');
+      }
+      data.divisionId = division.id;
+      data.coachId = division.coachId;
+    }
+  } else if (input.coachId !== undefined) {
     if (input.coachId === null) {
       data.coachId = null;
     } else {
@@ -644,7 +725,8 @@ export async function updateUser(userId: string, input: UpdateUserInput, caller:
       data.coachId = coach.id;
     }
   } else if (sedeChanged) {
-    // Defensa extra: nunca dejar un coachId de la sede vieja tras mover.
+    // Defensa extra: nunca dejar una división/coach de la sede vieja tras mover.
+    data.divisionId = null;
     data.coachId = null;
   }
 
@@ -670,6 +752,7 @@ export async function updateUser(userId: string, input: UpdateUserInput, caller:
   if (input.lastName !== undefined) data.lastName = input.lastName?.trim() || null;
   if (input.phoneNumber !== undefined) data.phoneNumber = input.phoneNumber?.trim() || null;
   if (input.examenFinalEnabled !== undefined) data.examenFinalEnabled = input.examenFinalEnabled;
+  if (input.examenObjecionesEnabled !== undefined) data.examenObjecionesEnabled = input.examenObjecionesEnabled;
   if (input.level2Unlocked !== undefined) data.level2Unlocked = input.level2Unlocked;
   if (input.courseCompleted !== undefined) data.courseCompleted = input.courseCompleted;
   if (input.tutorialCompleted !== undefined) data.tutorialCompleted = input.tutorialCompleted;

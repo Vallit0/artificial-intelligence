@@ -22,13 +22,21 @@ import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api-client";
 import { useSedes } from "@/hooks/useSedes";
 
+type UserRole = "learner" | "coach" | "admin";
+
 interface CreateUserModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  // Preselecciona el rol al abrir. Útil para flujos dedicados (p. ej. "Crear
+  // coach" desde la pantalla de Coaches).
+  defaultRole?: UserRole;
+  // Oculta el selector de rol y fija `defaultRole` — el usuario no puede
+  // cambiarlo. Va de la mano con `defaultRole`.
+  lockRole?: boolean;
+  // Texto del título del modal (default "Crear Nuevo Usuario").
+  title?: string;
 }
-
-type UserRole = "learner" | "coach" | "admin";
 
 const ROLE_OPTIONS: Array<{ value: UserRole; label: string; description: string; icon: React.ElementType }> = [
   {
@@ -60,6 +68,9 @@ export default function CreateUserModal({
   open,
   onOpenChange,
   onSuccess,
+  defaultRole = "learner",
+  lockRole = false,
+  title = "Crear Nuevo Usuario",
 }: CreateUserModalProps) {
   const { toast } = useToast();
   const { sedes, isLoading: sedesLoading } = useSedes();
@@ -67,7 +78,7 @@ export default function CreateUserModal({
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [role, setRole] = useState<UserRole>("learner");
+  const [role, setRole] = useState<UserRole>(defaultRole);
   const [sedeId, setSedeId] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -88,7 +99,7 @@ export default function CreateUserModal({
     setPassword("");
     setFirstName("");
     setLastName("");
-    setRole("learner");
+    setRole(defaultRole);
     setSedeId(sedes.find((s) => s.isActive)?.id ?? "");
     setError(null);
     setSuccess(false);
@@ -159,7 +170,7 @@ export default function CreateUserModal({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Crear Nuevo Usuario</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
@@ -272,34 +283,36 @@ export default function CreateUserModal({
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="role">Rol *</Label>
-            <Select
-              value={role}
-              onValueChange={(v) => setRole(v as UserRole)}
-              disabled={isSubmitting || success}
-            >
-              <SelectTrigger id="role">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {ROLE_OPTIONS.map((opt) => {
-                  const Icon = opt.icon;
-                  return (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      <span className="flex items-center gap-2">
-                        <Icon className="w-4 h-4" />
-                        {opt.label}
-                      </span>
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-            {selectedRole && (
-              <p className="text-[11px] text-muted-foreground">{selectedRole.description}</p>
-            )}
-          </div>
+          {!lockRole && (
+            <div className="space-y-2">
+              <Label htmlFor="role">Rol *</Label>
+              <Select
+                value={role}
+                onValueChange={(v) => setRole(v as UserRole)}
+                disabled={isSubmitting || success}
+              >
+                <SelectTrigger id="role">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ROLE_OPTIONS.map((opt) => {
+                    const Icon = opt.icon;
+                    return (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        <span className="flex items-center gap-2">
+                          <Icon className="w-4 h-4" />
+                          {opt.label}
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+              {selectedRole && (
+                <p className="text-[11px] text-muted-foreground">{selectedRole.description}</p>
+              )}
+            </div>
+          )}
 
           <DialogFooter>
             <Button

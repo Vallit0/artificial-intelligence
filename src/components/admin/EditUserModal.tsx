@@ -23,7 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api-client";
 import { Student, UpdateUserPatch } from "@/hooks/useStudents";
 import { usePublicSedes } from "@/hooks/useSedes";
-import { usePublicCoaches } from "@/hooks/usePublicCoaches";
+import { usePublicDivisions } from "@/hooks/useDivisions";
 
 interface EditUserModalProps {
   student: Student | null;
@@ -32,7 +32,7 @@ interface EditUserModalProps {
   onSubmit: (userId: string, patch: UpdateUserPatch) => Promise<boolean>;
 }
 
-const NO_COACH = "__none__";
+const NO_DIVISION = "__none__";
 const ALL_ROLES = ["learner", "coach", "instructor", "admin"] as const;
 type Role = (typeof ALL_ROLES)[number];
 
@@ -44,8 +44,11 @@ interface EditableUser {
   phoneNumber: string | null;
   sedeId: string | null;
   coachId: string | null;
+  divisionId: string | null;
+  divisionName: string | null;
   roles: string[];
   examenFinalEnabled: boolean;
+  examenObjecionesEnabled: boolean;
   level2Unlocked: boolean;
   courseCompleted: boolean;
   tutorialCompleted: boolean;
@@ -53,7 +56,8 @@ interface EditableUser {
 }
 
 const FLAGS: { key: keyof EditableUser; label: string }[] = [
-  { key: "examenFinalEnabled", label: "Examen final habilitado" },
+  { key: "examenFinalEnabled", label: "Examen Prospección habilitado" },
+  { key: "examenObjecionesEnabled", label: "Examen Objeciones habilitado" },
   { key: "level2Unlocked", label: "Objeciones desbloqueado" },
   { key: "courseCompleted", label: "Curso completado" },
   { key: "tutorialCompleted", label: "Tutorial completado" },
@@ -73,11 +77,11 @@ export default function EditUserModal({ student, open, onOpenChange, onSubmit }:
   const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [sedeId, setSedeId] = useState("");
-  const [coachId, setCoachId] = useState<string>(NO_COACH);
+  const [divisionId, setDivisionId] = useState<string>(NO_DIVISION);
   const [roles, setRoles] = useState<Role[]>([]);
   const [flags, setFlags] = useState<Record<string, boolean>>({});
 
-  const { coaches, isLoading: coachesLoading } = usePublicCoaches(open ? sedeId : undefined);
+  const { divisions, isLoading: divisionsLoading } = usePublicDivisions(open ? sedeId : undefined);
 
   // Cargar el estado editable completo al abrir (incluye roles y flags que el
   // listado de estudiantes no trae).
@@ -95,10 +99,11 @@ export default function EditUserModal({ student, open, onOpenChange, onSubmit }:
         setEmail(data.email);
         setPhoneNumber(data.phoneNumber || "");
         setSedeId(data.sedeId || "");
-        setCoachId(data.coachId || NO_COACH);
+        setDivisionId(data.divisionId || NO_DIVISION);
         setRoles((data.roles as Role[]).filter((r) => ALL_ROLES.includes(r)));
         setFlags({
           examenFinalEnabled: data.examenFinalEnabled,
+          examenObjecionesEnabled: data.examenObjecionesEnabled,
           level2Unlocked: data.level2Unlocked,
           courseCompleted: data.courseCompleted,
           tutorialCompleted: data.tutorialCompleted,
@@ -123,9 +128,9 @@ export default function EditUserModal({ student, open, onOpenChange, onSubmit }:
 
   const sedeChanged = !!original && sedeId !== (original.sedeId || "");
 
-  // Al cambiar de sede, el coach previo ya no es válido (es de la sede vieja).
+  // Al cambiar de sede, la división previa ya no es válida (es de la sede vieja).
   useEffect(() => {
-    if (sedeChanged) setCoachId(NO_COACH);
+    if (sedeChanged) setDivisionId(NO_DIVISION);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sedeId]);
 
@@ -150,13 +155,13 @@ export default function EditUserModal({ student, open, onOpenChange, onSubmit }:
     if (phoneNumber.trim() !== (original.phoneNumber || "")) patch.phoneNumber = phoneNumber.trim() || null;
     if (emailChanged) patch.email = email.trim().toLowerCase();
 
-    const coachVal = coachId === NO_COACH ? null : coachId;
+    const divisionVal = divisionId === NO_DIVISION ? null : divisionId;
     if (sedeChanged) {
-      // El backend exige coachId (puede ser null) cuando cambia la sede.
+      // El backend exige divisionId (puede ser null) cuando cambia la sede.
       patch.sedeId = sedeId;
-      patch.coachId = coachVal;
-    } else if (coachVal !== (original.coachId || null)) {
-      patch.coachId = coachVal;
+      patch.divisionId = divisionVal;
+    } else if (divisionVal !== (original.divisionId || null)) {
+      patch.divisionId = divisionVal;
     }
 
     const rolesChanged =
@@ -252,26 +257,29 @@ export default function EditUserModal({ student, open, onOpenChange, onSubmit }:
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Coach</Label>
-                <Select value={coachId} onValueChange={setCoachId} disabled={!sedeId || coachesLoading}>
+                <Label>División</Label>
+                <Select value={divisionId} onValueChange={setDivisionId} disabled={!sedeId || divisionsLoading}>
                   <SelectTrigger>
-                    <SelectValue placeholder={coachesLoading ? "Cargando..." : "Sin coach"} />
+                    <SelectValue placeholder={divisionsLoading ? "Cargando..." : "Sin división"} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={NO_COACH}>Sin coach</SelectItem>
-                    {coaches.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
+                    <SelectItem value={NO_DIVISION}>Sin división</SelectItem>
+                    {divisions.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
             </div>
+            <p className="text-xs text-muted-foreground">
+              El coach del estudiante se hereda de la división elegida.
+            </p>
             {sedeChanged && (
               <p className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-500">
                 <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                Cambiaste la sede: elegí un coach de la sede destino (o "Sin coach").
+                Cambiaste la sede: elegí una división de la sede destino (o "Sin división").
               </p>
             )}
 

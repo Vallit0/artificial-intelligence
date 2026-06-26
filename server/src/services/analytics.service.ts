@@ -84,6 +84,78 @@ export function aggregateTimeByMode(sessions: SessionModeRow[]): TimeByMode {
   return acc;
 }
 
+// ============================================
+// Desglose de práctica por tipo de llamada (agente)
+// ============================================
+//
+// Por cada "modo" (= tipo de llamada / agente) cuenta las 3 métricas que el
+// panel de admin muestra en sus tarjetas: estudiantes distintos, sesiones y
+// tiempo. Mismos buckets que aggregateTimeByMode, pero acá no se colapsa la
+// familia Cliente: Prospección y Cliente-otros se reportan como filas separadas.
+
+export interface ModeStat {
+  key: string;
+  label: string;
+  students: number; // estudiantes DISTINTOS que practicaron este modo
+  sessions: number;
+  seconds: number;
+}
+
+type SessionStatRow = SessionModeRow & { userId: string };
+
+// Devuelve el bucket (key + label) al que pertenece una sesión, espejando la
+// clasificación de aggregateTimeByMode.
+function classifyMode(s: SessionModeRow): { key: string; label: string } {
+  switch (s.practiceMode) {
+    case 'cliente_prospeccion':
+      return { key: 'cliente_prospeccion', label: 'Prospección — Role-Play Cliente' };
+    case 'cliente':
+      return { key: 'cliente', label: 'Cliente (otros escenarios)' };
+    case 'objeciones':
+      return { key: 'objeciones', label: 'Role-Play Objeciones' };
+    case 'asesor':
+      return { key: 'asesor', label: 'Role-Play Asesor' };
+    case 'coach':
+      return { key: 'coach', label: 'Coach' };
+  }
+  if (s.examType === 'prospeccion') return { key: 'examen_prospeccion', label: 'Examen Prospección' };
+  if (s.examType === 'objeciones') return { key: 'examen_objeciones', label: 'Examen Objeciones' };
+  return { key: 'sin_clasificar', label: 'Sin clasificar (sesiones previas)' };
+}
+
+// Orden estable de los buckets para la tabla.
+const MODE_ORDER = [
+  'cliente_prospeccion',
+  'cliente',
+  'objeciones',
+  'asesor',
+  'coach',
+  'examen_prospeccion',
+  'examen_objeciones',
+  'sin_clasificar',
+];
+
+export function aggregateStatsByMode(rows: SessionStatRow[]): ModeStat[] {
+  const acc = new Map<string, { label: string; sessions: number; seconds: number; users: Set<string> }>();
+
+  for (const s of rows) {
+    const { key, label } = classifyMode(s);
+    let bucket = acc.get(key);
+    if (!bucket) {
+      bucket = { label, sessions: 0, seconds: 0, users: new Set<string>() };
+      acc.set(key, bucket);
+    }
+    bucket.sessions += 1;
+    bucket.seconds += s.durationSeconds || 0;
+    bucket.users.add(s.userId);
+  }
+
+  return MODE_ORDER.filter((key) => acc.has(key)).map((key) => {
+    const b = acc.get(key)!;
+    return { key, label: b.label, students: b.users.size, sessions: b.sessions, seconds: b.seconds };
+  });
+}
+
 // Construye el filtro de sesiones (sólo learners) según el caller:
 //   - admin global: todas las sedes (o una si pasa overrideSedeId);
 //   - coach (no admin): SÓLO sus alumnos asignados (user.coachId === caller.id);
@@ -415,6 +487,16 @@ export async function getTimeByModeAnalytics(caller: AuthUser, overrideSedeId?: 
 
   const totals = aggregateTimeByMode(sessions);
 
+  // Desglose por tipo de llamada (agente) con las 3 métricas + fila TOTAL.
+  // `summary.students` es el distinto GLOBAL (un alumno que practicó varios
+  // modos cuenta una sola vez), por eso no es la suma de students por modo.
+  const byMode = aggregateStatsByMode(sessions);
+  const summary = {
+    students: new Set(sessions.map((s) => s.userId)).size,
+    sessions: sessions.length,
+    seconds: totals.totalSeconds,
+  };
+
   const byUser = new Map<string, SessionModeRow[]>();
   for (const s of sessions) {
     if (!byUser.has(s.userId)) byUser.set(s.userId, []);
@@ -436,7 +518,7 @@ export async function getTimeByModeAnalytics(caller: AuthUser, overrideSedeId?: 
     }))
     .sort((a, b) => b.totalSeconds - a.totalSeconds);
 
-  return { totals, byStudent };
+  return { totals, byStudent, byMode, summary };
 }
 
 // Desglose de tiempo por modo para un único alumno (dashboard del estudiante).

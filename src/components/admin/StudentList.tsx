@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { type Coach, coachDisplayName } from "@/hooks/useCoaches";
+import { type Division } from "@/hooks/useDivisions";
 import { Award, Check, ChevronDown, ChevronUp, Clock, Eye, FileText, KeyRound, Lock, Pencil, Unlock, UserCog, UserPen } from "lucide-react";
 import StudentDetailModal from "./StudentDetailModal";
 import GradeModal from "./GradeModal";
@@ -27,24 +27,28 @@ import EditNameModal from "./EditNameModal";
 import EditUserModal from "./EditUserModal";
 import ResetStudentPasswordModal from "./ResetStudentPasswordModal";
 import { useToast } from "@/hooks/use-toast";
-import { UpdateUserPatch } from "@/hooks/useStudents";
+import { UpdateUserPatch, type ExamKind } from "@/hooks/useStudents";
 
 interface StudentListProps {
   students: Student[];
   onAssignGrade: (userId: string, grade: number, notes?: string) => Promise<boolean>;
-  onToggleExamenFinal: (userId: string, enabled: boolean) => Promise<boolean>;
-  onBulkToggleExamenFinal: (userIds: string[], enabled: boolean) => Promise<number | null>;
+  onToggleExamen: (userId: string, exam: ExamKind, enabled: boolean) => Promise<boolean>;
+  onBulkToggleExamen: (userIds: string[], exam: ExamKind, enabled: boolean) => Promise<number | null>;
   onRefetch: () => Promise<void>;
-  coaches: Coach[];
-  canAssignCoach: boolean;
-  onAssignCoach: (userId: string, coachId: string | null) => Promise<boolean>;
+  divisions: Division[];
+  canAssignDivision: boolean;
+  onAssignDivision: (userId: string, divisionId: string | null) => Promise<boolean>;
+  // Para acotar quién puede habilitar exámenes: el admin puede sobre cualquiera;
+  // un coach SÓLO sobre sus estudiantes asignados (student.coachId === currentUserId).
+  isAdmin: boolean;
+  currentUserId: string;
   // Edición unificada (admin global). Si no se provee, se cae al editor de
   // nombre simple (que también pueden usar los coaches).
   canEditUser?: boolean;
   onUpdateUser?: (userId: string, patch: UpdateUserPatch) => Promise<boolean>;
 }
 
-const NO_COACH = "__none__";
+const NO_DIVISION = "__none__";
 
 const formatDuration = (seconds: number): string => {
   const hours = Math.floor(seconds / 3600);
@@ -55,9 +59,9 @@ const formatDuration = (seconds: number): string => {
   return `${minutes}m`;
 };
 
-export default function StudentList({ students, onAssignGrade, onToggleExamenFinal, onBulkToggleExamenFinal, onRefetch, coaches, canAssignCoach, onAssignCoach, canEditUser, onUpdateUser }: StudentListProps) {
+export default function StudentList({ students, onAssignGrade, onToggleExamen, onBulkToggleExamen, onRefetch, divisions, canAssignDivision, onAssignDivision, isAdmin, currentUserId, canEditUser, onUpdateUser }: StudentListProps) {
   const { toast } = useToast();
-  const [assigningCoachId, setAssigningCoachId] = useState<string | null>(null);
+  const [assigningDivisionId, setAssigningDivisionId] = useState<string | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [gradeStudent, setGradeStudent] = useState<Student | null>(null);
   const [certificateStudent, setCertificateStudent] = useState<Student | null>(null);
@@ -80,23 +84,31 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
     });
   };
 
-  const handleBulk = async (enabled: boolean) => {
+  const EXAM_LABEL: Record<ExamKind, string> = {
+    prospeccion: "Prospección",
+    objeciones: "Objeciones",
+  };
+
+  const handleBulk = async (exam: ExamKind, enabled: boolean) => {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
     setBulkPending(true);
-    const count = await onBulkToggleExamenFinal(ids, enabled);
+    const count = await onBulkToggleExamen(ids, exam, enabled);
     setBulkPending(false);
     if (count === null) {
       toast({
         title: "Error",
-        description: "No se pudo actualizar el examen final para los seleccionados.",
+        description: `No se pudo actualizar el examen de ${EXAM_LABEL[exam]} para los seleccionados.`,
         variant: "destructive",
       });
       return;
     }
     toast({
-      title: enabled ? "Examen habilitado" : "Examen deshabilitado",
-      description: `${count} estudiante${count === 1 ? "" : "s"} actualizado${count === 1 ? "" : "s"}.`,
+      title: `Examen ${EXAM_LABEL[exam]} ${enabled ? "habilitado" : "deshabilitado"}`,
+      description:
+        count === 0
+          ? "Ningún estudiante actualizado (sólo podés habilitar exámenes a tus estudiantes asignados)."
+          : `${count} estudiante${count === 1 ? "" : "s"} actualizado${count === 1 ? "" : "s"}.`,
     });
     setSelectedIds(new Set());
   };
@@ -120,54 +132,56 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
     }
   };
 
-  const handleCoachChange = async (student: Student, value: string) => {
-    const coachId = value === NO_COACH ? null : value;
-    if (coachId === (student.coachId ?? null)) return;
-    setAssigningCoachId(student.id);
-    const ok = await onAssignCoach(student.id, coachId);
-    setAssigningCoachId(null);
+  const handleDivisionChange = async (student: Student, value: string) => {
+    const divisionId = value === NO_DIVISION ? null : value;
+    if (divisionId === (student.divisionId ?? null)) return;
+    setAssigningDivisionId(student.id);
+    const ok = await onAssignDivision(student.id, divisionId);
+    setAssigningDivisionId(null);
     toast(
       ok
         ? {
-            title: "Coach actualizado",
-            description: coachId
-              ? "Se asignó el coach al estudiante."
-              : "Se quitó el coach del estudiante.",
+            title: "División actualizada",
+            description: divisionId
+              ? "Se asignó la división (y su coach) al estudiante."
+              : "Se quitó la división del estudiante.",
           }
         : {
             title: "Error",
-            description: "No se pudo actualizar el coach.",
+            description: "No se pudo actualizar la división.",
             variant: "destructive",
           },
     );
   };
 
-  const renderCoachCell = (student: Student) => {
-    if (!canAssignCoach) {
-      return <span className="text-sm text-muted-foreground">{student.coachName ?? "—"}</span>;
+  const renderDivisionCell = (student: Student) => {
+    if (!canAssignDivision) {
+      return <span className="text-sm text-muted-foreground">{student.divisionName ?? "—"}</span>;
     }
-    const sedeCoaches = coaches.filter((c) => c.sede?.id && c.sede.id === student.sedeId);
-    // Si el coach actual no está en la lista filtrada (lista aún cargando, o
-    // dato inconsistente), lo agregamos como opción para no perder el valor.
+    const sedeDivisions = divisions.filter((d) => d.sede?.id && d.sede.id === student.sedeId);
+    // Si la división actual no está en la lista filtrada (lista aún cargando,
+    // inactiva, o dato inconsistente), la agregamos para no perder el valor.
     const currentMissing =
-      !!student.coachId && !sedeCoaches.some((c) => c.id === student.coachId);
+      !!student.divisionId && !sedeDivisions.some((d) => d.id === student.divisionId);
     return (
       <Select
-        value={student.coachId ?? NO_COACH}
-        onValueChange={(v) => handleCoachChange(student, v)}
-        disabled={assigningCoachId === student.id || !student.sedeId}
+        value={student.divisionId ?? NO_DIVISION}
+        onValueChange={(v) => handleDivisionChange(student, v)}
+        disabled={assigningDivisionId === student.id || !student.sedeId}
       >
         <SelectTrigger className="h-8 w-[160px] mx-auto text-xs">
-          <SelectValue placeholder="Sin coach" />
+          <SelectValue placeholder="Sin división" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value={NO_COACH}>Sin coach</SelectItem>
-          {currentMissing && student.coachId && (
-            <SelectItem value={student.coachId}>{student.coachName ?? "Coach actual"}</SelectItem>
+          <SelectItem value={NO_DIVISION}>Sin división</SelectItem>
+          {currentMissing && student.divisionId && (
+            <SelectItem value={student.divisionId}>
+              {student.divisionName ?? "División actual"}
+            </SelectItem>
           )}
-          {sedeCoaches.map((c) => (
-            <SelectItem key={c.id} value={c.id}>
-              {coachDisplayName(c)}
+          {sedeDivisions.map((d) => (
+            <SelectItem key={d.id} value={d.id}>
+              {d.name}
             </SelectItem>
           ))}
         </SelectContent>
@@ -238,31 +252,36 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
   return (
     <>
       {selectionCount > 0 && (
-        <div className="flex items-center justify-between gap-3 bg-muted/60 border border-border rounded-lg px-4 py-3 mb-3">
+        <div className="flex flex-col gap-3 bg-muted/60 border border-border rounded-lg px-4 py-3 mb-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="text-sm">
             <span className="font-semibold">{selectionCount}</span> estudiante{selectionCount === 1 ? "" : "s"} seleccionado{selectionCount === 1 ? "" : "s"}
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="default"
-              disabled={bulkPending}
-              onClick={() => handleBulk(true)}
-              className="gap-1.5"
-            >
-              <Unlock className="w-3.5 h-3.5" />
-              Habilitar examen ({selectionCount})
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={bulkPending}
-              onClick={() => handleBulk(false)}
-              className="gap-1.5"
-            >
-              <Lock className="w-3.5 h-3.5" />
-              Deshabilitar
-            </Button>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            {(["prospeccion", "objeciones"] as ExamKind[]).map((exam) => (
+              <div key={exam} className="flex items-center gap-1.5">
+                <span className="text-xs font-medium text-muted-foreground">{EXAM_LABEL[exam]}:</span>
+                <Button
+                  size="sm"
+                  variant="default"
+                  disabled={bulkPending}
+                  onClick={() => handleBulk(exam, true)}
+                  className="gap-1.5"
+                >
+                  <Unlock className="w-3.5 h-3.5" />
+                  Habilitar
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={bulkPending}
+                  onClick={() => handleBulk(exam, false)}
+                  className="gap-1.5"
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                  Deshabilitar
+                </Button>
+              </div>
+            ))}
             <Button
               size="sm"
               variant="ghost"
@@ -297,9 +316,9 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
             >
               Sesiones <SortIcon column="sessions" />
             </TableHead>
-            <TableHead className="text-center">Coach</TableHead>
+            <TableHead className="text-center">División</TableHead>
             <TableHead className="text-center">Tiempo Total</TableHead>
-            <TableHead className="text-center">Examen Final</TableHead>
+            <TableHead className="text-center">Exámenes</TableHead>
             <TableHead className="text-center">Nivel</TableHead>
             <TableHead className="text-right">Acciones</TableHead>
           </TableRow>
@@ -325,7 +344,7 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
               <TableCell className="text-center">
                 <Badge variant="secondary">{student.totalSessions}</Badge>
               </TableCell>
-              <TableCell className="text-center">{renderCoachCell(student)}</TableCell>
+              <TableCell className="text-center">{renderDivisionCell(student)}</TableCell>
               <TableCell className="text-center">
                 <div className="flex items-center justify-center gap-1 text-muted-foreground">
                   <Clock className="w-4 h-4" />
@@ -333,29 +352,47 @@ export default function StudentList({ students, onAssignGrade, onToggleExamenFin
                 </div>
               </TableCell>
               <TableCell className="text-center">
-                <Button
-                  variant={student.examenFinalEnabled ? "default" : "outline"}
-                  size="sm"
-                  className="gap-1.5"
-                  disabled={togglingExamenId === student.id}
-                  onClick={async () => {
-                    setTogglingExamenId(student.id);
-                    await onToggleExamenFinal(student.id, !student.examenFinalEnabled);
-                    setTogglingExamenId(null);
-                  }}
-                >
-                  {student.examenFinalEnabled ? (
-                    <>
-                      <Unlock className="w-3.5 h-3.5" />
-                      Habilitado
-                    </>
-                  ) : (
-                    <>
-                      <Lock className="w-3.5 h-3.5" />
-                      Bloqueado
-                    </>
-                  )}
-                </Button>
+                {(() => {
+                  // Coach: sólo puede habilitar exámenes a SUS estudiantes asignados.
+                  const canToggle = isAdmin || student.coachId === currentUserId;
+                  const exams: { exam: ExamKind; label: string; enabled: boolean }[] = [
+                    { exam: "prospeccion", label: "Prospección", enabled: student.examenFinalEnabled },
+                    { exam: "objeciones", label: "Objeciones", enabled: student.examenObjecionesEnabled },
+                  ];
+                  return (
+                    <div className="flex flex-col items-stretch gap-1">
+                      {exams.map(({ exam, label, enabled }) => {
+                        const key = `${student.id}:${exam}`;
+                        return (
+                          <Button
+                            key={exam}
+                            variant={enabled ? "default" : "outline"}
+                            size="sm"
+                            className="h-7 gap-1.5 text-xs"
+                            disabled={!canToggle || togglingExamenId === key}
+                            title={
+                              canToggle
+                                ? `${enabled ? "Deshabilitar" : "Habilitar"} examen de ${label}`
+                                : "Sólo podés habilitar exámenes a tus estudiantes asignados"
+                            }
+                            onClick={async () => {
+                              setTogglingExamenId(key);
+                              await onToggleExamen(student.id, exam, !enabled);
+                              setTogglingExamenId(null);
+                            }}
+                          >
+                            {enabled ? (
+                              <Unlock className="w-3 h-3" />
+                            ) : (
+                              <Lock className="w-3 h-3" />
+                            )}
+                            {label}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </TableCell>
               <TableCell className="text-center">
                 {/* Read-only — refleja si el alumno aprobó el examen de

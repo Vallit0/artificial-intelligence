@@ -20,11 +20,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, GraduationCap, KeyRound, Loader2, Search, ShieldCheck, ShieldOff, UserPen } from "lucide-react";
+import { AlertCircle, GraduationCap, KeyRound, Loader2, Plus, Search, ShieldCheck, ShieldOff, UserPen } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCoaches, Coach } from "@/hooks/useCoaches";
 import EditCoachModal from "./EditCoachModal";
 import ResetStudentPasswordModal from "./ResetStudentPasswordModal";
+import CreateUserModal from "./CreateUserModal";
 
 // Adapta un Coach a la forma mínima de usuario que espera el modal de reseteo
 // de contraseña (reusado de la gestión de estudiantes).
@@ -43,6 +44,7 @@ export default function CoachesPanel() {
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [editCoach, setEditCoach] = useState<Coach | null>(null);
   const [resetCoach, setResetCoach] = useState<Coach | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const sedeOptions = useMemo(() => {
     const map = new Map<string, { id: string; name: string }>();
@@ -64,7 +66,7 @@ export default function CoachesPanel() {
 
   const togglePermission = async (
     coach: Coach,
-    field: "canCreateCoaches" | "canEditPrompts",
+    field: "canCreateCoaches" | "canEditPrompts" | "canAccessAdmin",
     value: boolean,
   ) => {
     setPendingId(coach.id);
@@ -90,9 +92,15 @@ export default function CoachesPanel() {
             <GraduationCap className="w-5 h-5 text-primary" />
             Coaches
           </CardTitle>
-          <Badge variant="secondary" className="text-[11px]">
-            {filtered.length} de {coaches.length}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="text-[11px]">
+              {filtered.length} de {coaches.length}
+            </Badge>
+            <Button size="sm" onClick={() => setCreateOpen(true)}>
+              <Plus className="w-4 h-4 mr-1" />
+              Crear coach
+            </Button>
+          </div>
         </div>
         <p className="text-sm text-muted-foreground">
           Coaches ven sólo los datos de su sede. Los toggles otorgan permisos granulares:
@@ -143,7 +151,7 @@ export default function CoachesPanel() {
             <ShieldOff className="w-10 h-10 mx-auto text-muted-foreground mb-2 opacity-50" />
             <p className="text-sm text-muted-foreground">
               {coaches.length === 0
-                ? "No hay coaches registrados. Crealos desde 'Estudiantes → Nuevo usuario' eligiendo rol Coach."
+                ? "No hay coaches registrados. Usá el botón 'Crear coach' para agregar uno."
                 : "No hay coaches que coincidan con el filtro."}
             </p>
           </div>
@@ -156,6 +164,7 @@ export default function CoachesPanel() {
                   <TableHead className="hidden md:table-cell">Sede</TableHead>
                   <TableHead className="text-center">Crear coaches</TableHead>
                   <TableHead className="text-center">Editar prompts</TableHead>
+                  <TableHead className="text-center">Acceso admin</TableHead>
                   <TableHead className="text-center">Cuenta</TableHead>
                 </TableRow>
               </TableHeader>
@@ -171,7 +180,8 @@ export default function CoachesPanel() {
                           <div className="flex items-center gap-2">
                             <span className="font-medium">{fullName}</span>
                             {(coach.permissions.canCreateCoaches ||
-                              coach.permissions.canEditPrompts) && (
+                              coach.permissions.canEditPrompts ||
+                              coach.permissions.canAccessAdmin) && (
                               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                             )}
                           </div>
@@ -210,6 +220,15 @@ export default function CoachesPanel() {
                           disabled={busy}
                           onCheckedChange={(v) =>
                             togglePermission(coach, "canEditPrompts", v)
+                          }
+                        />
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Switch
+                          checked={coach.permissions.canAccessAdmin}
+                          disabled={busy}
+                          onCheckedChange={(v) =>
+                            togglePermission(coach, "canAccessAdmin", v)
                           }
                         />
                       </TableCell>
@@ -253,6 +272,12 @@ export default function CoachesPanel() {
             los prompts de prospección y el primer mensaje (afecta a toda la plataforma, no sólo
             a su sede).
           </p>
+          <p>
+            <strong className="text-foreground">Acceso admin:</strong> le da al coach el panel de
+            administrador <strong className="text-foreground">completo y global</strong> — ve y
+            gestiona datos de <strong className="text-foreground">todas</strong> las sedes, como un
+            admin. Usar con cuidado.
+          </p>
         </div>
       </CardContent>
 
@@ -267,6 +292,15 @@ export default function CoachesPanel() {
         student={resetCoach ? toUserRef(resetCoach) : null}
         open={!!resetCoach}
         onOpenChange={(open) => !open && setResetCoach(null)}
+      />
+
+      <CreateUserModal
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onSuccess={refetch}
+        defaultRole="coach"
+        lockRole
+        title="Crear coach"
       />
     </Card>
   );

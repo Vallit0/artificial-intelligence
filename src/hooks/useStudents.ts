@@ -2,6 +2,9 @@ import { useState, useEffect, useCallback } from "react";
 import { api } from "@/lib/api-client";
 import { EMPTY_PERIOD, periodToQueryString, type Period } from "@/lib/period";
 
+// Los dos exámenes finales gateables: Prospección (Nivel 1) y Objeciones (Nivel 2).
+export type ExamKind = "prospeccion" | "objeciones";
+
 export interface StudentSession {
   id: string;
   duration_seconds: number;
@@ -27,12 +30,15 @@ export interface Student {
   finalGrade: number | null;
   gradedAt: string | null;
   examenFinalEnabled: boolean;
+  examenObjecionesEnabled: boolean;
   level2Unlocked: boolean;
   phoneNumber: string | null;
   sedeId: string | null;
   sedeName: string | null;
   coachId: string | null;
   coachName: string | null;
+  divisionId: string | null;
+  divisionName: string | null;
 }
 
 interface UseStudentsReturn {
@@ -41,9 +47,10 @@ interface UseStudentsReturn {
   error: string | null;
   refetch: () => Promise<void>;
   assignGrade: (userId: string, grade: number, notes?: string) => Promise<boolean>;
-  toggleExamenFinal: (userId: string, enabled: boolean) => Promise<boolean>;
-  bulkToggleExamenFinal: (userIds: string[], enabled: boolean) => Promise<number | null>;
+  toggleExamen: (userId: string, exam: ExamKind, enabled: boolean) => Promise<boolean>;
+  bulkToggleExamen: (userIds: string[], exam: ExamKind, enabled: boolean) => Promise<number | null>;
   assignCoach: (userId: string, coachId: string | null) => Promise<boolean>;
+  assignDivision: (userId: string, divisionId: string | null) => Promise<boolean>;
   updateUser: (userId: string, patch: UpdateUserPatch) => Promise<boolean>;
 }
 
@@ -56,7 +63,9 @@ export interface UpdateUserPatch {
   lastName?: string | null;
   phoneNumber?: string | null;
   coachId?: string | null;
+  divisionId?: string | null;
   examenFinalEnabled?: boolean;
+  examenObjecionesEnabled?: boolean;
   level2Unlocked?: boolean;
   courseCompleted?: boolean;
   tutorialCompleted?: boolean;
@@ -91,12 +100,15 @@ export const useStudents = (period: Period = EMPTY_PERIOD): UseStudentsReturn =>
         finalGrade: s.finalGrade,
         gradedAt: s.createdAt, // TODO: add gradeUpdatedAt to API
         examenFinalEnabled: s.examenFinalEnabled ?? false,
+        examenObjecionesEnabled: s.examenObjecionesEnabled ?? false,
         level2Unlocked: s.level2Unlocked ?? false,
         phoneNumber: s.phoneNumber ?? null,
         sedeId: s.sedeId ?? null,
         sedeName: s.sedeName ?? null,
         coachId: s.coachId ?? null,
         coachName: s.coachName ?? null,
+        divisionId: s.divisionId ?? null,
+        divisionName: s.divisionName ?? null,
       }));
 
       setStudents(studentsWithData);
@@ -128,25 +140,33 @@ export const useStudents = (period: Period = EMPTY_PERIOD): UseStudentsReturn =>
     }
   };
 
-  const toggleExamenFinal = async (userId: string, enabled: boolean): Promise<boolean> => {
+  const toggleExamen = async (userId: string, exam: ExamKind, enabled: boolean): Promise<boolean> => {
     try {
-      await api.patch(`/api/admin/users/${userId}/examen-final`, { enabled });
+      await api.patch(`/api/admin/users/${userId}/examen-final`, { enabled, exam });
       await fetchStudents();
       return true;
     } catch (err) {
-      console.error("Error toggling examen final:", err);
+      console.error("Error toggling examen:", err);
       return false;
     }
   };
 
-  const bulkToggleExamenFinal = async (userIds: string[], enabled: boolean): Promise<number | null> => {
+  const bulkToggleExamen = async (
+    userIds: string[],
+    exam: ExamKind,
+    enabled: boolean,
+  ): Promise<number | null> => {
     if (userIds.length === 0) return 0;
     try {
-      const res = await api.patch<{ count: number }>(`/api/admin/users/bulk/examen-final`, { userIds, enabled });
+      const res = await api.patch<{ count: number }>(`/api/admin/users/bulk/examen-final`, {
+        userIds,
+        enabled,
+        exam,
+      });
       await fetchStudents();
       return res?.count ?? userIds.length;
     } catch (err) {
-      console.error("Error bulk toggling examen final:", err);
+      console.error("Error bulk toggling examen:", err);
       return null;
     }
   };
@@ -158,6 +178,19 @@ export const useStudents = (period: Period = EMPTY_PERIOD): UseStudentsReturn =>
       return true;
     } catch (err) {
       console.error("Error assigning coach:", err);
+      return false;
+    }
+  };
+
+  // Asigna (o desasigna con null) la división del estudiante. El backend
+  // sincroniza el coach con el coach de la división.
+  const assignDivision = async (userId: string, divisionId: string | null): Promise<boolean> => {
+    try {
+      await api.patch(`/api/admin/users/${userId}/division`, { divisionId });
+      await fetchStudents();
+      return true;
+    } catch (err) {
+      console.error("Error assigning division:", err);
       return false;
     }
   };
@@ -179,5 +212,5 @@ export const useStudents = (period: Period = EMPTY_PERIOD): UseStudentsReturn =>
     fetchStudents();
   }, [fetchStudents]);
 
-  return { students, isLoading, error, refetch: fetchStudents, assignGrade, toggleExamenFinal, bulkToggleExamenFinal, assignCoach, updateUser };
+  return { students, isLoading, error, refetch: fetchStudents, assignGrade, toggleExamen, bulkToggleExamen, assignCoach, assignDivision, updateUser };
 };

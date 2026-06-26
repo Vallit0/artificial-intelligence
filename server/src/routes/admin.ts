@@ -12,6 +12,7 @@ import { parseDateRange } from '../utils/dateRange.js';
 import * as adminService from '../services/admin.service.js';
 import * as sedesService from '../services/sedes.service.js';
 import * as coachesService from '../services/coaches.service.js';
+import * as divisionsService from '../services/divisions.service.js';
 import * as agentConfigService from '../services/agentConfig.service.js';
 import * as prospectingScenariosService from '../services/prospectingScenarios.service.js';
 import * as appConfigService from '../services/appConfig.service.js';
@@ -236,7 +237,9 @@ const updateUserSchema = z
     lastName: z.string().nullable().optional(),
     phoneNumber: z.string().nullable().optional(),
     coachId: z.string().uuid().nullable().optional(),
+    divisionId: z.string().uuid().nullable().optional(),
     examenFinalEnabled: z.boolean().optional(),
+    examenObjecionesEnabled: z.boolean().optional(),
     level2Unlocked: z.boolean().optional(),
     courseCompleted: z.boolean().optional(),
     tutorialCompleted: z.boolean().optional(),
@@ -607,6 +610,8 @@ adminRouter.patch('/users/:id/name', async (req: AuthRequest, res: Response, nex
 const bulkExamenFinalSchema = z.object({
   userIds: z.array(z.string().uuid()).min(1).max(500),
   enabled: z.boolean(),
+  // Cuál de los dos exámenes; default 'prospeccion' por compatibilidad.
+  exam: z.enum(['prospeccion', 'objeciones']).optional(),
 });
 
 /**
@@ -635,7 +640,12 @@ adminRouter.patch('/users/bulk/examen-final', async (req: AuthRequest, res: Resp
     if (!parsed.success) {
       throw new BadRequestError('userIds (array de UUIDs, 1-500) y enabled (boolean) requeridos');
     }
-    const result = await adminService.bulkToggleExamenFinal(parsed.data.userIds, parsed.data.enabled, req.user!);
+    const result = await adminService.bulkToggleExamen(
+      parsed.data.userIds,
+      parsed.data.exam ?? 'prospeccion',
+      parsed.data.enabled,
+      req.user!,
+    );
     res.json({ success: true, ...result });
   } catch (error) {
     const appError = handleError(error);
@@ -667,8 +677,9 @@ adminRouter.patch('/users/bulk/examen-final', async (req: AuthRequest, res: Resp
  */
 adminRouter.patch('/users/:id/examen-final', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { enabled } = req.body;
-    const result = await adminService.toggleExamenFinal(req.params.id, !!enabled, req.user!);
+    const { enabled, exam } = req.body;
+    const examKind = exam === 'objeciones' ? 'objeciones' : 'prospeccion';
+    const result = await adminService.toggleExamen(req.params.id, examKind, !!enabled, req.user!);
     res.json({ success: true, ...result });
   } catch (error) {
     const appError = handleError(error);
@@ -932,6 +943,7 @@ adminRouter.delete('/sedes/:id', requireGlobalAdmin, async (req: AuthRequest, re
 const coachPermissionsSchema = z.object({
   canCreateCoaches: z.boolean().optional(),
   canEditPrompts: z.boolean().optional(),
+  canAccessAdmin: z.boolean().optional(),
 });
 
 /**
@@ -1038,6 +1050,158 @@ adminRouter.patch('/coaches/:id/permissions', requireGlobalAdmin, async (req: Au
       throw new BadRequestError('Datos de permisos inválidos');
     }
     const result = await coachesService.updateCoachPermissions(req.params.id, parsed.data, req.user!);
+    res.json(result);
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
+// ============================================
+// Divisiones: CRUD + asignación de estudiantes
+// ============================================
+// Una Sede tiene varias Divisiones y cada División tiene UN coach. Los
+// estudiantes se asignan a una División y heredan su coach. CRUD gateado con
+// requireGlobalAdmin (que incluye coaches con canAccessAdmin); el service
+// aplica scope por sede como defensa en profundidad.
+const createDivisionSchema = z.object({
+  sedeId: z.string().uuid(),
+  name: z.string().min(1).max(120),
+  coachId: z.string().uuid().nullable().optional(),
+});
+const updateDivisionSchema = z.object({
+  name: z.string().min(1).max(120).optional(),
+  isActive: z.boolean().optional(),
+  coachId: z.string().uuid().nullable().optional(),
+});
+const assignDivisionSchema = z.object({
+  divisionId: z.string().uuid().nullable(),
+});
+
+/**
+ * @openapi
+ * /api/admin/divisions:
+ *   get:
+ *     tags: [Admin]
+ *     summary: Lista divisiones con su sede, coach y conteo de estudiantes
+ *     description: >-
+ *       Admin global ve las divisiones de todas las sedes; un coach scoped ve
+ *       sólo las de su sede. Sólo un admin global puede incluir inactivas con
+ *       `?includeInactive=true`.
+ *     responses:
+ *       200: { description: Lista de divisiones }
+ */
+adminRouter.get('/divisions', requireGlobalAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const includeInactive = req.query.includeInactive === 'true';
+    const divisions = await divisionsService.listDivisions(req.user!, { includeInactive });
+    res.json(divisions);
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
+/**
+ * @openapi
+ * /api/admin/divisions:
+ *   post:
+ *     tags: [Admin]
+ *     summary: Crea una división dentro de una sede
+ *     description: >-
+ *       El nombre es único dentro de la sede. `coachId` (opcional) debe ser un
+ *       usuario con rol coach de la misma sede.
+ *     responses:
+ *       201: { description: División creada }
+ *       400: { description: Datos inválidos / coach de otra sede }
+ *       409: { description: Nombre ya en uso en la sede }
+ */
+adminRouter.post('/divisions', requireGlobalAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const parsed = createDivisionSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new BadRequestError('Datos de división inválidos');
+    }
+    const division = await divisionsService.createDivision(parsed.data, req.user!);
+    res.status(201).json(division);
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
+/**
+ * @openapi
+ * /api/admin/divisions/{id}:
+ *   patch:
+ *     tags: [Admin]
+ *     summary: Actualiza una división (nombre, activo, coach)
+ *     description: >-
+ *       Cambiar el coach re-sincroniza el coach denormalizado de todos los
+ *       estudiantes de la división.
+ *     responses:
+ *       200: { description: División actualizada }
+ *       404: { description: División no encontrada }
+ *       409: { description: Nombre ya en uso en la sede }
+ */
+adminRouter.patch('/divisions/:id', requireGlobalAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const parsed = updateDivisionSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new BadRequestError('Datos de división inválidos');
+    }
+    const division = await divisionsService.updateDivision(req.params.id, parsed.data, req.user!);
+    res.json(division);
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
+/**
+ * @openapi
+ * /api/admin/divisions/{id}:
+ *   delete:
+ *     tags: [Admin]
+ *     summary: Elimina una división
+ *     description: Falla con 409 si la división tiene estudiantes asignados.
+ *     responses:
+ *       200: { description: División eliminada }
+ *       409: { description: La división tiene estudiantes asignados }
+ */
+adminRouter.delete('/divisions/:id', requireGlobalAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    await divisionsService.deleteDivision(req.params.id, req.user!);
+    res.json({ success: true });
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
+/**
+ * @openapi
+ * /api/admin/users/{id}/division:
+ *   patch:
+ *     tags: [Admin]
+ *     summary: Asigna o desasigna la división de un estudiante (admin global)
+ *     description: >-
+ *       `divisionId: null` desasigna. La división debe pertenecer a la misma
+ *       sede que el estudiante. Sincroniza el coach denormalizado del estudiante
+ *       con el coach de la división.
+ *     responses:
+ *       200: { description: División asignada/desasignada }
+ *       400: { description: División inválida o de otra sede }
+ *       404: { description: Usuario no encontrado }
+ */
+adminRouter.patch('/users/:id/division', requireGlobalAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const parsed = assignDivisionSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'divisionId debe ser un UUID o null' });
+      return;
+    }
+    const result = await divisionsService.assignLearnerToDivision(req.params.id, parsed.data.divisionId, req.user!);
     res.json(result);
   } catch (error) {
     const appError = handleError(error);

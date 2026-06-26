@@ -12,7 +12,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { usePublicSedes } from "@/hooks/useSedes";
-import { usePublicCoaches } from "@/hooks/usePublicCoaches";
+import { usePublicDivisions } from "@/hooks/useDivisions";
 import { z } from "zod";
 import { ArrowLeft, Building2, CheckCircle2, Eye, EyeOff, Phone, UserCheck } from "lucide-react";
 import { ForgotPasswordModal } from "@/components/auth/ForgotPasswordModal";
@@ -41,7 +41,7 @@ const Auth = () => {
   const [lastName, setLastName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [sedeId, setSedeId] = useState("");
-  const [coachId, setCoachId] = useState("");
+  const [divisionId, setDivisionId] = useState("");
   const [loading, setLoading] = useState(false);
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -50,7 +50,7 @@ const Auth = () => {
   const navigate = useNavigate();
   const { signIn, signUp } = useAuth();
   const { sedes, isLoading: sedesLoading } = usePublicSedes();
-  const { coaches, isLoading: coachesLoading } = usePublicCoaches(isLogin ? undefined : sedeId);
+  const { divisions, isLoading: divisionsLoading } = usePublicDivisions(isLogin ? undefined : sedeId);
 
   useEffect(() => {
     if (!sedeId && sedes.length > 0) {
@@ -58,10 +58,10 @@ const Auth = () => {
     }
   }, [sedes, sedeId]);
 
-  // Al cambiar de sede, el coach elegido ya no es válido (los coaches son por
-  // sede). Reseteamos la selección para forzar elegir uno de la nueva sede.
+  // Al cambiar de sede, la división elegida ya no es válida (las divisiones son
+  // por sede). Reseteamos la selección para forzar elegir una de la nueva sede.
   useEffect(() => {
-    setCoachId("");
+    setDivisionId("");
   }, [sedeId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -94,11 +94,11 @@ const Auth = () => {
           setLoading(false);
           return;
         }
-        if (!coachId) {
+        if (!divisionId) {
           toast({
             variant: "destructive",
-            title: "Falta coach",
-            description: "Selecciona el coach al que estarás asignado.",
+            title: "Falta división",
+            description: "Selecciona la división a la que estarás asignado.",
           });
           setLoading(false);
           return;
@@ -107,7 +107,7 @@ const Auth = () => {
           email,
           password,
           sedeId,
-          coachId,
+          divisionId,
           firstName || undefined,
           lastName || undefined,
           phoneNumber || undefined,
@@ -244,26 +244,26 @@ const Auth = () => {
               <div className="relative">
                 <UserCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10 pointer-events-none" />
                 <Select
-                  value={coachId}
-                  onValueChange={setCoachId}
-                  disabled={!sedeId || coachesLoading}
+                  value={divisionId}
+                  onValueChange={setDivisionId}
+                  disabled={!sedeId || divisionsLoading}
                 >
                   <SelectTrigger className="h-13 bg-card border border-border rounded-xl pl-10 pr-4 text-foreground focus:border-primary transition-colors">
                     <SelectValue
                       placeholder={
-                        coachesLoading ? "Cargando coaches..." : "Seleccionar coach"
+                        divisionsLoading ? "Cargando divisiones..." : "Seleccionar división"
                       }
                     />
                   </SelectTrigger>
                   <SelectContent>
-                    {coaches.length === 0 && !coachesLoading && (
+                    {divisions.length === 0 && !divisionsLoading && (
                       <SelectItem value="__none__" disabled>
-                        No hay coaches en esta sede
+                        No hay divisiones en esta sede
                       </SelectItem>
                     )}
-                    {coaches.map((coach) => (
-                      <SelectItem key={coach.id} value={coach.id}>
-                        {coach.name}
+                    {divisions.map((division) => (
+                      <SelectItem key={division.id} value={division.id}>
+                        {division.name}
                       </SelectItem>
                     ))}
                   </SelectContent>

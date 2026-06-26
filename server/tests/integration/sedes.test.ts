@@ -161,17 +161,21 @@ describe('Multi-sede: creación de coaches', () => {
   });
 
   it('signup público NUNCA crea rol coach (siempre learner)', async () => {
-    // El signup ahora exige sede + coach de esa sede; usamos un coach de sede-a.
+    // El signup ahora exige sede + división de esa sede; creamos una división
+    // de sede-a con un coach de esa sede.
     const coach = await prisma.user.findFirst({
       where: { sedeId: sedeA.id, roles: { some: { role: 'coach' } } },
       select: { id: true },
+    });
+    const division = await prisma.division.create({
+      data: { name: 'División sede-a', sedeId: sedeA.id, coachId: coach!.id },
     });
     const res = await request(app).post('/auth/signup').send({
       email: 'public-signup@test.com',
       password: 'supersecret-abc',
       role: 'coach',         // intento de injection — debe ignorarse
       sede: 'sede-a',
-      coachId: coach!.id,
+      divisionId: division.id,
     });
     expect(res.status).toBe(201);
     const userRoles = await prisma.userRole.findMany({

@@ -12,6 +12,7 @@ import * as prospectingScenariosService from '../services/prospectingScenarios.s
 import * as appConfigService from '../services/appConfig.service.js';
 import * as sedesService from '../services/sedes.service.js';
 import * as coachesService from '../services/coaches.service.js';
+import * as divisionsService from '../services/divisions.service.js';
 import { AuthRequest } from '../types/index.js';
 import { handleError } from '../utils/errors.js';
 
@@ -127,6 +128,37 @@ apiRouter.get('/coaches', async (req: AuthRequest, res: Response) => {
     const sedeRef = (req.query.sedeId ?? req.query.sede) as string | undefined;
     const coaches = await coachesService.listPublicCoachesBySede(sedeRef ?? '');
     res.json(coaches);
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});
+
+// Lista pública de divisiones activas de una sede — usada por el selector de
+// división en el signup. Devuelve sólo { id, name }. Requiere ?sedeId= (UUID o
+// slug). El estudiante elige una división y hereda su coach.
+/**
+ * @openapi
+ * /api/divisions:
+ *   get:
+ *     tags: [Users]
+ *     summary: Lista pública de divisiones de una sede
+ *     description: Usada por el selector de división en el signup. Requiere sedeId (UUID o slug). Devuelve sólo id y name.
+ *     security: []
+ *     parameters:
+ *       - in: query
+ *         name: sedeId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Lista de divisiones de la sede }
+ *       400: { description: sedeId faltante o sede inválida }
+ */
+apiRouter.get('/divisions', async (req: AuthRequest, res: Response) => {
+  try {
+    const sedeRef = (req.query.sedeId ?? req.query.sede) as string | undefined;
+    const divisions = await divisionsService.listPublicDivisionsBySede(sedeRef ?? '');
+    res.json(divisions);
   } catch (error) {
     const appError = handleError(error);
     res.status(appError.statusCode).json({ error: appError.message });

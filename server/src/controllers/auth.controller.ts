@@ -13,11 +13,11 @@ import { handleError } from '../utils/errors.js';
 // ============================================
 export async function signup(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { email, password, firstName, lastName, phoneNumber, sede, sedeId, coachId } = req.body;
+    const { email, password, firstName, lastName, phoneNumber, sede, sedeId, divisionId } = req.body;
     // Aceptamos `sede` (UUID o slug) o `sedeId` (UUID) — la UI puede mandar
     // cualquiera de los dos, ambas formas resuelven contra Sede en el servicio.
     const sedeRef = sede ?? sedeId;
-    const result = await authService.signup(email, password, sedeRef, coachId, firstName, lastName, phoneNumber);
+    const result = await authService.signup(email, password, sedeRef, divisionId, firstName, lastName, phoneNumber);
 
     // Auto-registro con aprobación: NO se emiten tokens. El usuario queda
     // pendiente del visto bueno de un admin/coach de su sede.
@@ -95,6 +95,7 @@ export async function getMe(req: AuthRequest, res: Response, next: NextFunction)
       select: {
         sede: { select: { id: true, name: true } },
         coach: { select: { id: true, firstName: true, lastName: true, email: true } },
+        division: { select: { id: true, name: true } },
       },
     });
     const coach = profile?.coach
@@ -107,7 +108,7 @@ export async function getMe(req: AuthRequest, res: Response, next: NextFunction)
       : null;
 
     res.json({
-      user: { ...req.user, sede: profile?.sede ?? null, coach },
+      user: { ...req.user, sede: profile?.sede ?? null, coach, division: profile?.division ?? null },
       roles,
     });
   } catch (error) {

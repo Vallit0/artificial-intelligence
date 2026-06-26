@@ -12,6 +12,7 @@ export interface ApiUser {
   firstName?: string;
   lastName?: string;
   examenFinalEnabled?: boolean;
+  examenObjecionesEnabled?: boolean;
   level2Unlocked?: boolean;
   courseCompleted?: boolean;
   // false mientras el usuario no haya visto/saltado el tour del primer login.
@@ -19,9 +20,12 @@ export interface ApiUser {
   // Sólo presentes en la respuesta de /auth/me (datos de display).
   sede?: { id: string; name: string } | null;
   coach?: { id: string; name: string } | null;
+  division?: { id: string; name: string } | null;
   coachPermissions?: {
     canCreateCoaches: boolean;
     canEditPrompts: boolean;
+    // Da acceso al panel admin global (atraviesa sedes, como un admin).
+    canAccessAdmin: boolean;
   };
 }
 

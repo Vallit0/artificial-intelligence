@@ -25,8 +25,7 @@ export function getSedeScope(user: AuthUser | undefined, overrideSedeId?: string
     throw new UnauthorizedError('Not authenticated');
   }
 
-  const isGlobalAdmin = user.roles.includes('admin');
-  if (isGlobalAdmin) {
+  if (isGlobalAdmin(user)) {
     if (overrideSedeId) {
       return { scope: 'sede', sedeId: overrideSedeId };
     }
@@ -54,8 +53,11 @@ export function assertSedeAccess(user: AuthUser | undefined, targetSedeId: strin
 }
 
 // Predicate inverso conveniente para chequeos "este user es admin global".
+// Incluye a los coaches con el toggle `canAccessAdmin`, que el cliente
+// definió como acceso al panel admin COMPLETO y GLOBAL (atraviesa sedes).
 export function isGlobalAdmin(user: AuthUser | undefined): boolean {
-  return !!user && user.roles.includes('admin');
+  if (!user) return false;
+  return user.roles.includes('admin') || !!user.coachPermissions?.canAccessAdmin;
 }
 
 // True si el caller puede crear coaches en `targetSedeId`. Admin global

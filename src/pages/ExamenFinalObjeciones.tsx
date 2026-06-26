@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, GraduationCap, AlertTriangle, Award, FileImage, FileText } from "lucide-react";
+import { ArrowLeft, GraduationCap, AlertTriangle, Award, FileImage, FileText, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useElevenLabsConversation } from "@/hooks/useElevenLabsConversation";
@@ -45,7 +45,7 @@ const EXAM_MAX_SECONDS = 10 * 60;
 export default function ExamenFinalObjeciones() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, refreshUser, patchUser } = useAuth();
+  const { user, isAdmin, refreshUser, patchUser } = useAuth();
   const { savePracticeSession, evaluateSession } = usePracticeSessions();
   const [examState, setExamState] = useState<ExamState>("idle");
   const [transcriptMessages, setTranscriptMessages] = useState<TranscriptMessage[]>([]);
@@ -59,6 +59,10 @@ export default function ExamenFinalObjeciones() {
   const { config: platformConfig } = usePlatformConfig();
   const examMaxSeconds = platformConfig?.callDurationObjecionesSec ?? EXAM_MAX_SECONDS;
   const passThreshold = platformConfig?.passThresholdObjeciones ?? 80;
+
+  // Gate: el examen de Objeciones está bloqueado hasta que un admin o el coach
+  // asignado lo habilite (flag examenObjecionesEnabled). El admin lo ve siempre.
+  const isLocked = !isAdmin && !user?.examenObjecionesEnabled;
 
   const studentName =
     [user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.email || "Estudiante";
@@ -372,7 +376,33 @@ export default function ExamenFinalObjeciones() {
               </div>
             </div>
 
-            {examState === "idle" ? (
+            {isLocked ? (
+              /* Locked State */
+              <Card className="border-muted">
+                <CardHeader className="text-center">
+                  <div className="mx-auto w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-4">
+                    <Lock className="h-10 w-10 text-muted-foreground" />
+                  </div>
+                  <CardTitle className="text-2xl">Examen de Objeciones Bloqueado</CardTitle>
+                  <CardDescription className="text-base max-w-lg mx-auto">
+                    Tu examen de objeciones aún no ha sido habilitado. Contacta a tu instructor o
+                    administrador para que te habilite el acceso cuando estés listo.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col items-center gap-4">
+                  <div className="bg-muted/50 rounded-lg p-4 w-full max-w-md">
+                    <h3 className="font-semibold mb-2 text-center">Mientras tanto...</h3>
+                    <p className="text-sm text-muted-foreground text-center">
+                      Sigue practicando el manejo de objeciones con los escenarios disponibles para
+                      prepararte para tu evaluación final.
+                    </p>
+                  </div>
+                  <Button variant="outline" onClick={() => navigate("/practice")}>
+                    Ir a Practicar
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : examState === "idle" ? (
               /* Instructions Card */
               <Card className="border-primary/20">
                 <CardHeader className="text-center">
