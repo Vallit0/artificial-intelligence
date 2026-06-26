@@ -120,20 +120,25 @@ export default function Admin() {
 
   // Opciones de filtro derivadas de los estudiantes cargados (sede/división/país).
   const studentFilterOptions = useMemo(() => {
-    const sedes = new Map<string, string>();
-    const divisions = new Map<string, string>();
-    const countries = new Set<string>();
+    const sedeMap = new Map<string, string>();
+    const divisionMap = new Map<string, string>();
+    const countrySet = new Set<string>();
+    // Las divisiones salen de la lista real (admin) para aparecer aunque ningún
+    // estudiante esté asignado todavía; el coach las toma de sus estudiantes.
+    for (const d of divisions) {
+      if (d.id && d.name) divisionMap.set(d.id, d.name);
+    }
     for (const s of students) {
-      if (s.sedeId && s.sedeName) sedes.set(s.sedeId, s.sedeName);
-      if (s.divisionId && s.divisionName) divisions.set(s.divisionId, s.divisionName);
-      if (s.country) countries.add(s.country);
+      if (s.sedeId && s.sedeName) sedeMap.set(s.sedeId, s.sedeName);
+      if (s.divisionId && s.divisionName) divisionMap.set(s.divisionId, s.divisionName);
+      if (s.country) countrySet.add(s.country);
     }
     return {
-      sedes: Array.from(sedes, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name)),
-      divisions: Array.from(divisions, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name)),
-      countries: Array.from(countries).sort((a, b) => a.localeCompare(b)),
+      sedes: Array.from(sedeMap, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name)),
+      divisions: Array.from(divisionMap, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name)),
+      countries: Array.from(countrySet).sort((a, b) => a.localeCompare(b)),
     };
-  }, [students]);
+  }, [students, divisions]);
 
   // Lista filtrada (búsqueda por nombre/email + sede + división + país). La fecha
   // ya viene aplicada server-side vía `period`. Se usa en la tabla y en el export.
@@ -441,9 +446,9 @@ export default function Admin() {
                   className="pl-9"
                 />
               </div>
-              {/* Filtros: sólo aparecen si hay más de una opción (el coach
-                  mono-sede no ve sede/país, pero sí divisiones). */}
-              {studentFilterOptions.sedes.length > 1 && (
+              {/* Filtros: aparecen si hay al menos un valor para ese campo
+                  (sede siempre; división/país según haya datos cargados). */}
+              {studentFilterOptions.sedes.length > 0 && (
                 <Select value={sedeFilter} onValueChange={setSedeFilter}>
                   <SelectTrigger className="sm:w-44">
                     <SelectValue placeholder="Sede" />
@@ -456,7 +461,7 @@ export default function Admin() {
                   </SelectContent>
                 </Select>
               )}
-              {studentFilterOptions.divisions.length > 1 && (
+              {studentFilterOptions.divisions.length > 0 && (
                 <Select value={divisionFilter} onValueChange={setDivisionFilter}>
                   <SelectTrigger className="sm:w-44">
                     <SelectValue placeholder="División" />
@@ -469,7 +474,7 @@ export default function Admin() {
                   </SelectContent>
                 </Select>
               )}
-              {studentFilterOptions.countries.length > 1 && (
+              {studentFilterOptions.countries.length > 0 && (
                 <Select value={countryFilter} onValueChange={setCountryFilter}>
                   <SelectTrigger className="sm:w-36">
                     <SelectValue placeholder="País" />
