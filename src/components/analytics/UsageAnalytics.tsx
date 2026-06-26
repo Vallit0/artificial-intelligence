@@ -1,10 +1,11 @@
-import { Building2, Clock, TrendingUp, Users } from "lucide-react";
+import { Building2, ChevronRight, Clock, TrendingUp, Users } from "lucide-react";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import type { BreakdownMetric } from "@/components/admin/PracticeByAgentModal";
 import {
   Table,
   TableBody,
@@ -27,27 +28,55 @@ interface SummaryCardProps {
   icon: React.ReactNode;
   value: string;
   label: string;
+  // Si se provee, la tarjeta es clickeable y abre el desglose por agente.
+  onClick?: () => void;
 }
 
-const SummaryCard = ({ icon, value, label }: SummaryCardProps) => (
-  <Card>
-    <CardContent className="flex items-center gap-4 p-6">
-      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-        {icon}
-      </div>
-      <div>
-        <p className="text-2xl font-bold text-foreground">{value}</p>
-        <p className="text-sm text-muted-foreground">{label}</p>
-      </div>
-    </CardContent>
-  </Card>
-);
+const SummaryCard = ({ icon, value, label, onClick }: SummaryCardProps) => {
+  const clickable = !!onClick;
+  return (
+    <Card
+      {...(clickable
+        ? {
+            role: "button",
+            tabIndex: 0,
+            onClick,
+            onKeyDown: (e: React.KeyboardEvent) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onClick();
+              }
+            },
+            title: "Ver desglose por tipo de llamada (agente)",
+          }
+        : {})}
+      className={
+        clickable
+          ? "cursor-pointer transition-colors hover:border-primary/50 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          : undefined
+      }
+    >
+      <CardContent className="flex items-center gap-4 p-6">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          {icon}
+        </div>
+        <div className="flex-1">
+          <p className="text-2xl font-bold text-foreground">{value}</p>
+          <p className="text-sm text-muted-foreground">{label}</p>
+        </div>
+        {clickable && <ChevronRight className="h-4 w-4 shrink-0 opacity-50" />}
+      </CardContent>
+    </Card>
+  );
+};
 
 interface UsageAnalyticsProps {
   data: AdminUsageData;
+  // Click en una tarjeta resumen → abre el desglose de práctica por agente.
+  onMetricClick?: (metric: BreakdownMetric) => void;
 }
 
-export function UsageAnalytics({ data }: UsageAnalyticsProps) {
+export function UsageAnalytics({ data, onMetricClick }: UsageAnalyticsProps) {
   const { totals, bySede, activityTrend } = data;
 
   return (
@@ -58,16 +87,19 @@ export function UsageAnalytics({ data }: UsageAnalyticsProps) {
           icon={<Clock className="h-6 w-6" />}
           value={formatDuration(totals.totalTimeSeconds)}
           label="Tiempo total de práctica"
+          onClick={onMetricClick ? () => onMetricClick("time") : undefined}
         />
         <SummaryCard
           icon={<TrendingUp className="h-6 w-6" />}
           value={totals.totalSessions.toLocaleString()}
           label="Sesiones totales"
+          onClick={onMetricClick ? () => onMetricClick("sessions") : undefined}
         />
         <SummaryCard
           icon={<Users className="h-6 w-6" />}
           value={`${totals.activeStudents} / ${totals.totalStudents}`}
           label="Estudiantes activos / total"
+          onClick={onMetricClick ? () => onMetricClick("students") : undefined}
         />
       </div>
 

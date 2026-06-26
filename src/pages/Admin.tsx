@@ -548,7 +548,7 @@ export default function Admin() {
                     Exportar Excel
                   </Button>
                 </div>
-                <UsageAnalytics data={usageData} />
+                <UsageAnalytics data={usageData} onMetricClick={setOpenBreakdownMetric} />
                 <TimeByModeAnalytics
                   data={timeByModeData}
                   isLoading={timeByModeLoading}
