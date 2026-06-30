@@ -103,6 +103,8 @@ services:
     # "1.23.1" pelado no existe en Docker Hub (edoburu usa sufijo -pN). Ver prod.yml.
     image: edoburu/pgbouncer:latest
     environment:
+      # edoburu escucha en 5432 por defecto; las apps usan pgbouncer:6432.
+      LISTEN_PORT: "6432"
       DB_HOST: db
       DB_PORT: "5432"
       DB_USER: senoriales
