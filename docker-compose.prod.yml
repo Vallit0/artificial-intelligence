@@ -136,7 +136,9 @@ services:
   # pool de DEFAULT_POOL_SIZE hacia Postgres → soporta miles de clientes con pocos
   # backends reales. El job `migrate` NO pasa por aquí (necesita sesión directa).
   pgbouncer:
-    image: edoburu/pgbouncer:1.23.1
+    # edoburu publica tags con sufijo (-pN); "1.23.1" pelado no existe. Usamos
+    # latest; pinealo a un digest tras el primer pull (docker images --digests).
+    image: edoburu/pgbouncer:latest
     environment:
       DB_HOST: db
       DB_PORT: "5432"

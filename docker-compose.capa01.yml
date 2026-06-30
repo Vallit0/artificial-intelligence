@@ -100,7 +100,8 @@ services:
     logging: *default-logging
 
   pgbouncer:
-    image: edoburu/pgbouncer:1.23.1
+    # "1.23.1" pelado no existe en Docker Hub (edoburu usa sufijo -pN). Ver prod.yml.
+    image: edoburu/pgbouncer:latest
     environment:
       DB_HOST: db
       DB_PORT: "5432"
