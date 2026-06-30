@@ -47,7 +47,7 @@ x-app-base: &app-base
     # connection_limit=25 son conexiones de cliente a PgBouncer (baratas); el pool
     # real hacia Postgres lo fija DEFAULT_POOL_SIZE del servicio pgbouncer.
     DATABASE_URL: "postgresql://senoriales:${POSTGRES_PASSWORD}@pgbouncer:6432/senoriales?pgbouncer=true&connection_limit=25&pool_timeout=30"
-    CORS_ORIGIN: "https://centro-de-negocios.org,https://www.centro-de-negocios.org"
+    CORS_ORIGIN: "https://centro-de-negocios.org,https://www.centro-de-negocios.org,https://dev.centro-de-negocios.org"
     JWT_SECRET: "${JWT_SECRET}"
     RUN_CRONS: "false"
   depends_on:
