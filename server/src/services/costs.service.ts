@@ -26,6 +26,7 @@ export interface CostsQuery {
   groupBy: GroupBy;
   limit: number;
   sedeIdFilter?: string | null;
+  divisionIdFilter?: string | null;
 }
 
 export interface CostBreakdownEntry {
@@ -72,6 +73,7 @@ export function parseCostsQuery(raw: {
   groupBy?: string;
   limit?: string;
   sedeId?: string;
+  divisionId?: string;
 }): CostsQuery {
   if (!raw.from || !raw.to) {
     throw new BadRequestError('Faltan parámetros from/to (ISO-8601)');
@@ -102,6 +104,7 @@ export function parseCostsQuery(raw: {
     groupBy,
     limit,
     sedeIdFilter: raw.sedeId || null,
+    divisionIdFilter: raw.divisionId || null,
   };
 }
 
@@ -114,7 +117,7 @@ interface RawAggRow {
 // Una sola query agregada por groupBy. Postgres agrupa, ordena, limita —
 // no traemos N filas de sesiones al backend.
 async function fetchRawAggregates(query: CostsQuery, sedeIdsAllowed: string[] | null): Promise<RawAggRow[]> {
-  const { from, to, groupBy, limit, sedeIdFilter } = query;
+  const { from, to, groupBy, limit, sedeIdFilter, divisionIdFilter } = query;
 
   // Construcción de WHERE con parámetros tipados. Prisma no soporta
   // groupBy dinámico con joins, así que usamos $queryRawUnsafe con
@@ -130,6 +133,12 @@ async function fetchRawAggregates(query: CostsQuery, sedeIdsAllowed: string[] | 
   } else if (sedeIdFilter) {
     conditions.push(`u.sede_id = $${params.length + 1}::text`);
     params.push(sedeIdFilter);
+  }
+
+  // Filtro por división (aditivo): acota a los learners de esa división.
+  if (divisionIdFilter) {
+    conditions.push(`u.division_id = $${params.length + 1}::text`);
+    params.push(divisionIdFilter);
   }
 
   const whereSql = conditions.join(' AND ');

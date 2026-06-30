@@ -17,6 +17,9 @@ interface FormState {
   certificateInstructorName: string;
   certificateDirectorName: string;
   certificateCourseName: string;
+  certificateLevel1InstructorName: string;
+  certificateLevel1DirectorName: string;
+  certificateLevel1CourseName: string;
 }
 
 const EMPTY: FormState = {
@@ -27,6 +30,9 @@ const EMPTY: FormState = {
   certificateInstructorName: "",
   certificateDirectorName: "",
   certificateCourseName: "",
+  certificateLevel1InstructorName: "",
+  certificateLevel1DirectorName: "",
+  certificateLevel1CourseName: "",
 };
 
 export default function ConfigPanel() {
@@ -45,6 +51,9 @@ export default function ConfigPanel() {
       certificateInstructorName: config.certificateInstructorName ?? "",
       certificateDirectorName: config.certificateDirectorName ?? "",
       certificateCourseName: config.certificateCourseName ?? "",
+      certificateLevel1InstructorName: config.certificateLevel1InstructorName ?? "",
+      certificateLevel1DirectorName: config.certificateLevel1DirectorName ?? "",
+      certificateLevel1CourseName: config.certificateLevel1CourseName ?? "",
     });
   }, [config]);
 
@@ -65,6 +74,9 @@ export default function ConfigPanel() {
       certificateInstructorName: form.certificateInstructorName.trim() || null,
       certificateDirectorName: form.certificateDirectorName.trim() || null,
       certificateCourseName: form.certificateCourseName.trim() || null,
+      certificateLevel1InstructorName: form.certificateLevel1InstructorName.trim() || null,
+      certificateLevel1DirectorName: form.certificateLevel1DirectorName.trim() || null,
+      certificateLevel1CourseName: form.certificateLevel1CourseName.trim() || null,
     };
     const ok = await updateConfig(patch);
     setSaving(false);
@@ -134,7 +146,7 @@ export default function ConfigPanel() {
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label className="text-xs">Prospección</Label>
+              <Label className="text-xs">Prospección (Nivel 1)</Label>
               <Input
                 type="number"
                 min={0}
@@ -144,7 +156,7 @@ export default function ConfigPanel() {
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Objeciones</Label>
+              <Label className="text-xs">Objeciones (Nivel 2)</Label>
               <Input
                 type="number"
                 min={0}
@@ -156,11 +168,45 @@ export default function ConfigPanel() {
           </div>
         </section>
 
-        {/* Certificado */}
+        {/* Certificado Nivel 1 (Prospección) */}
         <section className="space-y-3">
           <h3 className="flex items-center gap-2 text-sm font-semibold">
             <Award className="w-4 h-4 text-muted-foreground" />
-            Certificado
+            Certificado Nivel 1 (Prospección)
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Nombre del Instructor (firma)</Label>
+              <Input
+                placeholder="Vacío = línea sin nombre"
+                value={form.certificateLevel1InstructorName}
+                onChange={(e) => set("certificateLevel1InstructorName", e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Nombre del Director Académico (firma)</Label>
+              <Input
+                placeholder="Vacío = línea sin nombre"
+                value={form.certificateLevel1DirectorName}
+                onChange={(e) => set("certificateLevel1DirectorName", e.target.value)}
+              />
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <Label className="text-xs">Nombre del curso</Label>
+              <Input
+                placeholder="Vacío = «Prospección»"
+                value={form.certificateLevel1CourseName}
+                onChange={(e) => set("certificateLevel1CourseName", e.target.value)}
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* Certificado Nivel 2 (Manejo de Objeciones) */}
+        <section className="space-y-3">
+          <h3 className="flex items-center gap-2 text-sm font-semibold">
+            <Award className="w-4 h-4 text-muted-foreground" />
+            Certificado Nivel 2 (Manejo de Objeciones)
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">

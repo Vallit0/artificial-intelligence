@@ -40,12 +40,16 @@ interface StudentWithStats {
   totalDuration: number;
   averageScore: number | null;
   bestExamScore: number | null;
+  bestProspeccionScore: number | null;
+  bestObjecionesScore: number | null;
   examAttempts: number;
   finalGrade: number | null;
   gradedBy: string | null;
   gradeNotes: string | null;
   examenFinalEnabled: boolean;
   examenObjecionesEnabled: boolean;
+  level2Unlocked: boolean;
+  courseCompleted: boolean;
   phoneNumber: string | null;
   sedeId: string | null;
   sedeName: string | null;
@@ -360,7 +364,7 @@ export async function getAllStudents(caller: AuthUser, range?: DateRange): Promi
     include: {
       practiceSessions: {
         where: sessionDateWhere,
-        select: { durationSeconds: true, score: true, scenarioId: true },
+        select: { durationSeconds: true, score: true, scenarioId: true, examType: true },
       },
       studentGrade: {
         select: { finalGrade: true, gradedBy: true, notes: true },
@@ -385,6 +389,14 @@ export async function getAllStudents(caller: AuthUser, range?: DateRange): Promi
       .filter(s => s.scenarioId === null && s.score !== null)
       .map(s => s.score as number);
     const examAttempts = sessions.filter(s => s.scenarioId === null).length;
+    // Mejor score por nivel/examen, para mostrar la nota en el certificado del
+    // nivel correspondiente (N1 = Prospección, N2 = Objeciones).
+    const prospeccionScores = sessions
+      .filter(s => s.examType === 'prospeccion' && s.score !== null)
+      .map(s => s.score as number);
+    const objecionesScores = sessions
+      .filter(s => s.examType === 'objeciones' && s.score !== null)
+      .map(s => s.score as number);
 
     return {
       id: user.id,
@@ -396,6 +408,8 @@ export async function getAllStudents(caller: AuthUser, range?: DateRange): Promi
       totalDuration: sessions.reduce((acc, s) => acc + s.durationSeconds, 0),
       averageScore: scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : null,
       bestExamScore: examScores.length > 0 ? Math.max(...examScores) : null,
+      bestProspeccionScore: prospeccionScores.length > 0 ? Math.max(...prospeccionScores) : null,
+      bestObjecionesScore: objecionesScores.length > 0 ? Math.max(...objecionesScores) : null,
       examAttempts,
       finalGrade: user.studentGrade ? Number(user.studentGrade.finalGrade) : null,
       gradedBy: user.studentGrade?.gradedBy || null,
@@ -403,6 +417,7 @@ export async function getAllStudents(caller: AuthUser, range?: DateRange): Promi
       examenFinalEnabled: user.examenFinalEnabled,
       examenObjecionesEnabled: user.examenObjecionesEnabled,
       level2Unlocked: user.level2Unlocked,
+      courseCompleted: user.courseCompleted,
       phoneNumber: user.phoneNumber,
       sedeId: user.sedeId,
       sedeName: user.sede?.name ?? null,

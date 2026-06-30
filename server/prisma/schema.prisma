@@ -515,10 +515,16 @@ model AppConfig {
   // Umbral de aprobación (0-100) por examen.
   passThresholdProspeccion   Int      @default(75) @map("pass_threshold_prospeccion")
   passThresholdObjeciones    Int      @default(80) @map("pass_threshold_objeciones")
-  // Datos de firma del certificado (vacío = línea sin nombre, como hoy).
+  // Datos del certificado de NIVEL 2 / Objeciones (vacío = línea sin nombre, como
+  // hoy). Históricamente era el único certificado, por eso conserva el prefijo
+  // `certificate*` sin sufijo de nivel para no romper compatibilidad.
   certificateInstructorName  String?  @map("certificate_instructor_name")
   certificateDirectorName    String?  @map("certificate_director_name")
   certificateCourseName      String?  @map("certificate_course_name")
+  // Datos del certificado de NIVEL 1 / Prospección.
+  certificateLevel1InstructorName String? @map("certificate_level1_instructor_name")
+  certificateLevel1DirectorName   String? @map("certificate_level1_director_name")
+  certificateLevel1CourseName     String? @map("certificate_level1_course_name")
   updatedAt                  DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@map("app_config")

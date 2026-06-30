@@ -14,6 +14,9 @@ export interface AppConfigPatch {
   certificateInstructorName?: string | null;
   certificateDirectorName?: string | null;
   certificateCourseName?: string | null;
+  certificateLevel1InstructorName?: string | null;
+  certificateLevel1DirectorName?: string | null;
+  certificateLevel1CourseName?: string | null;
 }
 
 // Lee la config; si la fila aún no existe, la crea con los defaults del schema.
@@ -47,6 +50,9 @@ export async function updateAppConfig(patch: AppConfigPatch) {
     certificateInstructorName: cleanStr(patch.certificateInstructorName),
     certificateDirectorName: cleanStr(patch.certificateDirectorName),
     certificateCourseName: cleanStr(patch.certificateCourseName),
+    certificateLevel1InstructorName: cleanStr(patch.certificateLevel1InstructorName),
+    certificateLevel1DirectorName: cleanStr(patch.certificateLevel1DirectorName),
+    certificateLevel1CourseName: cleanStr(patch.certificateLevel1CourseName),
   };
   return prisma.appConfig.upsert({
     where: { id: SINGLETON_ID },

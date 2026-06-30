@@ -17,16 +17,27 @@ interface CertificateModalProps {
   student: Student | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  // Nivel del certificado a generar: 1 = Prospección, 2 = Objeciones (final).
+  level?: 1 | 2;
 }
 
 export default function CertificateModal({
   student,
   open,
   onOpenChange,
+  level = 2,
 }: CertificateModalProps) {
   const { toast } = useToast();
   const { config } = usePlatformConfig();
   const certificateRef = useRef<HTMLDivElement>(null);
+
+  // Datos parametrizables y nota según el nivel.
+  const instructorName = level === 1 ? config?.certificateLevel1InstructorName : config?.certificateInstructorName;
+  const directorName = level === 1 ? config?.certificateLevel1DirectorName : config?.certificateDirectorName;
+  const courseName = level === 1 ? config?.certificateLevel1CourseName : config?.certificateCourseName;
+  const grade = level === 1
+    ? student?.bestProspeccionScore ?? null
+    : student?.bestObjecionesScore ?? student?.finalGrade ?? null;
 
   const downloadAsImage = async () => {
     if (!certificateRef.current || !student) return;
@@ -42,7 +53,7 @@ export default function CertificateModal({
       });
 
       const link = document.createElement("a");
-      link.download = `certificado-${[student.first_name, student.last_name].filter(Boolean).join(' ') || "estudiante"}.png`;
+      link.download = `certificado-nivel${level}-${[student.first_name, student.last_name].filter(Boolean).join(' ') || "estudiante"}.png`;
       link.href = canvas.toDataURL("image/png");
       link.click();
 
@@ -82,7 +93,7 @@ export default function CertificateModal({
       });
 
       pdf.addImage(imgData, "PNG", 0, 0, canvas.width / 2, canvas.height / 2);
-      pdf.save(`certificado-${[student.first_name, student.last_name].filter(Boolean).join(' ') || "estudiante"}.pdf`);
+      pdf.save(`certificado-nivel${level}-${[student.first_name, student.last_name].filter(Boolean).join(' ') || "estudiante"}.pdf`);
 
       toast({
         title: "Certificado descargado",
@@ -98,7 +109,7 @@ export default function CertificateModal({
     }
   };
 
-  if (!student || student.finalGrade === null) return null;
+  if (!student || grade === null) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -106,7 +117,7 @@ export default function CertificateModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Download className="w-5 h-5" />
-            Generar Certificado
+            Generar Certificado — Nivel {level}
           </DialogTitle>
         </DialogHeader>
 
@@ -114,11 +125,12 @@ export default function CertificateModal({
         <div className="overflow-auto bg-muted p-4 rounded-lg">
           <CertificatePreview
             ref={certificateRef}
+            level={level}
             studentName={[student.first_name, student.last_name].filter(Boolean).join(' ') || student.email || "Estudiante"}
-            grade={student.finalGrade}
-            instructorName={config?.certificateInstructorName}
-            directorName={config?.certificateDirectorName}
-            courseName={config?.certificateCourseName}
+            grade={grade}
+            instructorName={instructorName}
+            directorName={directorName}
+            courseName={courseName}
           />
         </div>
 

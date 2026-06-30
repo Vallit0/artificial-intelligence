@@ -99,13 +99,17 @@ export default function Admin() {
   // Filtro de período compartido por las analíticas de uso, el listado de
   // estudiantes y el export a Excel. Vacío = histórico.
   const [period, setPeriod] = useState<Period>(EMPTY_PERIOD);
+  // Filtro de división para las analíticas (independiente del filtro de la lista
+  // de estudiantes). "all" = todas las divisiones.
+  const [analyticsDivision, setAnalyticsDivision] = useState<string>("all");
   const { students, isLoading: studentsLoading, assignGrade, toggleExamen, bulkToggleExamen, assignDivision, updateUser, refetch } = useStudents(period);
   // Sólo admin global asigna divisiones a estudiantes; gateamos el fetch para
   // no disparar un 403 sin permiso de listado.
   const { divisions } = useDivisions({ enabled: isAdmin });
 
-  const { data: usageData, isLoading: usageLoading } = useAdminUsage(period);
-  const { data: timeByModeData, isLoading: timeByModeLoading, error: timeByModeError } = useTimeByMode(period);
+  const analyticsDivisionId = analyticsDivision === "all" ? null : analyticsDivision;
+  const { data: usageData, isLoading: usageLoading } = useAdminUsage(period, analyticsDivisionId);
+  const { data: timeByModeData, isLoading: timeByModeLoading, error: timeByModeError } = useTimeByMode(period, analyticsDivisionId);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -543,11 +547,38 @@ export default function Admin() {
             ) : usageData ? (
               <div className="space-y-4">
                 <div className="flex flex-wrap items-end justify-between gap-3">
-                  <PeriodFilter value={period} onChange={setPeriod} />
+                  <div className="flex flex-wrap items-end gap-3">
+                    <PeriodFilter value={period} onChange={setPeriod} />
+                    {studentFilterOptions.divisions.length > 0 && (
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-medium text-muted-foreground">División</label>
+                        <Select value={analyticsDivision} onValueChange={setAnalyticsDivision}>
+                          <SelectTrigger className="h-9 w-[200px]">
+                            <SelectValue placeholder="Todas las divisiones" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Todas las divisiones</SelectItem>
+                            {studentFilterOptions.divisions.map((d) => (
+                              <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  </div>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => exportUsageToExcel(usageData, timeByModeData, students, period)}
+                    onClick={() =>
+                      exportUsageToExcel(
+                        usageData,
+                        timeByModeData,
+                        analyticsDivisionId
+                          ? students.filter((s) => s.divisionId === analyticsDivisionId)
+                          : students,
+                        period,
+                      )
+                    }
                   >
                     <Download className="w-4 h-4 mr-2" />
                     Exportar Excel

@@ -55,6 +55,13 @@ export function periodToQueryString(p: Period): string {
   return s ? `?${s}` : "";
 }
 
+// Agrega ?divisionId=... (o &divisionId=...) a un query string ya construido.
+// Acepta el sufijo vacío "" y respeta si ya hay parámetros.
+export function appendDivision(qs: string, divisionId: string | null): string {
+  if (!divisionId) return qs;
+  return qs ? `${qs}&divisionId=${encodeURIComponent(divisionId)}` : `?divisionId=${encodeURIComponent(divisionId)}`;
+}
+
 // Texto legible del período para nombres de archivo / encabezados de export.
 export function periodLabel(p: Period): string {
   if (!hasPeriod(p)) return "Todo el tiempo";

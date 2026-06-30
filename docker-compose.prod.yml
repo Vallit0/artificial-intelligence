@@ -1,19 +1,31 @@
 # =============================================================================
-# PRODUCCIÓN — capa_02 (4 vCPU / 8 GiB, Ubuntu 24.04, caja DEDICADA a Señoriales).
-#   IP pública 101.44.189.13 · IP privada 10.4.6.4 · dominio centro-de-negocios.org
+# PRODUCCIÓN — capa_01 (12 vCPU / 32 GiB, Ubuntu 24.04, caja DEDICADA a Señoriales
+# tras retirar Moodle).
+#   IP pública 46.250.172.118 · IP privada 10.4.6.20 · dominio centro-de-negocios.org
 #
-#   internet → nginx (443, TLS) → app1, app2 (least_conn)
+#   internet → nginx (443, TLS) → app1..app6 (least_conn)
 #                                      │
-#                                      └→ db (Postgres 15, interno)
-#   migrate (one-shot) → prisma migrate deploy + seed idempotente
-#   promtail           → Loki en capa_01 (10.4.6.20:3100)
+#                                      └→ pgbouncer (transaction pool) → db (Postgres 15)
+#   migrate (one-shot) → prisma migrate deploy + seed idempotente (DIRECTO a db)
+#   promtail           → Loki en capa_01 (10.4.6.20:3100, local)
 #
-# Afinado para una caja de 8 GiB: 2 réplicas de app (Node es 1 hilo/proceso; 2
-# usan 2 cores y dejan 2 para Postgres + nginx + SO). SIN PgBouncer (con 2
-# réplicas y connection_limit=20 el tope es 40 conexiones < max_connections=100;
-# Prisma ya acota el pool). SIN worker de crons (no hay jobs tras remover LTI).
-# La consolidación a capa_01 (4 réplicas + PgBouncer + nginx del host) vive en
-# docker-compose.capa01.yml para una migración futura.
+# Dimensionado para el Go-Live de 900 asesores (~450 CONCURRENTES, la mitad):
+#   - 6 réplicas de app (Node es 1 hilo/proceso; ~6 cores para app y el resto
+#     para Postgres + PgBouncer + nginx + SO).
+#   - PgBouncer en modo transacción: las 6 réplicas abren conexiones baratas de
+#     cliente y PgBouncer las multiplexa sobre un pool chico (DEFAULT_POOL_SIZE)
+#     hacia Postgres → soporta miles de clientes sin inflar max_connections.
+#   - Postgres tuneado para caja dedicada (infra/postgresql.conf: shared_buffers
+#     8GB, max_connections 200 — PgBouncer usa ~40-60).
+#   - SIN worker de crons (no hay jobs en el código).
+#   La voz (ElevenLabs) va directa browser→ElevenLabs, así que la carga
+#   server-side por usuario es ligera.
+#
+# Notas:
+#   - nginx/nginx.prod.conf debe listar app1..app6 y usar worker_processes auto.
+#   - El número REAL de concurrentes se confirma con el load test multi-IP
+#     (ver infra/RUNBOOK.md). Single-node = punto único de falla: tener backups
+#     automáticos + restore probado (idealmente una standby).
 #
 # Levantar:  docker compose -f docker-compose.prod.yml up -d --build
 # Requiere ./server/.env con POSTGRES_PASSWORD, JWT_SECRET, ELEVENLABS_*, etc.,
@@ -30,15 +42,19 @@ x-app-base: &app-base
   environment:
     NODE_ENV: production
     PORT: "3000"
-    # Sin PgBouncer: Prisma conecta directo a Postgres. connection_limit=20 por
-    # réplica → 40 conexiones máx con 2 réplicas, holgado bajo max_connections=100.
-    DATABASE_URL: "postgresql://senoriales:${POSTGRES_PASSWORD}@db:5432/senoriales?connection_limit=20&pool_timeout=30"
+    # Vía PgBouncer (modo transacción). `pgbouncer=true` desactiva los prepared
+    # statements de Prisma (incompatibles con el pooling por transacción).
+    # connection_limit=25 son conexiones de cliente a PgBouncer (baratas); el pool
+    # real hacia Postgres lo fija DEFAULT_POOL_SIZE del servicio pgbouncer.
+    DATABASE_URL: "postgresql://senoriales:${POSTGRES_PASSWORD}@pgbouncer:6432/senoriales?pgbouncer=true&connection_limit=25&pool_timeout=30"
     CORS_ORIGIN: "https://centro-de-negocios.org,https://www.centro-de-negocios.org"
     JWT_SECRET: "${JWT_SECRET}"
     RUN_CRONS: "false"
   depends_on:
     migrate:
       condition: service_completed_successfully
+    pgbouncer:
+      condition: service_started
   restart: unless-stopped
   networks:
     - senoriales-network
@@ -50,7 +66,7 @@ x-app-base: &app-base
   deploy:
     resources:
       limits:
-        memory: 768M
+        memory: 1536M
 
 services:
   # Migraciones + seed (one-shot). Corre antes de levantar las réplicas.
@@ -74,13 +90,22 @@ services:
     logging: *default-logging
 
   # Réplicas de app. No publican puertos al host: nginx las alcanza por la red
-  # interna de Docker (app1:3000, app2:3000).
+  # interna de Docker (app1..app6 en :3000).
   app1:
     <<: *app-base
   app2:
     <<: *app-base
+  app3:
+    <<: *app-base
+  app4:
+    <<: *app-base
+  app5:
+    <<: *app-base
+  app6:
+    <<: *app-base
 
-  # PostgreSQL 15 — afinado para caja DEDICADA de 8 GiB (ver infra/postgresql.capa02.conf).
+  # PostgreSQL 15 — tuning de capa_01 (12 vCPU / 32 GiB, dedicada): shared_buffers=8GB,
+  # max_connections=200 (PgBouncer usa ~40-60; ver infra/postgresql.conf).
   db:
     image: postgres:15-alpine
     command: postgres -c config_file=/etc/postgresql/postgresql.conf
@@ -90,7 +115,7 @@ services:
       POSTGRES_DB: senoriales
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./infra/postgresql.capa02.conf:/etc/postgresql/postgresql.conf:ro
+      - ./infra/postgresql.conf:/etc/postgresql/postgresql.conf:ro
       - ./infra/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U senoriales -d senoriales"]
@@ -104,9 +129,41 @@ services:
     deploy:
       resources:
         limits:
-          memory: 3G
+          memory: 16G
 
-  # nginx — termina TLS y balancea entre las 2 réplicas (ver nginx/nginx.prod.conf).
+  # PgBouncer — pool de conexiones en modo TRANSACCIÓN. Las 6 réplicas se conectan
+  # a pgbouncer:6432 (conexiones de cliente baratas); pgbouncer multiplexa sobre un
+  # pool de DEFAULT_POOL_SIZE hacia Postgres → soporta miles de clientes con pocos
+  # backends reales. El job `migrate` NO pasa por aquí (necesita sesión directa).
+  pgbouncer:
+    image: edoburu/pgbouncer:1.23.1
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: senoriales
+      DB_PASSWORD: "${POSTGRES_PASSWORD}"
+      DB_NAME: senoriales
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: "2000"
+      DEFAULT_POOL_SIZE: "40"
+      MIN_POOL_SIZE: "10"
+      RESERVE_POOL_SIZE: "10"
+      RESERVE_POOL_TIMEOUT: "3"
+      AUTH_TYPE: scram-sha-256
+      SERVER_IDLE_TIMEOUT: "600"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - senoriales-network
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  # nginx — termina TLS y balancea entre las 6 réplicas (ver nginx/nginx.prod.conf).
   nginx:
     image: nginx:alpine
     ports:
@@ -119,6 +176,10 @@ services:
     depends_on:
       - app1
       - app2
+      - app3
+      - app4
+      - app5
+      - app6
     restart: unless-stopped
     networks:
       - senoriales-network

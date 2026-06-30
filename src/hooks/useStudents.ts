@@ -26,12 +26,15 @@ export interface Student {
   totalDuration: number;
   averageScore: number | null;
   bestExamScore: number | null;
+  bestProspeccionScore: number | null;
+  bestObjecionesScore: number | null;
   examAttempts: number;
   finalGrade: number | null;
   gradedAt: string | null;
   examenFinalEnabled: boolean;
   examenObjecionesEnabled: boolean;
   level2Unlocked: boolean;
+  courseCompleted: boolean;
   phoneNumber: string | null;
   sedeId: string | null;
   sedeName: string | null;
@@ -97,12 +100,15 @@ export const useStudents = (period: Period = EMPTY_PERIOD): UseStudentsReturn =>
         totalDuration: s.totalDuration,
         averageScore: s.averageScore,
         bestExamScore: s.bestExamScore ?? null,
+        bestProspeccionScore: s.bestProspeccionScore ?? null,
+        bestObjecionesScore: s.bestObjecionesScore ?? null,
         examAttempts: s.examAttempts ?? 0,
         finalGrade: s.finalGrade,
         gradedAt: s.createdAt, // TODO: add gradeUpdatedAt to API
         examenFinalEnabled: s.examenFinalEnabled ?? false,
         examenObjecionesEnabled: s.examenObjecionesEnabled ?? false,
         level2Unlocked: s.level2Unlocked ?? false,
+        courseCompleted: s.courseCompleted ?? false,
         phoneNumber: s.phoneNumber ?? null,
         sedeId: s.sedeId ?? null,
         sedeName: s.sedeName ?? null,

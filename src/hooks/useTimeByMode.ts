@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { api } from "@/lib/api-client";
 import type { TimeByMode } from "@/lib/time-by-mode";
-import { EMPTY_PERIOD, periodToQueryString, type Period } from "@/lib/period";
+import { EMPTY_PERIOD, periodToQueryString, appendDivision, type Period } from "@/lib/period";
 
 // Desglose de tiempo por modo para admin/coach. El backend ya agrega y aplica el
 // alcance: admin global ve todo; un coach ve sólo sus alumnos asignados.
@@ -33,11 +33,11 @@ export interface TimeByModeData {
   summary: TimeByModeSummary;
 }
 
-export function useTimeByMode(period: Period = EMPTY_PERIOD) {
+export function useTimeByMode(period: Period = EMPTY_PERIOD, divisionId: string | null = null) {
   const [data, setData] = useState<TimeByModeData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const qs = periodToQueryString(period);
+  const qs = appendDivision(periodToQueryString(period), divisionId);
 
   const fetchData = useCallback(async () => {
     try {

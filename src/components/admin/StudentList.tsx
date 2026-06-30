@@ -64,7 +64,7 @@ export default function StudentList({ students, onAssignGrade, onToggleExamen, o
   const [assigningDivisionId, setAssigningDivisionId] = useState<string | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [gradeStudent, setGradeStudent] = useState<Student | null>(null);
-  const [certificateStudent, setCertificateStudent] = useState<Student | null>(null);
+  const [certificate, setCertificate] = useState<{ student: Student; level: 1 | 2 } | null>(null);
   const [editNameStudent, setEditNameStudent] = useState<Student | null>(null);
   const [editUserStudent, setEditUserStudent] = useState<Student | null>(null);
   const [resetPasswordStudent, setResetPasswordStudent] = useState<Student | null>(null);
@@ -451,16 +451,31 @@ export default function StudentList({ students, onAssignGrade, onToggleExamen, o
                   >
                     <Pencil className="w-4 h-4" />
                   </Button>
-                  {student.finalGrade !== null ? (
+                  {/* Certificados por nivel: disponibles automáticamente al
+                      aprobar cada examen (N1 = Prospección, N2 = Objeciones). */}
+                  {student.level2Unlocked && (
                     <Button
                       variant="secondary"
                       size="sm"
-                      onClick={() => setCertificateStudent(student)}
+                      onClick={() => setCertificate({ student, level: 1 })}
+                      title="Certificado de Nivel 1 (Prospección)"
                     >
                       <Award className="w-4 h-4 mr-1" />
-                      Certificado
+                      Cert. N1
                     </Button>
-                  ) : (
+                  )}
+                  {student.courseCompleted && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setCertificate({ student, level: 2 })}
+                      title="Certificado de Nivel 2 (Manejo de Objeciones)"
+                    >
+                      <Award className="w-4 h-4 mr-1" />
+                      Cert. N2
+                    </Button>
+                  )}
+                  {student.finalGrade === null && (
                     <Button
                       variant="default"
                       size="sm"
@@ -502,9 +517,10 @@ export default function StudentList({ students, onAssignGrade, onToggleExamen, o
       />
 
       <CertificateModal
-        student={certificateStudent}
-        open={!!certificateStudent}
-        onOpenChange={(open) => !open && setCertificateStudent(null)}
+        student={certificate?.student ?? null}
+        level={certificate?.level ?? 2}
+        open={!!certificate}
+        onOpenChange={(open) => !open && setCertificate(null)}
       />
 
       <EditNameModal

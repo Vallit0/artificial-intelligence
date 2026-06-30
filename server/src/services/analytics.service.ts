@@ -160,7 +160,7 @@ export function aggregateStatsByMode(rows: SessionStatRow[]): ModeStat[] {
 //   - admin global: todas las sedes (o una si pasa overrideSedeId);
 //   - coach (no admin): SÓLO sus alumnos asignados (user.coachId === caller.id);
 //   - resto (instructor, etc.): scoped a su sede.
-function buildLearnerSessionWhere(caller: AuthUser, overrideSedeId?: string | null) {
+function buildLearnerSessionWhere(caller: AuthUser, overrideSedeId?: string | null, divisionId?: string | null) {
   const userWhere: any = { roles: { some: { role: 'learner' } } };
 
   if (caller.roles.includes('admin')) {
@@ -171,6 +171,10 @@ function buildLearnerSessionWhere(caller: AuthUser, overrideSedeId?: string | nu
     const scope = getSedeScope(caller);
     if (scope.scope === 'sede') userWhere.sedeId = scope.sedeId;
   }
+
+  // Filtro adicional por división (additivo y restrictivo: si un coach pide una
+  // división ajena, la restricción por coachId ya devuelve vacío).
+  if (divisionId) userWhere.divisionId = divisionId;
 
   return { user: userWhere };
 }
@@ -288,12 +292,16 @@ export async function getCompetencyHistory(userId: string) {
 // Admin Group Analytics
 // ============================================
 
-export async function getGroupAnalytics(caller: AuthUser) {
+export async function getGroupAnalytics(caller: AuthUser, divisionId?: string | null) {
   const scope = getSedeScope(caller);
   // El filtro por sede para los aggregates de evaluationBreakdown se hace
-  // vía la relación session → user → sede.
-  const breakdownWhere = scope.scope === 'sede'
-    ? { session: { user: { sedeId: scope.sedeId } } }
+  // vía la relación session → user → sede. El filtro por división (opcional)
+  // es aditivo sobre el mismo `user`.
+  const userWhere: any = {};
+  if (scope.scope === 'sede') userWhere.sedeId = scope.sedeId;
+  if (divisionId) userWhere.divisionId = divisionId;
+  const breakdownWhere = Object.keys(userWhere).length > 0
+    ? { session: { user: userWhere } }
     : {};
 
   const [overallBreakdown, studentStats, activityTrend] = await Promise.all([
@@ -307,7 +315,7 @@ export async function getGroupAnalytics(caller: AuthUser) {
         cierre: true,
       },
     }),
-    getPerStudentAverages(caller),
+    getPerStudentAverages(caller, divisionId),
     getActivityTrend(caller),
   ]);
 
@@ -318,11 +326,12 @@ export async function getGroupAnalytics(caller: AuthUser) {
   };
 }
 
-async function getPerStudentAverages(caller: AuthUser) {
+async function getPerStudentAverages(caller: AuthUser, divisionId?: string | null) {
   const scope = getSedeScope(caller);
   const students = await prisma.user.findMany({
     where: {
       ...(scope.scope === 'sede' ? { sedeId: scope.sedeId } : {}),
+      ...(divisionId ? { divisionId } : {}),
       roles: { some: { role: 'learner' } },
       practiceSessions: { some: { score: { not: null } } },
     },
@@ -376,25 +385,37 @@ async function getPerStudentAverages(caller: AuthUser) {
 // alcance de sede: admin global ve todas las sedes; un coach/instructor sólo
 // la suya. No incluye ningún dato de puntajes/competencias por diseño.
 
-export async function getUsageAnalytics(caller: AuthUser, range?: DateRange) {
+export async function getUsageAnalytics(caller: AuthUser, range?: DateRange, divisionId?: string | null) {
   const scope = getSedeScope(caller);
-  const userSedeWhere = scope.scope === 'sede' ? { sedeId: scope.sedeId } : {};
-  const sessionSedeWhere = scope.scope === 'sede' ? { user: { sedeId: scope.sedeId } } : {};
+  // `userScopeWhere` unifica el filtro de learners (rol + sede + división) y se
+  // reutiliza para las sesiones vía la relación user, evitando perder el filtro
+  // de rol al combinar wheres.
+  const userScopeWhere: any = { roles: { some: { role: 'learner' } } };
+  if (scope.scope === 'sede') userScopeWhere.sedeId = scope.sedeId;
+  if (divisionId) userScopeWhere.divisionId = divisionId;
   const hasRange = !!(range && (range.from || range.to));
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
+  // Con filtro de división, la tabla por sede sólo debe mostrar la sede dueña de
+  // esa división (las demás aparecerían con ceros). Resolvemos su sedeId.
+  let sedesWhere: any = scope.scope === 'sede' ? { id: scope.sedeId } : { isActive: true };
+  if (divisionId) {
+    const div = await prisma.division.findUnique({ where: { id: divisionId }, select: { sedeId: true } });
+    sedesWhere = { id: { in: div ? [div.sedeId] : [] } };
+  }
+
   const [sedes, learners, sessions] = await Promise.all([
     prisma.sede.findMany({
-      where: scope.scope === 'sede' ? { id: scope.sedeId } : { isActive: true },
+      where: sedesWhere,
       select: { id: true, name: true },
       orderBy: { name: 'asc' },
     }),
     prisma.user.findMany({
-      where: { roles: { some: { role: 'learner' } }, ...userSedeWhere },
+      where: userScopeWhere,
       select: { id: true, sedeId: true },
     }),
     prisma.practiceSession.findMany({
-      where: { user: { roles: { some: { role: 'learner' } } }, ...sessionSedeWhere, ...createdAtWhere(range) },
+      where: { user: userScopeWhere, ...createdAtWhere(range) },
       select: { durationSeconds: true, userId: true, createdAt: true },
     }),
   ]);
@@ -477,8 +498,8 @@ export async function getUsageAnalytics(caller: AuthUser, range?: DateRange) {
 // Respeta el alcance del caller (ver buildLearnerSessionWhere). Devuelve el
 // desglose total y por alumno para poder mostrar tablas en /admin y en la vista
 // del coach (sus alumnos asignados).
-export async function getTimeByModeAnalytics(caller: AuthUser, overrideSedeId?: string | null, range?: DateRange) {
-  const where = { ...buildLearnerSessionWhere(caller, overrideSedeId), ...createdAtWhere(range) };
+export async function getTimeByModeAnalytics(caller: AuthUser, overrideSedeId?: string | null, range?: DateRange, divisionId?: string | null) {
+  const where = { ...buildLearnerSessionWhere(caller, overrideSedeId, divisionId), ...createdAtWhere(range) };
 
   const sessions = await prisma.practiceSession.findMany({
     where,

@@ -39,7 +39,8 @@ export async function getCompetencyHistory(req: AuthRequest, res: Response, next
 // ============================================
 export async function getAdminAnalytics(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const data = await analyticsService.getGroupAnalytics(req.user!);
+    const divisionId = typeof req.query.divisionId === 'string' ? req.query.divisionId : null;
+    const data = await analyticsService.getGroupAnalytics(req.user!, divisionId);
     res.json(data);
   } catch (error) {
     const appError = handleError(error);
@@ -53,7 +54,8 @@ export async function getAdminAnalytics(req: AuthRequest, res: Response, next: N
 export async function getAdminUsage(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const range = parseDateRange(req.query);
-    const data = await analyticsService.getUsageAnalytics(req.user!, range);
+    const divisionId = typeof req.query.divisionId === 'string' ? req.query.divisionId : null;
+    const data = await analyticsService.getUsageAnalytics(req.user!, range, divisionId);
     res.json(data);
   } catch (error) {
     const appError = handleError(error);
@@ -71,8 +73,9 @@ export async function getAdminUsage(req: AuthRequest, res: Response, next: NextF
 export async function getTimeByMode(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const sedeId = typeof req.query.sedeId === 'string' ? req.query.sedeId : null;
+    const divisionId = typeof req.query.divisionId === 'string' ? req.query.divisionId : null;
     const range = parseDateRange(req.query);
-    const data = await analyticsService.getTimeByModeAnalytics(req.user!, sedeId, range);
+    const data = await analyticsService.getTimeByModeAnalytics(req.user!, sedeId, range, divisionId);
     res.json(data);
   } catch (error) {
     const appError = handleError(error);

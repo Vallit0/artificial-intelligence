@@ -1701,6 +1701,10 @@ adminRouter.get('/analytics', analyticsController.getAdminAnalytics);
  *       - in: query
  *         name: to
  *         schema: { type: string, format: date-time }
+ *       - in: query
+ *         name: divisionId
+ *         description: Filtra a una división específica (sólo su sede en la tabla)
+ *         schema: { type: string, format: uuid }
  *     responses:
  *       200: { description: Analíticas de uso por sede }
  *       403: { description: Acceso denegado }
@@ -1723,6 +1727,10 @@ adminRouter.get('/analytics/usage', analyticsController.getAdminUsage);
  *       - in: query
  *         name: sedeId
  *         description: Sólo admin global — filtra a una sede específica
+ *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: divisionId
+ *         description: Filtra a una división específica (sus alumnos)
  *         schema: { type: string, format: uuid }
  *       - in: query
  *         name: from

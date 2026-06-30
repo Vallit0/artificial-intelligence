@@ -158,6 +158,29 @@ describe('GET /api/admin/analytics/time-by-mode', () => {
     expect(res.body.byStudent[0].id).toBe(learnerAsignado.id);
   });
 
+  it('filtra por divisionId — sólo cuenta a los learners de esa división', async () => {
+    const division = await prisma.division.create({
+      data: { name: 'Div Norte', sedeId: sedeA.id, coachId: coachA.id },
+    });
+    // El asignado entra a la división; el otro queda fuera.
+    await prisma.user.update({
+      where: { id: learnerAsignado.id },
+      data: { divisionId: division.id },
+    });
+    await seedSession(learnerAsignado.id, 100, { practiceMode: 'cliente' });
+    await seedSession(learnerOtro.id, 999, { practiceMode: 'cliente' });
+
+    const token = await loginAs(admin.email, admin.password);
+    const res = await request(app)
+      .get(`/api/admin/analytics/time-by-mode?divisionId=${division.id}`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.totals.roleplayClienteSeconds).toBe(100); // sólo el de la división
+    expect(res.body.byStudent).toHaveLength(1);
+    expect(res.body.byStudent[0].id).toBe(learnerAsignado.id);
+  });
+
   it('rechaza a un learner (no admin/coach) — 403', async () => {
     const token = await loginAs(learnerAsignado.email, learnerAsignado.password);
     const res = await request(app)

@@ -13,6 +13,9 @@ export interface AppConfig {
   certificateInstructorName: string | null;
   certificateDirectorName: string | null;
   certificateCourseName: string | null;
+  certificateLevel1InstructorName: string | null;
+  certificateLevel1DirectorName: string | null;
+  certificateLevel1CourseName: string | null;
   updatedAt: string;
 }
 
@@ -35,6 +38,9 @@ export type AppConfigPatch = Partial<
     | "certificateInstructorName"
     | "certificateDirectorName"
     | "certificateCourseName"
+    | "certificateLevel1InstructorName"
+    | "certificateLevel1DirectorName"
+    | "certificateLevel1CourseName"
   >
 >;
 

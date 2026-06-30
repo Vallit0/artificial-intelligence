@@ -6,16 +6,20 @@ import certificateBadge from "@/assets/certificate-badge.png";
 interface CertificatePreviewProps {
   studentName: string;
   grade: number;
+  // Nivel del certificado: 1 = Prospección, 2 = Objeciones (final). Cambia el
+  // título y el nombre de curso por defecto.
+  level?: 1 | 2;
   // Datos configurables por el admin (AppConfig). Vacíos = comportamiento
-  // anterior: nombre de curso "Manejo de Objeciones" y líneas de firma sin nombre.
+  // anterior: nombre de curso por defecto y líneas de firma sin nombre.
   instructorName?: string | null;
   directorName?: string | null;
   courseName?: string | null;
 }
 
 const CertificatePreview = forwardRef<HTMLDivElement, CertificatePreviewProps>(
-  ({ studentName, grade, instructorName, directorName, courseName }, ref) => {
+  ({ studentName, grade, level = 2, instructorName, directorName, courseName }, ref) => {
     const currentDate = format(new Date(), "d 'de' MMMM 'de' yyyy", { locale: es });
+    const defaultCourseName = level === 1 ? "Prospección" : "Manejo de Objeciones";
 
     return (
       <div
@@ -36,6 +40,9 @@ const CertificatePreview = forwardRef<HTMLDivElement, CertificatePreviewProps>(
             <h1 className="text-3xl font-bold text-amber-800 tracking-wide uppercase mb-1">
               Certificado de Logro
             </h1>
+            <p className="text-amber-700 text-sm font-semibold tracking-widest uppercase mb-1">
+              Nivel {level}
+            </p>
             <p className="text-amber-600 text-sm tracking-widest uppercase">
               Centro de Negocios Señoriales
             </p>
@@ -63,7 +70,7 @@ const CertificatePreview = forwardRef<HTMLDivElement, CertificatePreviewProps>(
               ha completado satisfactoriamente el curso de
             </p>
             <h3 className="text-2xl font-bold text-amber-700 mb-4">
-              {courseName?.trim() || "Manejo de Objeciones"}
+              {courseName?.trim() || defaultCourseName}
             </h3>
             <p className="text-gray-600 text-base">
               Técnica y Persuasión

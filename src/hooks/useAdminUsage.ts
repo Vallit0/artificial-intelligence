@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api-client';
 import type { ActivityEntry } from './useAnalytics';
-import { EMPTY_PERIOD, periodToQueryString, type Period } from '@/lib/period';
+import { EMPTY_PERIOD, periodToQueryString, appendDivision, type Period } from '@/lib/period';
 
 export interface SedeUsage {
   sedeId: string;
@@ -25,11 +25,11 @@ export interface AdminUsageData {
   activityTrend: ActivityEntry[];
 }
 
-export function useAdminUsage(period: Period = EMPTY_PERIOD) {
+export function useAdminUsage(period: Period = EMPTY_PERIOD, divisionId: string | null = null) {
   const [data, setData] = useState<AdminUsageData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const qs = periodToQueryString(period);
+  const qs = appendDivision(periodToQueryString(period), divisionId);
 
   const fetchData = useCallback(async () => {
     try {

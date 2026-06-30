@@ -109,3 +109,4 @@ volumes:
 networks:
   senoriales-network:
     driver: bridge
+
