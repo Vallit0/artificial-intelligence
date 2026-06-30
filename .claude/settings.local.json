@@ -167,7 +167,9 @@
       "Bash(grep -v -E '^Loaded Prisma|^$|skipping environment')",
       "Bash(echo \"backup exit: $?\")",
       "Read(//c/c/Users/estua/Documents/ai/**)",
-      "PowerShell(try { [xml]$x = Get-Content -Raw \"stress/jmeter/senoriales-load.jmx\"; \"OK: XML bien formado. Root=$\\($x.DocumentElement.Name\\) jmeter=$\\($x.jmeterTestPlan.jmeter\\)\" } catch { \"XML ERROR: $\\($_.Exception.Message\\)\" })"
+      "PowerShell(try { [xml]$x = Get-Content -Raw \"stress/jmeter/senoriales-load.jmx\"; \"OK: XML bien formado. Root=$\\($x.DocumentElement.Name\\) jmeter=$\\($x.jmeterTestPlan.jmeter\\)\" } catch { \"XML ERROR: $\\($_.Exception.Message\\)\" })",
+      "Bash(dir server\\\\src\\\\services)",
+      "Bash(findstr service *)"
     ]
   },
   "hooks": {
