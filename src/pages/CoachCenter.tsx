@@ -112,7 +112,7 @@ export default function CoachCenter() {
         <ScrollArea className="h-screen">
           <div className="max-w-7xl mx-auto px-4 py-6 pb-24 lg:pb-6">
             {/* Header */}
-            <div className="mb-4 flex items-center gap-3">
+            <div data-tour="coach-header" className="mb-4 flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
                 <CalendarDays className="w-5 h-5 text-primary" />
               </div>
@@ -125,6 +125,7 @@ export default function CoachCenter() {
             </div>
 
             {/* Calendar controls */}
+            <div data-tour="coach-calendar">
             <CalendarHeader
               currentDate={currentDate}
               onDateChange={setCurrentDate}
@@ -150,6 +151,7 @@ export default function CoachCenter() {
                 onDeleteCita={handleDeleteCita}
               />
             )}
+            </div>
           </div>
         </ScrollArea>
       </main>

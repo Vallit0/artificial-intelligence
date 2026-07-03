@@ -5,6 +5,10 @@ interface AICompanionOrbProps {
   size?: "sm" | "md" | "lg";
   speaking?: boolean;
   listening?: boolean;
+  /** Excited: bouncy, energetic head-bob (e.g. when presenting) */
+  excited?: boolean;
+  /** Direct the gaze toward a point, normalized -1..1 (x: right+, y: down+). Overrides idle look-around. */
+  lookAt?: { x: number; y: number } | null;
   /** Energy mode: no face, abstract reactive orb */
   energy?: boolean;
   /** Trigger wink → dissolve transition */
@@ -23,6 +27,8 @@ const AICompanionOrb = ({
   size = "md",
   speaking = false,
   listening = false,
+  excited = false,
+  lookAt = null,
   energy = false,
   winkOut = false,
   onWinkOutDone,
@@ -262,7 +268,9 @@ const AICompanionOrb = ({
           ? "none"
           : pokeShake
             ? pokeShake
-            : "orbHeadBob 6s ease-in-out infinite",
+            : excited
+              ? "orbExcitedBob 2.2s ease-in-out infinite"
+              : "orbHeadBob 6s ease-in-out infinite",
       }}
     >
       {/* Aurora glow */}
@@ -336,11 +344,13 @@ const AICompanionOrb = ({
           gap: s.eyeGap,
           top: "50%",
           left: "50%",
-          transform: mouseNear && pokeState === "idle"
-            ? `translate(calc(-50% + ${eyeOffset.x}px), calc(-55% + ${eyeOffset.y}px))`
-            : "translate(-50%, -55%)",
-          transition: mouseNear ? "transform 0.1s ease-out" : "transform 0.3s ease-out",
-          animation: isWinking || mouseNear || pokeState !== "idle" ? "none" : "orbLookAround 7s ease-in-out infinite",
+          transform: lookAt && pokeState === "idle"
+            ? `translate(calc(-50% + ${lookAt.x * s.eye * 2.6}px), calc(-55% + ${lookAt.y * s.eye * 2.6}px))`
+            : mouseNear && pokeState === "idle"
+              ? `translate(calc(-50% + ${eyeOffset.x}px), calc(-55% + ${eyeOffset.y}px))`
+              : "translate(-50%, -55%)",
+          transition: mouseNear ? "transform 0.1s ease-out" : "transform 0.4s ease-out",
+          animation: isWinking || lookAt || mouseNear || pokeState !== "idle" ? "none" : "orbLookAround 7s ease-in-out infinite",
         }}
       >
         {/* Left eye */}
@@ -355,7 +365,9 @@ const AICompanionOrb = ({
               ? "orbWinkLeft 0.6s ease-in-out forwards"
               : pokeState !== "idle"
                 ? "none"
-                : "orbExpressive 5s ease-in-out infinite",
+                : excited
+                  ? "orbHappyEyes 2.4s ease-in-out infinite"
+                  : "orbExpressive 5s ease-in-out infinite",
             transition: "height 0.15s ease-out",
           }}
         />
@@ -371,7 +383,9 @@ const AICompanionOrb = ({
               ? "orbWinkRight 0.6s ease-in-out forwards"
               : pokeState !== "idle"
                 ? "none"
-                : "orbExpressive 5s ease-in-out infinite",
+                : excited
+                  ? "orbHappyEyes 2.4s ease-in-out infinite"
+                  : "orbExpressive 5s ease-in-out infinite",
             animationDelay: isWinking ? "0s" : "0.2s",
             transition: "height 0.15s ease-out",
           }}
@@ -423,17 +437,10 @@ const AICompanionOrb = ({
           91%, 100% { transform: scaleY(1) scaleX(1); }
         }
         @keyframes orbLookAround {
-          0%, 8% { transform: translate(-50%, -55%) translate(0, 0); }
-          12%, 18% { transform: translate(-50%, -55%) translate(${s.eye * 3}px, -${s.eye * 1}px); }
-          22%, 26% { transform: translate(-50%, -55%) translate(0, 0); }
-          30%, 36% { transform: translate(-50%, -55%) translate(-${s.eye * 3.5}px, ${s.eye * 0.5}px); }
-          40%, 44% { transform: translate(-50%, -55%) translate(0, 0); }
-          48%, 54% { transform: translate(-50%, -55%) translate(${s.eye * 1.5}px, -${s.eye * 1.5}px); }
-          58%, 62% { transform: translate(-50%, -55%) translate(-${s.eye * 2}px, -${s.eye * 1}px); }
-          66%, 72% { transform: translate(-50%, -55%) translate(${s.eye * 2.5}px, ${s.eye * 1}px); }
-          76%, 82% { transform: translate(-50%, -55%) translate(0, ${s.eye * 0.8}px); }
-          86%, 92% { transform: translate(-50%, -55%) translate(-${s.eye * 1}px, 0); }
-          96%, 100% { transform: translate(-50%, -55%) translate(0, 0); }
+          0%, 22% { transform: translate(-50%, -55%) translate(0, 0); }
+          36%, 48% { transform: translate(-50%, -55%) translate(${s.eye * 1.4}px, 0); }
+          62%, 74% { transform: translate(-50%, -55%) translate(-${s.eye * 1.4}px, ${s.eye * 0.4}px); }
+          88%, 100% { transform: translate(-50%, -55%) translate(0, 0); }
         }
         @keyframes orbWinkLeft {
           0% { transform: scaleY(1); }
@@ -450,14 +457,18 @@ const AICompanionOrb = ({
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
+        @keyframes orbExcitedBob {
+          0%, 100% { transform: translateY(0) scale(1); }
+          50% { transform: translateY(-8px) scale(1.03); }
+        }
+        @keyframes orbHappyEyes {
+          0%, 42% { transform: scaleY(1) scaleX(1); }
+          52%, 62% { transform: scaleY(0.32) scaleX(1.28); }
+          74%, 100% { transform: scaleY(1) scaleX(1); }
+        }
         @keyframes orbHeadBob {
-          0%, 10% { transform: translate(0, 0) rotate(0deg); }
-          15%, 25% { transform: translate(3px, -5px) rotate(3deg); }
-          30%, 40% { transform: translate(-2px, 2px) rotate(-2deg); }
-          45%, 55% { transform: translate(4px, -3px) rotate(4deg); }
-          60%, 70% { transform: translate(-4px, -2px) rotate(-3deg); }
-          75%, 85% { transform: translate(2px, 4px) rotate(2deg); }
-          90%, 100% { transform: translate(0, 0) rotate(0deg); }
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-5px); }
         }
         @keyframes orbAnnoyedShake {
           0% { transform: translateX(0); }

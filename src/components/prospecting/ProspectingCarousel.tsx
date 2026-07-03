@@ -187,7 +187,7 @@ const ProspectingCarousel = ({ onStartPractice }: ProspectingCarouselProps) => {
   return (
     <div className="w-full max-w-4xl mx-auto px-4">
       {/* Header */}
-      <div className="text-center mb-6">
+      <div data-tour="prospecting-header" className="text-center mb-6">
         <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-2">
           Escenarios de Prospección
         </h2>
@@ -197,7 +197,7 @@ const ProspectingCarousel = ({ onStartPractice }: ProspectingCarouselProps) => {
       </div>
 
       {/* Carousel */}
-      <div className="relative">
+      <div data-tour="prospecting-carousel" className="relative">
         <Carousel
           setApi={setApi}
           opts={{
@@ -259,7 +259,7 @@ const ProspectingCarousel = ({ onStartPractice }: ProspectingCarouselProps) => {
       </div>
 
       {/* Start Practice Button */}
-      <div className="mt-6 flex justify-center">
+      <div data-tour="prospecting-start" className="mt-6 flex justify-center">
         <Button
           onClick={handleOpenPreview}
           disabled={selectedScenario === null}

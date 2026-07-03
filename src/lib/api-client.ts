@@ -2,6 +2,8 @@
 // API Client (replaces Supabase client)
 // ============================================
 
+import { DEMO, getDemoResponse } from '@/lib/demoMode';
+
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
 type AuthChangeCallback = (user: ApiUser | null) => void;
@@ -124,6 +126,12 @@ class ApiClient {
   private readonly MAX_RETRIES = 2;
 
   private async request<T>(method: string, path: string, body?: unknown, retry = true): Promise<T> {
+    // Modo demo (solo /intro con ?demo=1): responde con datos de demostración
+    // sin tocar el backend. Ver src/lib/demoMode.ts.
+    if (DEMO) {
+      return getDemoResponse(method, path) as T;
+    }
+
     const url = `${API_BASE}${path}`;
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',

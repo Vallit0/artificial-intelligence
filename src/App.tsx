@@ -15,8 +15,10 @@ import Auth from "./pages/Auth";
 import Prospecting from "./pages/Prospecting";
 import Admin from "./pages/Admin";
 import ResetPassword from "./pages/ResetPassword";
-import LegadoDeVida from "./pages/LegadoDeVida";
 import CoachCenter from "./pages/CoachCenter";
+import IntroAlvaro from "./pages/IntroAlvaro";
+import TourRunner from "@/components/onboarding/TourRunner";
+import TutorialCenter from "@/components/onboarding/TutorialCenter";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +62,9 @@ const AppRoutes = () => (
   <Routes>
     {/* Public landing page */}
     <Route path="/" element={<Landing />} />
+
+    {/* Video de presentación de Álvaro (misma UI, auto-reproducible) */}
+    <Route path="/intro" element={<IntroAlvaro />} />
     
     {/* Practice can be accessed by anyone (free tier) or authenticated users */}
     <Route path="/practice" element={<Practice />} />
@@ -112,16 +117,6 @@ const AppRoutes = () => (
       }
     />
     
-    {/* El Legado de Vida - protected */}
-    <Route
-      path="/legado"
-      element={
-        <ProtectedRoute>
-          <LegadoDeVida />
-        </ProtectedRoute>
-      }
-    />
-
     {/* Auth routes */}
     <Route
       path="/auth"
@@ -162,6 +157,9 @@ const App = () => (
         <AuthProvider>
           <LevelModeProvider>
             <AppRoutes />
+            {/* Sistema global de tutoriales guiados (menú + runner Joyride) */}
+            <TourRunner />
+            <TutorialCenter />
           </LevelModeProvider>
         </AuthProvider>
       </BrowserRouter>

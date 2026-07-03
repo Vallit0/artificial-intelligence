@@ -1,5 +1,6 @@
 import { useState, useEffect, createContext, useContext, ReactNode, useCallback } from "react";
 import { api, ApiUser } from "@/lib/api-client";
+import { DEMO, DEMO_USER, DEMO_ROLES } from "@/lib/demoMode";
 
 interface AuthContextType {
   user: ApiUser | null;
@@ -35,6 +36,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Validate session on mount
   useEffect(() => {
     const validateSession = async () => {
+      // Modo demo (/intro con ?demo=1): sesión admin/coach falsa, sin backend.
+      if (DEMO) {
+        setUser(DEMO_USER);
+        setRoles(DEMO_ROLES);
+        setLoading(false);
+        return;
+      }
+
       if (!api.hasTokens()) {
         setLoading(false);
         return;

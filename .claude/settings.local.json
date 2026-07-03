@@ -169,7 +169,24 @@
       "Read(//c/c/Users/estua/Documents/ai/**)",
       "PowerShell(try { [xml]$x = Get-Content -Raw \"stress/jmeter/senoriales-load.jmx\"; \"OK: XML bien formado. Root=$\\($x.DocumentElement.Name\\) jmeter=$\\($x.jmeterTestPlan.jmeter\\)\" } catch { \"XML ERROR: $\\($_.Exception.Message\\)\" })",
       "Bash(dir server\\\\src\\\\services)",
-      "Bash(findstr service *)"
+      "Bash(findstr service *)",
+      "Bash(grep -nE \"text-\\(xl|2xl|3xl\\) font|>[A-ZÁÉÍÓÚ][a-záéíóúñ ]{4,35}<|Prospe|Objec\" src/pages/Prospecting.tsx)",
+      "Bash(base64 -w0 src/assets/logo-senoriales.png)",
+      "Bash(start \"\" \"presentacion/index.html\")",
+      "Read(//tmp/**)",
+      "Bash(start \"\" \"http://localhost:8080/intro\")",
+      "Bash(grep -c \"transform: \\\\`scale\\\\|dur\" /tmp/intro5.js)",
+      "Bash(start \"\" \"http://localhost:8080/admin?demo=1\")",
+      "Bash(start \"\" \"http://localhost:8080/practice?demo=1\")",
+      "Bash(grep -nE \">[A-ZÁÉÍÓÚ][^<>{}]{3,40}<|Button|title|label|Practicar|Empezar|Iniciar\" src/components/prospecting/ProspectingCarousel.tsx)",
+      "Bash(start \"\" \"http://localhost:8080/practice?demo=1&call=1\")",
+      "mcp__ide__getDiagnostics",
+      "Bash(cd server *)",
+      "Bash(powershell -NoProfile -Command ''\\\\''8080'\\\\'','\\\\''5173'\\\\'' | ForEach-Object { $p=$_; if\\(\\(Test-NetConnection localhost -Port $p -InformationLevel Quiet -WarningAction SilentlyContinue\\)\\){ \"$p OPEN\" } }')",
+      "Bash(awk '{ print NR\": \"length\\($0\\) }' index.html)",
+      "Bash(sort -t: -k2 -n -r)",
+      "Bash(awk 'NR>=210 && NR<=390 { if\\(length\\($0\\)>180\\) print NR\": [LINEA LARGA \"length\\($0\\)\" chars — data-URI truncada] \"substr\\($0,1,90\\)\"...\"; else print NR\": \"$0 }' index.html)",
+      "Bash(start \"\" \"presentacion/tutoriales.html\")"
     ]
   },
   "hooks": {

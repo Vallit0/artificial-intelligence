@@ -298,7 +298,7 @@ export default function ExamenFinal() {
               >
                 <ArrowLeft className="h-5 w-5" />
               </Button>
-              <div className="flex-1">
+              <div data-tour="examen-header" className="flex-1">
                 <h1 className="text-2xl font-bold text-foreground">Examen Final</h1>
                 <p className="text-muted-foreground">Demuestra tus habilidades de venta</p>
               </div>
@@ -359,7 +359,7 @@ export default function ExamenFinal() {
                   </div>
 
                   {/* Evaluation Criteria */}
-                  <div className="bg-muted/50 rounded-lg p-4">
+                  <div data-tour="examen-criterios" className="bg-muted/50 rounded-lg p-4">
                     <h3 className="font-semibold mb-3">Criterios de evaluación:</h3>
                     <ul className="space-y-2 text-sm text-muted-foreground">
                       <li className="flex items-center gap-2">
@@ -386,6 +386,7 @@ export default function ExamenFinal() {
                   </div>
 
                   <Button
+                    data-tour="examen-start"
                     size="lg"
                     className="w-full"
                     onClick={handleStartExam}

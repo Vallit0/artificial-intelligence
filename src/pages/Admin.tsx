@@ -27,7 +27,7 @@ import PendingApprovalsPanel from "@/components/admin/PendingApprovalsPanel";
 import CoachStudentsPanel from "@/components/admin/CoachStudentsPanel";
 import LeftSidebar from "@/components/scenarios/LeftSidebar";
 import MobileNavigation from "@/components/MobileNavigation";
-import AdminTour, { startAdminTutorial } from "@/components/onboarding/AdminTour";
+import { startAdminTutorial } from "@/lib/tutorial";
 import ConfigPanel from "@/components/admin/ConfigPanel";
 import { useAdminUsage } from "@/hooks/useAdminUsage";
 import { useTimeByMode } from "@/hooks/useTimeByMode";
@@ -209,7 +209,6 @@ export default function Admin() {
 
   return (
     <div className="min-h-screen bg-background">
-      {isAdmin && <AdminTour />}
       <LeftSidebar />
 
       <main className="lg:ml-60 min-h-screen animate-fade-in">

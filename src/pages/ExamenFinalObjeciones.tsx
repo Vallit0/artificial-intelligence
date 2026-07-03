@@ -35,6 +35,9 @@ interface EvaluationResult {
     propuesta_valor: number;
     cierre: number;
   };
+  // Desglose por paso del método de replanteamiento de objeciones (Investigar,
+  // Aislar, Responder, Continuar), con su resultado, para mostrar en pantalla.
+  checklist?: { label: string; passed: boolean }[];
 }
 
 type ExamState = "idle" | "active" | "evaluating" | "evaluated" | "certificate";
@@ -436,23 +439,23 @@ export default function ExamenFinalObjeciones() {
                     <ul className="space-y-2 text-sm text-muted-foreground">
                       <li className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-primary" />
-                        Apertura y presentación
+                        Replanteamiento de objeciones
                       </li>
                       <li className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-primary" />
-                        Escucha activa
+                        Investigar
                       </li>
                       <li className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-primary" />
-                        Manejo de objeciones
+                        Aislar (identificar la objeción)
                       </li>
                       <li className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-primary" />
-                        Propuesta de valor
+                        Responder (3F · Historias de 3ras personas · Secuencias de cierre)
                       </li>
                       <li className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-primary" />
-                        Técnica de cierre
+                        Continuar
                       </li>
                     </ul>
                   </div>

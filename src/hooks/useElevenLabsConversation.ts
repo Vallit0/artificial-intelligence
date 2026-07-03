@@ -321,14 +321,86 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     console.warn("[DEBUG][EVAL] submit_evaluation: schema desconocido", parameters);
   }, [persistRubricEvaluation]);
 
-  // Tool del examen de Manejo de Objeciones (Nivel 2). Handler propio, pero
-  // reusa el mismo mecanismo de recepción de nota que Prospección. A
-  // diferencia de aquél, este examen solo emite la forma de 5 rúbricas (no usa
-  // el checklist de Legado), así que va directo al helper sin discriminar.
+  // Tool del examen de Manejo de Objeciones (Nivel 2). Evalúa los 5 pasos del
+  // método de replanteamiento de objeciones (Replanteamiento → Investigar →
+  // Aislar → Responder → Continuar), no las 5 rúbricas genéricas de Prospección.
+  //
+  // El backend (elevenlabs.controller.ts) sólo acepta un breakdown con las 5
+  // llaves fijas apertura/escucha_activa/manejo_objeciones/propuesta_valor/cierre
+  // en 0–20, y ese endpoint /agent-evaluation lo comparten ambos exámenes. Para
+  // reusarlo sin migrar el schema (ni romper Prospección), cada criterio nuevo
+  // se guarda en un "slot" fijo del breakdown. El score autoritativo sigue siendo
+  // la suma de los 5 slots (0–100). El nombre real de cada paso se muestra al
+  // alumno vía `checklist` (labels correctos), no vía el desglose legacy.
+  const OBJECIONES_CRITERIA = [
+    { id: "replanteamiento", slot: "apertura", label: "Replanteamiento de Objeciones" },
+    { id: "investigar", slot: "escucha_activa", label: "Investigar" },
+    { id: "aislar", slot: "manejo_objeciones", label: "Aislar (Identificar la objeción)" },
+    { id: "responder", slot: "propuesta_valor", label: "Responder (3F · Historias de 3ras personas · Secuencias de cierre)" },
+    { id: "continuar", slot: "cierre", label: "Continuar" },
+  ] as const;
+
   const handleSubmitObjecionesEvaluation = useCallback((parameters: Record<string, unknown>): void => {
     console.log("[DEBUG][EVAL] submit_evaluation_objeciones invoked via clientTools:", parameters);
-    persistRubricEvaluation(parameters);
-  }, [persistRubricEvaluation]);
+    const p = parameters as Record<string, unknown> & { breakdown?: Record<string, unknown> };
+
+    // Cada criterio llega en 0–100 (plano o dentro de breakdown). Reescalamos a
+    // 0–20 (÷5) para el slot que el backend valida con zod.
+    const raw100Of = (id: string) => Number(p.breakdown?.[id] ?? p[id] ?? 0) || 0;
+    const to20 = (n: number) => Math.max(0, Math.min(20, Math.round(n / 5)));
+
+    const breakdown = {
+      apertura: 0,
+      escucha_activa: 0,
+      manejo_objeciones: 0,
+      propuesta_valor: 0,
+      cierre: 0,
+    } as Record<string, number>;
+    const checklist: { label: string; passed: boolean }[] = [];
+
+    for (const c of OBJECIONES_CRITERIA) {
+      const raw100 = raw100Of(c.id);
+      const val20 = to20(raw100);
+      breakdown[c.slot] = val20;
+      // Un paso se considera "cumplido" a partir de 60/100 (=12/20).
+      checklist.push({ label: `${c.label} — ${val20}/20`, passed: raw100 >= 60 });
+    }
+
+    // Score/passed recomputados desde el breakdown, ignorando lo que afirme el
+    // agente (mismo criterio que persistRubricEvaluation y el backend).
+    const score =
+      breakdown.apertura +
+      breakdown.escucha_activa +
+      breakdown.manejo_objeciones +
+      breakdown.propuesta_valor +
+      breakdown.cierre;
+    const passThreshold = passThresholdRef.current ?? 80;
+    const passed = score >= passThreshold;
+    const feedback = (typeof p.feedback === "string" ? p.feedback.trim() : "") || "Sin comentarios del agente.";
+
+    console.log("[DEBUG][EVAL][objeciones] criterios → breakdown:", { checklist, breakdown, score, passed });
+
+    // Persistimos el breakdown en slots legacy para que el backend lo acepte y
+    // la nota caiga en la columna de Objeciones. La UI recibe el `checklist`
+    // (nombres reales de los 5 pasos) en vez del desglose con labels legacy.
+    if (sessionIdRef.current) {
+      const persist = api.post("/api/elevenlabs/agent-evaluation", {
+        sessionId: sessionIdRef.current,
+        score,
+        passed,
+        feedback,
+        breakdown,
+      });
+      evaluationPersistRef.current = persist;
+      persist
+        .then((res) => console.log("[DEBUG][EVAL] POST /agent-evaluation OK", res))
+        .catch((err) => console.error("[DEBUG][EVAL] POST /agent-evaluation ERROR", err));
+    } else {
+      console.warn("[DEBUG][EVAL] sessionId is null — evaluación no se persistirá");
+    }
+
+    onEvaluationRef.current?.({ score, passed, feedback, checklist });
+  }, []);
 
   const conversation = useConversation({
     micMuted: isMuted,

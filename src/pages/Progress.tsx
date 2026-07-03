@@ -250,7 +250,7 @@ const Progress = () => {
                 {/* ============================================ */}
                 <TabsContent value="resumen" className="space-y-8">
                   {/* Main Stats Cards */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div data-tour="progress-kpis" className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
                       <CardContent className="p-4 text-center">
                         <Clock className="w-8 h-8 text-primary mx-auto mb-2" />
@@ -293,7 +293,7 @@ const Progress = () => {
                   </div>
 
                   {/* Certification Progress */}
-                  <Card>
+                  <Card data-tour="progress-cert">
                     <CardHeader className="pb-4">
                       <div className="flex items-center justify-between">
                         <CardTitle className="flex items-center gap-2">
@@ -325,7 +325,7 @@ const Progress = () => {
                   <TimeByModeBreakdown data={timeByMode} title="Tu tiempo de práctica por modo" />
 
                   {/* Mini Milestones */}
-                  <Card>
+                  <Card data-tour="progress-logros">
                     <CardHeader className="pb-4">
                       <div className="flex items-center justify-between">
                         <CardTitle className="flex items-center gap-2">
@@ -400,7 +400,7 @@ const Progress = () => {
                   </Card>
 
                   {/* Recent Sessions */}
-                  <Card>
+                  <Card data-tour="progress-recientes">
                     <CardHeader className="pb-4">
                       <CardTitle>Sesiones Recientes</CardTitle>
                     </CardHeader>

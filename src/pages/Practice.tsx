@@ -19,6 +19,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useCallSounds } from "@/hooks/useCallSounds";
 import { useConnectionQuality } from "@/hooks/useConnectionQuality";
 import { api } from "@/lib/api-client";
+import { DEMO } from "@/lib/demoMode";
 import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
@@ -34,7 +35,6 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import LeftSidebar from "@/components/scenarios/LeftSidebar";
-import OnboardingTour from "@/components/onboarding/OnboardingTour";
 import AICompanionOrb from "@/components/AICompanionOrb";
 import type { Scenario } from "@/hooks/useScenarios";
 import { prospectingScenarios } from "@/components/prospecting/ProspectingCarousel";
@@ -184,6 +184,9 @@ const Practice = () => {
   const tier = searchParams.get("tier");
 
   const isFreeTier = tier === "free" && !user;
+  // Demo del video: /practice?demo=1&call=1 fuerza el estado de llamada ACTIVA
+  // (UI real) sin conectar a ElevenLabs.
+  const demoCall = DEMO && searchParams.get("call") === "1";
 
   const [sessionState, setSessionState] = useState<SessionState>("idle");
   const [orbWinking, setOrbWinking] = useState(false);
@@ -196,6 +199,8 @@ const Practice = () => {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [agentEvaluation, setAgentEvaluation] = useState<EvaluationResult | null>(null);
   const [selectedAgent, setSelectedAgent] = useState<AgentSuggestion | null>(null);
+  const [demoSpeaking, setDemoSpeaking] = useState(true);
+  const [demoSecs, setDemoSecs] = useState(0);
   const sessionDurationRef = useRef<number>(0);
 
   const { savePracticeSession, evaluateSession } = usePracticeSessions();
@@ -251,6 +256,21 @@ const Practice = () => {
     }, 4000);
     return () => clearInterval(interval);
   }, []);
+
+  // Demo del video: entra directo a la llamada activa (sin conectar).
+  useEffect(() => {
+    if (!demoCall) return;
+    const persona = searchParams.get("persona");
+    const base = practiceAgentSuggestions[1]; // Role-Play Cliente
+    setSelectedAgent(persona ? { ...base, label: persona } : base);
+    setSessionState("active");
+    const s = setInterval(() => setDemoSpeaking((v) => !v), 1500);
+    const t = setInterval(() => setDemoSecs((v) => v + 1), 1000);
+    return () => {
+      clearInterval(s);
+      clearInterval(t);
+    };
+  }, [demoCall]);
 
   // Fetch scenario details
   useEffect(() => {
@@ -570,7 +590,6 @@ const Practice = () => {
 
   return (
     <div className="min-h-screen bg-background flex">
-      {user && <OnboardingTour />}
       {user && <LeftSidebar />}
 
       <div className={`flex-1 flex flex-col items-center justify-center relative ${user ? "lg:ml-60" : ""}`}>
@@ -711,6 +730,7 @@ const Practice = () => {
             {/* Suggestion bubbles grid */}
             <div
               key={`agent-grid-${currentLevel}`}
+              data-tour="practice-modes"
               className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full mb-8"
             >
               {agentSuggestions.map((agent, i) => {
@@ -818,13 +838,17 @@ const Practice = () => {
                 </p>
               </div>
 
-              {!isFreeTier && <PracticeTimer totalSeconds={sessionTime} />}
+              {!isFreeTier && <PracticeTimer totalSeconds={demoCall ? demoSecs : sessionTime} />}
 
-              <AICompanionOrb speaking={isSpeaking} listening={!isMuted} size={isMobile ? "sm" : "lg"} energy gradient={isLevel2 ? LEVEL2_ORB_GRADIENT : selectedAgent?.orbGradient} />
+              <AICompanionOrb speaking={demoCall ? demoSpeaking : isSpeaking} listening={demoCall ? !demoSpeaking : !isMuted} size={isMobile ? "sm" : "lg"} energy gradient={isLevel2 ? LEVEL2_ORB_GRADIENT : selectedAgent?.orbGradient} />
             </div>
 
             <div className="fixed left-1/2 -translate-x-1/2 z-40 bottom-[5.5rem] lg:bottom-8">
-              <VoiceControls isMuted={isMuted} onMuteToggle={toggleMute} onEndCall={handleEndCall} />
+              <VoiceControls
+                isMuted={demoCall ? false : isMuted}
+                onMuteToggle={demoCall ? () => {} : toggleMute}
+                onEndCall={demoCall ? () => {} : handleEndCall}
+              />
             </div>
           </div>
         )}

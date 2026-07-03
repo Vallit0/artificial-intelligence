@@ -1,7 +1,7 @@
 {
   "type": "client",
   "name": "submit_evaluation_objeciones",
-  "description": "Envia la evaluacion final del EXAMEN DE MANEJO DE OBJECIONES (Nivel 2) al sistema. DEBE llamarse una sola vez al finalizar la conversacion con el puntaje del usuario en cada dimension. Es el equivalente de submit_evaluation pero exclusivo del examen de objeciones, para que su nota caiga en su propia columna del gradebook.",
+  "description": "Envia la evaluacion final del EXAMEN DE MANEJO DE OBJECIONES (Nivel 2) al sistema. DEBE llamarse una sola vez al finalizar la conversacion con el puntaje del usuario en cada uno de los 5 pasos del metodo de replanteamiento de objeciones: Investigar, Aislar, Responder y Continuar. Es el equivalente de submit_evaluation pero exclusivo del examen de objeciones, para que su nota caiga en su propia columna del gradebook.",
   "expects_response": false,
   "response_timeout_secs": 1,
   "parameters": [
@@ -33,45 +33,45 @@
       "value_type": "llm_prompt"
     },
     {
-      "id": "apertura",
+      "id": "replanteamiento",
       "type": "number",
-      "description": "Puntaje de 0 a 100 en la apertura de la conversacion: saludo, rapport, presentacion clara.",
+      "description": "Puntaje de 0 a 100 en REPLANTEAMIENTO DE OBJECIONES: el asesor no discute ni se pone a la defensiva; recibe la objecion con actitud abierta y la reencuadra como una oportunidad para conversar, manteniendo el control emocional de la llamada.",
       "dynamic_variable": "",
       "constant_value": "",
       "required": true,
       "value_type": "llm_prompt"
     },
     {
-      "id": "escucha_activa",
+      "id": "investigar",
       "type": "number",
-      "description": "Puntaje de 0 a 100 en escucha activa: preguntas abiertas, parafraseo, deteccion de necesidades.",
+      "description": "Puntaje de 0 a 100 en INVESTIGAR: hace preguntas abiertas para entender la razon real detras de la objecion, indaga en lugar de asumir y confirma que entendio antes de responder.",
       "dynamic_variable": "",
       "constant_value": "",
       "required": true,
       "value_type": "llm_prompt"
     },
     {
-      "id": "manejo_objeciones",
+      "id": "aislar",
       "type": "number",
-      "description": "Puntaje de 0 a 100 en manejo de objeciones: como responde a dudas, precio, tiempo, confianza, sin discutir y con argumentos solidos.",
+      "description": "Puntaje de 0 a 100 en AISLAR (IDENTIFICAR LA OBJECION): separa la objecion real de excusas o cortinas de humo y confirma que esa es la unica o principal barrera (ej. 'aparte de esto, hay algo mas que le impida avanzar?').",
       "dynamic_variable": "",
       "constant_value": "",
       "required": true,
       "value_type": "llm_prompt"
     },
     {
-      "id": "propuesta_valor",
+      "id": "responder",
       "type": "number",
-      "description": "Puntaje de 0 a 100 en propuesta de valor: claridad del beneficio, diferenciacion, personalizacion al cliente.",
+      "description": "Puntaje de 0 a 100 en RESPONDER: resuelve la objecion aplicando correctamente alguna de las tecnicas ensenadas: Metodo 3F (Feel-Felt-Found / Siente-Sintio-Descubrio), Historias de terceras personas (casos de otros clientes) o Secuencias de cierre. Debe elegir la tecnica adecuada y ejecutarla con argumentos solidos.",
       "dynamic_variable": "",
       "constant_value": "",
       "required": true,
       "value_type": "llm_prompt"
     },
     {
-      "id": "cierre",
+      "id": "continuar",
       "type": "number",
-      "description": "Puntaje de 0 a 100 en el cierre: llamada a la accion, confirmacion de proximos pasos, despedida.",
+      "description": "Puntaje de 0 a 100 en CONTINUAR: tras resolver la objecion retoma el proceso de venta, confirma que la duda quedo resuelta y avanza hacia el siguiente paso o el cierre sin dejar la conversacion en el aire.",
       "dynamic_variable": "",
       "constant_value": "",
       "required": true,
