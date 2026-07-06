@@ -1,0 +1,22 @@
+src/components/admin/ConfigPanel.tsx
+  s_82ada3044b04a6::t_bef7c0152a8798 365
+  s_82ada3044b04a6::t_ee866450cc627f 416
+  s_82ada3044b04a6::t_1d6f9ffa0f0123 6,9
+  s_82ada3044b04a6::t_7bfbe97220a5da 119-176
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "8d800019bb6210e8830b3f416b64010896b46980",
+  "prompts": {},
+  "sessions": {
+    "s_82ada3044b04a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3f07cb82-2327-4650-9608-d39388e03a20",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "vallit0 <evallecyt@gmail.com>"
+    }
+  }
+}
