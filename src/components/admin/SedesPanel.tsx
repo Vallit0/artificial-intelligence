@@ -31,9 +31,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { AlertCircle, Building2, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSedes, Sede, CreateSedeInput, UpdateSedeInput } from "@/hooks/useSedes";
+import { COUNTRIES, DEFAULT_COUNTRY_CODE, countryLabel } from "@/lib/countries";
 
 interface SedeFormState {
   slug: string;
@@ -47,7 +55,7 @@ interface SedeFormState {
 const EMPTY_FORM: SedeFormState = {
   slug: "",
   name: "",
-  country: "",
+  country: DEFAULT_COUNTRY_CODE,
   city: "",
   address: "",
   isActive: true,
@@ -238,7 +246,7 @@ export default function SedesPanel() {
                       {sede.slug}
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
-                      {[sede.country, sede.city].filter(Boolean).join(" · ") || "—"}
+                      {[countryLabel(sede.country), sede.city].filter(Boolean).join(" · ") || "—"}
                     </TableCell>
                     <TableCell>
                       <Switch
@@ -335,13 +343,21 @@ export default function SedesPanel() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="sede-country">País</Label>
-                <Input
-                  id="sede-country"
-                  value={form.country}
-                  onChange={(e) => setForm((prev) => ({ ...prev, country: e.target.value }))}
-                  placeholder="GT"
-                  maxLength={8}
-                />
+                <Select
+                  value={form.country || DEFAULT_COUNTRY_CODE}
+                  onValueChange={(value) => setForm((prev) => ({ ...prev, country: value }))}
+                >
+                  <SelectTrigger id="sede-country">
+                    <SelectValue placeholder="Seleccionar país" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COUNTRIES.map((c) => (
+                      <SelectItem key={c.code} value={c.code}>
+                        {c.name} ({c.code})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="sede-city">Ciudad</Label>

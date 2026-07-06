@@ -183,7 +183,7 @@ describe('User management — regression suite', () => {
       expect(dupCount).toBe(1);
     });
 
-    it('rechaza passwords < 12 chars', async () => {
+    it('rechaza passwords < 8 chars', async () => {
       const res = await request(app)
         .post('/api/admin/users/bulk')
         .set('Authorization', `Bearer ${adminToken}`)
@@ -192,7 +192,7 @@ describe('User management — regression suite', () => {
           sedeId: sede.id,
         });
       expect(res.body.summary.failed).toBe(1);
-      expect(res.body.results[0].error).toMatch(/12 caracteres/i);
+      expect(res.body.results[0].error).toMatch(/8 caracteres/i);
     });
 
     it('coach NO puede hacer bulk create (sólo admin global)', async () => {
@@ -285,7 +285,7 @@ describe('User management — regression suite', () => {
       expect(created?.coachPermissions?.canEditPrompts).toBe(false);
     });
 
-    it('rechaza password < 12 chars', async () => {
+    it('rechaza password < 8 chars', async () => {
       const res = await request(app)
         .post('/api/admin/users')
         .set('Authorization', `Bearer ${adminToken}`)
@@ -296,7 +296,7 @@ describe('User management — regression suite', () => {
           sedeId: sede.id,
         });
       expect(res.status).toBe(400);
-      expect(res.body.error).toMatch(/12 caracteres/i);
+      expect(res.body.error).toMatch(/8 caracteres/i);
     });
 
     it('rechaza email duplicado con 409', async () => {

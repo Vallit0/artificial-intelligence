@@ -36,7 +36,7 @@ export const authRouter = Router();
  *             required: [email, password, sedeId, coachId]
  *             properties:
  *               email: { type: string, format: email }
- *               password: { type: string, minLength: 12 }
+ *               password: { type: string, minLength: 8 }
  *               sedeId: { type: string, description: UUID o slug de la sede (requerido) }
  *               sede: { type: string, description: Alias de sedeId }
  *               coachId: { type: string, format: uuid, description: Coach elegido, debe ser de la sede (requerido) }
@@ -239,7 +239,7 @@ authRouter.post('/forgot-password', passwordResetLimiter, async (req: Request, r
  *             required: [token, password]
  *             properties:
  *               token: { type: string }
- *               password: { type: string, minLength: 4 }
+ *               password: { type: string, minLength: 8 }
  *     responses:
  *       200: { description: Contraseña actualizada }
  *       400: { description: Token inválido o expirado }
@@ -251,8 +251,8 @@ authRouter.post('/reset-password', passwordResetLimiter, async (req: Request, re
     if (!token || !password) {
       throw new BadRequestError('Token y contraseña son requeridos');
     }
-    if (password.length < 12) {
-      throw new BadRequestError('La contraseña debe tener al menos 12 caracteres');
+    if (password.length < 8) {
+      throw new BadRequestError('La contraseña debe tener al menos 8 caracteres');
     }
 
     const resetToken = await prisma.passwordResetToken.findUnique({
@@ -294,8 +294,8 @@ authRouter.post('/reset-password', passwordResetLimiter, async (req: Request, re
 authRouter.post('/update-password', authMiddleware, async (req: any, res: Response) => {
   try {
     const { password } = req.body;
-    if (!password || password.length < 12) {
-      throw new BadRequestError('La contraseña debe tener al menos 12 caracteres');
+    if (!password || password.length < 8) {
+      throw new BadRequestError('La contraseña debe tener al menos 8 caracteres');
     }
 
     const passwordHash = await hashPassword(password);

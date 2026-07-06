@@ -89,8 +89,8 @@ export default function BulkUploadModal({
     if (!isValidEmail(user.email.trim())) {
       return "Email inválido";
     }
-    if (!user.password || user.password.length < 6) {
-      return "Contraseña debe tener 6+ caracteres";
+    if (!user.password || user.password.length < 8) {
+      return "Contraseña debe tener 8+ caracteres";
     }
     return undefined;
   };

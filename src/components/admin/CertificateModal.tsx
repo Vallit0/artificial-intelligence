@@ -35,6 +35,8 @@ export default function CertificateModal({
   const instructorName = level === 1 ? config?.certificateLevel1InstructorName : config?.certificateInstructorName;
   const directorName = level === 1 ? config?.certificateLevel1DirectorName : config?.certificateDirectorName;
   const courseName = level === 1 ? config?.certificateLevel1CourseName : config?.certificateCourseName;
+  const instructorSignature = level === 1 ? config?.certificateLevel1InstructorSignature : config?.certificateInstructorSignature;
+  const directorSignature = level === 1 ? config?.certificateLevel1DirectorSignature : config?.certificateDirectorSignature;
   const grade = level === 1
     ? student?.bestProspeccionScore ?? null
     : student?.bestObjecionesScore ?? student?.finalGrade ?? null;
@@ -131,6 +133,8 @@ export default function CertificateModal({
             instructorName={instructorName}
             directorName={directorName}
             courseName={courseName}
+            instructorSignature={instructorSignature}
+            directorSignature={directorSignature}
           />
         </div>
 

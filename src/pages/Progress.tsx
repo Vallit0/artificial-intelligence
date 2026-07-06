@@ -14,16 +14,38 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress as ProgressBar } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { SessionReplayModal } from "@/components/replay/SessionReplayModal";
+import StudentCertificateModal from "@/components/StudentCertificateModal";
+import { useAuth } from "@/hooks/useAuth";
 
 const TARGET_TIME = 1500; // 25 minutes in seconds
 
 const Progress = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { sessions, totalPracticeTime, isLoading } = usePracticeSessions();
   const [showCelebration, setShowCelebration] = useState(false);
   const [hasSeenCelebration, setHasSeenCelebration] = useState(false);
   const [replaySessionId, setReplaySessionId] = useState<string | null>(null);
+  // Nivel del certificado que el alumno está visualizando (null = cerrado).
+  const [certLevel, setCertLevel] = useState<1 | 2 | null>(null);
+
+  // Nombre y mejor nota por módulo del propio alumno, calculados desde sus
+  // sesiones (misma regla que el panel admin: mejor `score` por `exam_type`).
+  const studentName =
+    [user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.email || "Estudiante";
+  const bestProspeccion = useMemo(() => {
+    const s = sessions.filter((x) => x.exam_type === "prospeccion" && x.score !== null).map((x) => x.score as number);
+    return s.length ? Math.max(...s) : null;
+  }, [sessions]);
+  const bestObjeciones = useMemo(() => {
+    const s = sessions.filter((x) => x.exam_type === "objeciones" && x.score !== null).map((x) => x.score as number);
+    return s.length ? Math.max(...s) : null;
+  }, [sessions]);
+  // Un certificado es visible cuando el módulo está aprobado y hay una nota.
+  const canViewCertN1 = !!user?.level2Unlocked && bestProspeccion !== null;
+  const canViewCertN2 = !!user?.courseCompleted && bestObjeciones !== null;
 
   // Desglose de tiempo por modo. La "primera parte" (Nivel 1) sólo cuenta la
   // familia Role-Play Cliente (cliente + prospección) para la certificación.
@@ -215,6 +237,16 @@ const Progress = () => {
         onOpenChange={(open) => { if (!open) setReplaySessionId(null); }}
       />
 
+      {certLevel !== null && (
+        <StudentCertificateModal
+          open={certLevel !== null}
+          onOpenChange={(open) => { if (!open) setCertLevel(null); }}
+          level={certLevel}
+          studentName={studentName}
+          grade={(certLevel === 1 ? bestProspeccion : bestObjeciones) ?? 0}
+        />
+      )}
+
       {/* Left Sidebar */}
       <LeftSidebar />
 
@@ -318,6 +350,23 @@ const Progress = () => {
                       <p className="mt-1 text-center text-xs text-muted-foreground/70">
                         Sólo cuenta el tiempo de Role-Play Cliente (incluye Prospección).
                       </p>
+
+                      {(canViewCertN1 || canViewCertN2) && (
+                        <div className="mt-5 pt-4 border-t flex flex-col sm:flex-row gap-2 justify-center">
+                          {canViewCertN1 && (
+                            <Button variant="secondary" onClick={() => setCertLevel(1)}>
+                              <Award className="w-4 h-4 mr-2" />
+                              Mi certificado — Prospección
+                            </Button>
+                          )}
+                          {canViewCertN2 && (
+                            <Button onClick={() => setCertLevel(2)}>
+                              <Award className="w-4 h-4 mr-2" />
+                              Mi certificado — Objeciones
+                            </Button>
+                          )}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
 

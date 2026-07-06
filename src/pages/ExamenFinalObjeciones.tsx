@@ -315,8 +315,14 @@ export default function ExamenFinalObjeciones() {
               <div className="overflow-auto bg-muted p-4 rounded-lg flex justify-center">
                 <CertificatePreview
                   ref={certificateRef}
+                  level={2}
                   studentName={studentName}
                   grade={evaluation?.score ?? 0}
+                  instructorName={platformConfig?.certificateInstructorName}
+                  directorName={platformConfig?.certificateDirectorName}
+                  courseName={platformConfig?.certificateCourseName}
+                  instructorSignature={platformConfig?.certificateInstructorSignature}
+                  directorSignature={platformConfig?.certificateDirectorSignature}
                 />
               </div>
 

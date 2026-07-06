@@ -70,8 +70,8 @@ export async function createUser(input: CreateUserInput, caller: AuthUser) {
   if (!isValidEmail(email)) {
     throw new BadRequestError('Formato de email inválido');
   }
-  if (!input.password || input.password.length < 12) {
-    throw new BadRequestError('La contraseña debe tener al menos 12 caracteres');
+  if (!input.password || input.password.length < 8) {
+    throw new BadRequestError('La contraseña debe tener al menos 8 caracteres');
   }
 
   // Resolver sede (UUID o slug). Obligatorio para todo user nuevo.
@@ -222,8 +222,8 @@ export async function bulkCreateUsers(users: CreateUserInput[], caller: AuthUser
     if (!email || !isValidEmail(email)) {
       return { email: email || 'desconocido', success: false, error: 'Email inválido' };
     }
-    if (!userData.password || userData.password.length < 12) {
-      return { email, success: false, error: 'Contraseña debe tener al menos 12 caracteres' };
+    if (!userData.password || userData.password.length < 8) {
+      return { email, success: false, error: 'Contraseña debe tener al menos 8 caracteres' };
     }
     if (existingEmails.has(email)) {
       return { email, success: false, error: 'Usuario ya existe' };
@@ -321,8 +321,8 @@ async function loadUserScopedOrThrow(userId: string, caller: AuthUser): Promise<
 }
 
 export async function updateUserPassword(userId: string, newPassword: string, caller: AuthUser) {
-  if (!newPassword || newPassword.length < 6) {
-    throw new BadRequestError('La contraseña debe tener al menos 6 caracteres');
+  if (!newPassword || newPassword.length < 8) {
+    throw new BadRequestError('La contraseña debe tener al menos 8 caracteres');
   }
 
   await loadUserScopedOrThrow(userId, caller);

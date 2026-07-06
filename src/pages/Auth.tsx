@@ -16,9 +16,10 @@ import { usePublicDivisions } from "@/hooks/useDivisions";
 import { z } from "zod";
 import { ArrowLeft, Building2, CheckCircle2, Eye, EyeOff, Phone, UserCheck } from "lucide-react";
 import { ForgotPasswordModal } from "@/components/auth/ForgotPasswordModal";
+import { COUNTRIES, DEFAULT_COUNTRY_CODE, countryLabel } from "@/lib/countries";
 import AICompanionOrb from "@/components/AICompanionOrb";
 
-// El mínimo de 12 caracteres es una regla de CREACIÓN de cuenta, no de login.
+// El mínimo de 8 caracteres es una regla de CREACIÓN de cuenta, no de login.
 // Al iniciar sesión sólo autenticamos una credencial ya existente (p. ej. el
 // admin quemado o usuarios legacy con contraseñas más cortas), así que ahí sólo
 // exigimos que no esté vacía. El backend valida el hash en ambos casos.
@@ -29,7 +30,7 @@ const loginSchema = z.object({
 
 const signupSchema = z.object({
   email: z.string().email("Email inválido"),
-  password: z.string().min(12, "La contraseña debe tener al menos 12 caracteres"),
+  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
 });
 
 const Auth = () => {
@@ -40,6 +41,7 @@ const Auth = () => {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [country, setCountry] = useState(DEFAULT_COUNTRY_CODE);
   const [sedeId, setSedeId] = useState("");
   const [divisionId, setDivisionId] = useState("");
   const [loading, setLoading] = useState(false);
@@ -54,11 +56,20 @@ const Auth = () => {
   // La división se pide sólo si la sede elegida tiene divisiones (p. ej. Guatemala).
   const sedeHasDivisions = divisions.length > 0;
 
+  // Sedes del país seleccionado. Las sedes legacy sin país se tratan como
+  // Guatemala (el país por defecto) para que no desaparezcan del listado.
+  const sedesForCountry = sedes.filter(
+    (s) => (s.country ?? DEFAULT_COUNTRY_CODE) === country,
+  );
+
+  // Al cambiar de país (o al cargar), si la sede elegida ya no pertenece al
+  // país seleccionado, preseleccionamos la primera sede de ese país.
   useEffect(() => {
-    if (!sedeId && sedes.length > 0) {
-      setSedeId(sedes[0].id);
+    if (!sedesForCountry.some((s) => s.id === sedeId)) {
+      setSedeId(sedesForCountry[0]?.id ?? "");
     }
-  }, [sedes, sedeId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [country, sedes]);
 
   // Al cambiar de sede, la división elegida ya no es válida (las divisiones son
   // por sede). Reseteamos la selección para forzar elegir una de la nueva sede.
@@ -223,6 +234,21 @@ const Auth = () => {
               </div>
               <div className="relative">
                 <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10 pointer-events-none" />
+                <Select value={country} onValueChange={setCountry}>
+                  <SelectTrigger className="h-13 bg-card border border-border rounded-xl pl-10 pr-4 text-foreground focus:border-primary transition-colors">
+                    <SelectValue placeholder="Seleccionar país" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COUNTRIES.map((c) => (
+                      <SelectItem key={c.code} value={c.code}>
+                        {c.name} ({c.code})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="relative">
+                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10 pointer-events-none" />
                 <Select value={sedeId} onValueChange={setSedeId} disabled={sedesLoading}>
                   <SelectTrigger className="h-13 bg-card border border-border rounded-xl pl-10 pr-4 text-foreground focus:border-primary transition-colors">
                     <SelectValue
@@ -230,15 +256,15 @@ const Auth = () => {
                     />
                   </SelectTrigger>
                   <SelectContent>
-                    {sedes.length === 0 && !sedesLoading && (
+                    {sedesForCountry.length === 0 && !sedesLoading && (
                       <SelectItem value="__none__" disabled>
-                        No hay sedes disponibles
+                        No hay sedes en {countryLabel(country)}
                       </SelectItem>
                     )}
-                    {sedes.map((sede) => (
+                    {sedesForCountry.map((sede) => (
                       <SelectItem key={sede.id} value={sede.id}>
                         {sede.name}
-                        {sede.country ? ` · ${sede.country}` : ""}
+                        {sede.country ? ` · ${countryLabel(sede.country)}` : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -291,7 +317,7 @@ const Auth = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              minLength={isLogin ? undefined : 12}
+              minLength={isLogin ? undefined : 8}
               className="h-13 bg-card border border-border rounded-xl px-4 pr-24 text-foreground placeholder:text-muted-foreground focus:border-primary transition-colors"
             />
             <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">

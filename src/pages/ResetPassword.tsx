@@ -45,8 +45,8 @@ const ResetPassword = () => {
   }
 
   const validatePassword = (): string | null => {
-    if (password.length < 6) {
-      return "La contraseña debe tener al menos 6 caracteres";
+    if (password.length < 8) {
+      return "La contraseña debe tener al menos 8 caracteres";
     }
     if (password !== confirmPassword) {
       return "Las contraseñas no coinciden";
@@ -178,7 +178,7 @@ const ResetPassword = () => {
             </div>
 
             <p className="text-xs text-muted-foreground">
-              Mínimo 6 caracteres
+              Mínimo 8 caracteres
             </p>
 
             <Button

@@ -16,6 +16,11 @@ export interface AppConfig {
   certificateLevel1InstructorName: string | null;
   certificateLevel1DirectorName: string | null;
   certificateLevel1CourseName: string | null;
+  // Firma manuscrita (imagen) como data URI base64; null = sólo la línea.
+  certificateInstructorSignature: string | null;
+  certificateDirectorSignature: string | null;
+  certificateLevel1InstructorSignature: string | null;
+  certificateLevel1DirectorSignature: string | null;
   updatedAt: string;
 }
 
@@ -41,6 +46,10 @@ export type AppConfigPatch = Partial<
     | "certificateLevel1InstructorName"
     | "certificateLevel1DirectorName"
     | "certificateLevel1CourseName"
+    | "certificateInstructorSignature"
+    | "certificateDirectorSignature"
+    | "certificateLevel1InstructorSignature"
+    | "certificateLevel1DirectorSignature"
   >
 >;
 

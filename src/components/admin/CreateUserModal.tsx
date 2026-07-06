@@ -21,6 +21,7 @@ import { Loader2, AlertCircle, CheckCircle, GraduationCap, Shield, User } from "
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api-client";
 import { useSedes } from "@/hooks/useSedes";
+import { COUNTRIES, DEFAULT_COUNTRY_CODE, countryLabel } from "@/lib/countries";
 
 type UserRole = "learner" | "coach" | "admin";
 
@@ -79,20 +80,27 @@ export default function CreateUserModal({
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [role, setRole] = useState<UserRole>(defaultRole);
+  const [country, setCountry] = useState<string>(DEFAULT_COUNTRY_CODE);
   const [sedeId, setSedeId] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  // Preseleccioná la primera sede activa cuando carguen — evita que el admin
-  // tenga que abrir el dropdown sólo para confirmar la opción única en setups
-  // de una sola sede (caso típico hoy: Guatemala).
+  // Sedes activas del país seleccionado. Las sedes legacy sin país se tratan
+  // como Guatemala (el país por defecto), para que no desaparezcan del listado.
+  const activeSedes = sedes.filter(
+    (s) => s.isActive && (s.country ?? DEFAULT_COUNTRY_CODE) === country,
+  );
+
+  // Al cambiar de país (o al cargar), si la sede elegida ya no pertenece al
+  // país, preseleccioná la primera sede activa de ese país. Evita que el admin
+  // tenga que abrir el dropdown en el caso típico de una sola sede por país.
   useEffect(() => {
-    if (!sedeId && sedes.length > 0) {
-      const firstActive = sedes.find((s) => s.isActive);
-      if (firstActive) setSedeId(firstActive.id);
+    if (!activeSedes.some((s) => s.id === sedeId)) {
+      setSedeId(activeSedes[0]?.id ?? "");
     }
-  }, [sedes, sedeId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [country, sedes]);
 
   const resetForm = () => {
     setEmail("");
@@ -100,7 +108,8 @@ export default function CreateUserModal({
     setFirstName("");
     setLastName("");
     setRole(defaultRole);
-    setSedeId(sedes.find((s) => s.isActive)?.id ?? "");
+    setCountry(DEFAULT_COUNTRY_CODE);
+    setSedeId("");
     setError(null);
     setSuccess(false);
   };
@@ -109,7 +118,7 @@ export default function CreateUserModal({
     if (!email.trim()) return "El email es requerido";
     if (!isValidEmail(email.trim())) return "Formato de email inválido";
     if (!password) return "La contraseña es requerida";
-    if (password.length < 12) return "La contraseña debe tener al menos 12 caracteres";
+    if (password.length < 8) return "La contraseña debe tener al menos 8 caracteres";
     if (!sedeId) return "Debes seleccionar una sede";
     return null;
   };
@@ -163,7 +172,6 @@ export default function CreateUserModal({
     onOpenChange(newOpen);
   };
 
-  const activeSedes = sedes.filter((s) => s.isActive);
   const selectedRole = ROLE_OPTIONS.find((r) => r.value === role);
 
   return (
@@ -244,15 +252,35 @@ export default function CreateUserModal({
                 setPassword(e.target.value);
                 setError(null);
               }}
-              placeholder="Mínimo 12 caracteres"
-              minLength={12}
+              placeholder="Mínimo 8 caracteres"
+              minLength={8}
               required
               disabled={isSubmitting || success}
               maxLength={72}
             />
             <p className="text-xs text-muted-foreground">
-              La contraseña debe tener al menos 12 caracteres
+              La contraseña debe tener al menos 8 caracteres
             </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="country">País *</Label>
+            <Select
+              value={country}
+              onValueChange={setCountry}
+              disabled={isSubmitting || success || sedesLoading}
+            >
+              <SelectTrigger id="country">
+                <SelectValue placeholder="Seleccionar país" />
+              </SelectTrigger>
+              <SelectContent>
+                {COUNTRIES.map((c) => (
+                  <SelectItem key={c.code} value={c.code}>
+                    {c.name} ({c.code})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
@@ -270,13 +298,13 @@ export default function CreateUserModal({
               <SelectContent>
                 {activeSedes.length === 0 && !sedesLoading && (
                   <SelectItem value="__none__" disabled>
-                    No hay sedes activas — creá una primero
+                    No hay sedes en {countryLabel(country)} — creá una primero
                   </SelectItem>
                 )}
                 {activeSedes.map((sede) => (
                   <SelectItem key={sede.id} value={sede.id}>
                     {sede.name}
-                    {sede.country ? ` · ${sede.country}` : ""}
+                    {sede.country ? ` · ${countryLabel(sede.country)}` : ""}
                   </SelectItem>
                 ))}
               </SelectContent>

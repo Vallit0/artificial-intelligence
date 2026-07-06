@@ -26,7 +26,7 @@ interface ChangeMyPasswordModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const MIN_LENGTH = 12;
+const MIN_LENGTH = 8;
 
 export function ChangeMyPasswordModal({ open, onOpenChange }: ChangeMyPasswordModalProps) {
   const { toast } = useToast();

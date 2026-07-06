@@ -525,6 +525,12 @@ model AppConfig {
   certificateLevel1InstructorName String? @map("certificate_level1_instructor_name")
   certificateLevel1DirectorName   String? @map("certificate_level1_director_name")
   certificateLevel1CourseName     String? @map("certificate_level1_course_name")
+  // Firma manuscrita (imagen) de cada firmante, guardada como data URI base64
+  // (data:image/png;base64,...). Vacío = sólo la línea de firma, como hoy.
+  certificateInstructorSignature       String? @map("certificate_instructor_signature")
+  certificateDirectorSignature         String? @map("certificate_director_signature")
+  certificateLevel1InstructorSignature String? @map("certificate_level1_instructor_signature")
+  certificateLevel1DirectorSignature   String? @map("certificate_level1_director_signature")
   updatedAt                  DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@map("app_config")

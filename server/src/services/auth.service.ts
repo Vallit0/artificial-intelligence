@@ -95,6 +95,9 @@ export async function signup(
   if (!email || !password) {
     throw new BadRequestError('Email and password required');
   }
+  if (password.length < 8) {
+    throw new BadRequestError('La contraseña debe tener al menos 8 caracteres');
+  }
   if (!sedeIdOrSlug || typeof sedeIdOrSlug !== 'string') {
     throw new BadRequestError('Sede es requerida');
   }

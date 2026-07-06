@@ -17,6 +17,10 @@ export interface AppConfigPatch {
   certificateLevel1InstructorName?: string | null;
   certificateLevel1DirectorName?: string | null;
   certificateLevel1CourseName?: string | null;
+  certificateInstructorSignature?: string | null;
+  certificateDirectorSignature?: string | null;
+  certificateLevel1InstructorSignature?: string | null;
+  certificateLevel1DirectorSignature?: string | null;
 }
 
 // Lee la config; si la fila aún no existe, la crea con los defaults del schema.
@@ -40,6 +44,19 @@ const cleanStr = (s: unknown): string | null | undefined => {
   return t.length ? t.slice(0, 120) : null;
 };
 
+// Firma como imagen: aceptamos sólo data URIs de imagen (data:image/...;base64,)
+// para no permitir URLs externas que tainten el canvas en html2canvas. Tope de
+// ~2 MB de texto base64 para evitar payloads abusivos. Vacío/otros => null.
+const MAX_SIGNATURE_LEN = 2_000_000;
+const cleanImage = (s: unknown): string | null | undefined => {
+  if (s === undefined) return undefined;
+  if (s === null) return null;
+  const t = String(s).trim();
+  if (!t.length) return null;
+  if (!t.startsWith('data:image/')) return null;
+  return t.length <= MAX_SIGNATURE_LEN ? t : null;
+};
+
 export async function updateAppConfig(patch: AppConfigPatch) {
   // Sanea: duraciones 60s–60min, umbrales 0–100, nombres ≤120 chars.
   const data = {
@@ -53,6 +70,10 @@ export async function updateAppConfig(patch: AppConfigPatch) {
     certificateLevel1InstructorName: cleanStr(patch.certificateLevel1InstructorName),
     certificateLevel1DirectorName: cleanStr(patch.certificateLevel1DirectorName),
     certificateLevel1CourseName: cleanStr(patch.certificateLevel1CourseName),
+    certificateInstructorSignature: cleanImage(patch.certificateInstructorSignature),
+    certificateDirectorSignature: cleanImage(patch.certificateDirectorSignature),
+    certificateLevel1InstructorSignature: cleanImage(patch.certificateLevel1InstructorSignature),
+    certificateLevel1DirectorSignature: cleanImage(patch.certificateLevel1DirectorSignature),
   };
   return prisma.appConfig.upsert({
     where: { id: SINGLETON_ID },

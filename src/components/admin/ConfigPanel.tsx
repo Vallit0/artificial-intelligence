@@ -20,6 +20,11 @@ interface FormState {
   certificateLevel1InstructorName: string;
   certificateLevel1DirectorName: string;
   certificateLevel1CourseName: string;
+  // Firmas como data URI base64 ("" = sin firma).
+  certificateInstructorSignature: string;
+  certificateDirectorSignature: string;
+  certificateLevel1InstructorSignature: string;
+  certificateLevel1DirectorSignature: string;
 }
 
 const EMPTY: FormState = {
@@ -33,7 +38,82 @@ const EMPTY: FormState = {
   certificateLevel1InstructorName: "",
   certificateLevel1DirectorName: "",
   certificateLevel1CourseName: "",
+  certificateInstructorSignature: "",
+  certificateDirectorSignature: "",
+  certificateLevel1InstructorSignature: "",
+  certificateLevel1DirectorSignature: "",
 };
+
+// Lee un File como data URI base64 (data:image/png;base64,...).
+const fileToDataUrl = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+
+// Tope de ~1.5 MB por firma (el backend rechaza >2 MB de data URI).
+const MAX_SIGNATURE_BYTES = 1.5 * 1024 * 1024;
+
+interface SignatureFieldProps {
+  label: string;
+  value: string;
+  onChange: (dataUrl: string) => void;
+  onError: (message: string) => void;
+}
+
+function SignatureField({ label, value, onChange, onError }: SignatureFieldProps) {
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // permite re-subir el mismo archivo
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      onError("La firma debe ser una imagen (PNG o JPG).");
+      return;
+    }
+    if (file.size > MAX_SIGNATURE_BYTES) {
+      onError("La imagen de firma es muy pesada (máx. 1.5 MB).");
+      return;
+    }
+    try {
+      onChange(await fileToDataUrl(file));
+    } catch {
+      onError("No se pudo leer la imagen de firma.");
+    }
+  };
+
+  return (
+    <div className="space-y-1">
+      <Label className="text-xs">{label}</Label>
+      <div className="flex items-center gap-3">
+        {value ? (
+          <img
+            src={value}
+            alt="Firma"
+            className="h-12 max-w-[140px] object-contain rounded border bg-white p-1"
+          />
+        ) : (
+          <span className="text-xs text-muted-foreground">Sin firma</span>
+        )}
+        <Input
+          type="file"
+          accept="image/png,image/jpeg"
+          onChange={handleFile}
+          className="max-w-[220px] cursor-pointer"
+        />
+        {value && (
+          <Button type="button" variant="ghost" size="sm" onClick={() => onChange("")}>
+            Quitar
+          </Button>
+        )}
+      </div>
+      <p className="text-[11px] text-muted-foreground">
+        PNG con fondo transparente recomendado. Se dibuja sobre la línea de firma.
+      </p>
+    </div>
+  );
+}
 
 export default function ConfigPanel() {
   const { config, isLoading, updateConfig } = usePlatformConfig();
@@ -54,6 +134,10 @@ export default function ConfigPanel() {
       certificateLevel1InstructorName: config.certificateLevel1InstructorName ?? "",
       certificateLevel1DirectorName: config.certificateLevel1DirectorName ?? "",
       certificateLevel1CourseName: config.certificateLevel1CourseName ?? "",
+      certificateInstructorSignature: config.certificateInstructorSignature ?? "",
+      certificateDirectorSignature: config.certificateDirectorSignature ?? "",
+      certificateLevel1InstructorSignature: config.certificateLevel1InstructorSignature ?? "",
+      certificateLevel1DirectorSignature: config.certificateLevel1DirectorSignature ?? "",
     });
   }, [config]);
 
@@ -77,6 +161,10 @@ export default function ConfigPanel() {
       certificateLevel1InstructorName: form.certificateLevel1InstructorName.trim() || null,
       certificateLevel1DirectorName: form.certificateLevel1DirectorName.trim() || null,
       certificateLevel1CourseName: form.certificateLevel1CourseName.trim() || null,
+      certificateInstructorSignature: form.certificateInstructorSignature || null,
+      certificateDirectorSignature: form.certificateDirectorSignature || null,
+      certificateLevel1InstructorSignature: form.certificateLevel1InstructorSignature || null,
+      certificateLevel1DirectorSignature: form.certificateLevel1DirectorSignature || null,
     };
     const ok = await updateConfig(patch);
     setSaving(false);
@@ -199,6 +287,22 @@ export default function ConfigPanel() {
                 onChange={(e) => set("certificateLevel1CourseName", e.target.value)}
               />
             </div>
+            <div className="sm:col-span-2">
+              <SignatureField
+                label="Firma del Instructor (imagen)"
+                value={form.certificateLevel1InstructorSignature}
+                onChange={(v) => set("certificateLevel1InstructorSignature", v)}
+                onError={(m) => toast({ title: "Error", description: m, variant: "destructive" })}
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <SignatureField
+                label="Firma del Director Académico (imagen)"
+                value={form.certificateLevel1DirectorSignature}
+                onChange={(v) => set("certificateLevel1DirectorSignature", v)}
+                onError={(m) => toast({ title: "Error", description: m, variant: "destructive" })}
+              />
+            </div>
           </div>
         </section>
 
@@ -231,6 +335,22 @@ export default function ConfigPanel() {
                 placeholder="Vacío = «Manejo de Objeciones»"
                 value={form.certificateCourseName}
                 onChange={(e) => set("certificateCourseName", e.target.value)}
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <SignatureField
+                label="Firma del Instructor (imagen)"
+                value={form.certificateInstructorSignature}
+                onChange={(v) => set("certificateInstructorSignature", v)}
+                onError={(m) => toast({ title: "Error", description: m, variant: "destructive" })}
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <SignatureField
+                label="Firma del Director Académico (imagen)"
+                value={form.certificateDirectorSignature}
+                onChange={(v) => set("certificateDirectorSignature", v)}
+                onError={(m) => toast({ title: "Error", description: m, variant: "destructive" })}
               />
             </div>
           </div>

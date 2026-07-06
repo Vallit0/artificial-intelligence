@@ -14,10 +14,25 @@ interface CertificatePreviewProps {
   instructorName?: string | null;
   directorName?: string | null;
   courseName?: string | null;
+  // Firma manuscrita (imagen, data URI). Vacío = sólo la línea, como antes.
+  instructorSignature?: string | null;
+  directorSignature?: string | null;
 }
 
 const CertificatePreview = forwardRef<HTMLDivElement, CertificatePreviewProps>(
-  ({ studentName, grade, level = 2, instructorName, directorName, courseName }, ref) => {
+  (
+    {
+      studentName,
+      grade,
+      level = 2,
+      instructorName,
+      directorName,
+      courseName,
+      instructorSignature,
+      directorSignature,
+    },
+    ref,
+  ) => {
     const currentDate = format(new Date(), "d 'de' MMMM 'de' yyyy", { locale: es });
     const defaultCourseName = level === 1 ? "Prospección" : "Manejo de Objeciones";
 
@@ -87,6 +102,14 @@ const CertificatePreview = forwardRef<HTMLDivElement, CertificatePreviewProps>(
           {/* Footer */}
           <div className="flex justify-between items-end w-full px-8">
             <div className="text-center">
+              {instructorSignature && (
+                <img
+                  src={instructorSignature}
+                  alt="Firma del instructor"
+                  className="mx-auto max-h-12 object-contain mb-0.5"
+                  crossOrigin="anonymous"
+                />
+              )}
               {instructorName?.trim() && (
                 <p className="text-gray-800 text-sm font-semibold mb-0.5">{instructorName.trim()}</p>
               )}
@@ -97,6 +120,14 @@ const CertificatePreview = forwardRef<HTMLDivElement, CertificatePreviewProps>(
               <p>{currentDate}</p>
             </div>
             <div className="text-center">
+              {directorSignature && (
+                <img
+                  src={directorSignature}
+                  alt="Firma del director académico"
+                  className="mx-auto max-h-12 object-contain mb-0.5"
+                  crossOrigin="anonymous"
+                />
+              )}
               {directorName?.trim() && (
                 <p className="text-gray-800 text-sm font-semibold mb-0.5">{directorName.trim()}</p>
               )}

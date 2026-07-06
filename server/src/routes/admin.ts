@@ -1,7 +1,5 @@
-// ============================================
-// Admin Routes
-// ============================================
 
+// Se agrego documentacion con OpenAPI para todas las rutas de administrador. 
 import { Router, Response, NextFunction, raw } from 'express';
 import { z } from 'zod';
 import { authMiddleware, requireRole } from '../middleware/auth.js';
@@ -355,7 +353,7 @@ adminRouter.get('/users/:id', requireGlobalAdmin, async (req: AuthRequest, res: 
  *             required: [email, password]
  *             properties:
  *               email: { type: string, format: email }
- *               password: { type: string, minLength: 12 }
+ *               password: { type: string, minLength: 8 }
  *               sedeId: { type: string, description: UUID o slug de la sede (requerido) }
  *               sede: { type: string, description: Alias de sedeId }
  *               role: { type: string, enum: [learner, coach, instructor, admin], default: learner }
@@ -426,7 +424,7 @@ adminRouter.post('/users', async (req: AuthRequest, res: Response, next: NextFun
  *                   required: [email, password]
  *                   properties:
  *                     email: { type: string, format: email }
- *                     password: { type: string, minLength: 12 }
+ *                     password: { type: string, minLength: 8 }
  *                     sedeId: { type: string }
  *                     sede: { type: string }
  *                     firstName: { type: string }
@@ -516,7 +514,7 @@ adminRouter.delete('/users/:id', requireGlobalAdmin, async (req: AuthRequest, re
  *     description: >-
  *       Admin global puede cambiar cualquier contraseña; un coach sólo la de
  *       usuarios de su misma sede (si no, devuelve 404 para no filtrar
- *       existencia entre sedes). Mínimo 6 caracteres.
+ *       existencia entre sedes). Mínimo 8 caracteres.
  *     parameters:
  *       - in: path
  *         name: id
@@ -530,7 +528,7 @@ adminRouter.delete('/users/:id', requireGlobalAdmin, async (req: AuthRequest, re
  *             type: object
  *             required: [password]
  *             properties:
- *               password: { type: string, minLength: 6 }
+ *               password: { type: string, minLength: 8 }
  *     responses:
  *       200:
  *         description: Contraseña actualizada
@@ -540,7 +538,7 @@ adminRouter.delete('/users/:id', requireGlobalAdmin, async (req: AuthRequest, re
  *               type: object
  *               properties:
  *                 success: { type: boolean }
- *       400: { description: Contraseña con menos de 6 caracteres, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+ *       400: { description: Contraseña con menos de 8 caracteres, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
  *       404: { description: Usuario no encontrado o fuera del scope del coach, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
  */
 adminRouter.patch('/users/:id/password', async (req: AuthRequest, res: Response, next: NextFunction) => {

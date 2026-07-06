@@ -103,7 +103,7 @@ npm run test:db:down    # docker compose ... down -v  (borra el volumen)
 
 ### Gestión de usuarios (`userManagement.test.ts`) — regresiones del stress test
 - **Orden de rutas**: `PATCH /api/admin/users/bulk/examen-final` no colisiona con `/:id/examen-final`; valida `userIds` no vacío.
-- **Bulk create**: exige `sedeId` (por-user o default); crea N con `defaultSedeId`; deduplica emails dentro del lote (P2002); rechaza passwords < 12 chars; coach **no** puede hacer bulk.
+- **Bulk create**: exige `sedeId` (por-user o default); crea N con `defaultSedeId`; deduplica emails dentro del lote (P2002); rechaza passwords < 8 chars; coach **no** puede hacer bulk.
 - **Single create + autorización**: coach (incluso con `canCreateCoaches`) no crea admin ni learner; sí crea coach en su sede; coach sin permiso no crea coach; admin crea coach con permisos en `false`; rechaza password corta; rechaza email duplicado (409).
 - **Delete**: admin no puede auto-borrarse; admin borra learner con cascade de roles/sesiones; coach no puede borrar.
 
