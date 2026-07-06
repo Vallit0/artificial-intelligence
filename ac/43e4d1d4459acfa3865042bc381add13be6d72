@@ -1,0 +1,19 @@
+src/pages/Landing.tsx
+  s_c7abdcd159792a::t_fb95b0ae34ea56 242-243,245-246,250,253
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "ac43e4d1d4459acfa3865042bc381add13be6d72",
+  "prompts": {},
+  "sessions": {
+    "s_c7abdcd159792a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84430494-ef4e-4c2f-bb7c-7a67b3a19a54",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "vallit0 <evallecyt@gmail.com>"
+    }
+  }
+}
