@@ -239,17 +239,18 @@ const Landing = () => {
               style={{ animationDelay: "0.2s" }}
             >
               <Button
-                onClick={handleStart}
-                className="w-full h-14 rounded-2xl text-base font-bold uppercase tracking-wider shadow-[0_4px_0_0_hsl(var(--primary)/0.4)] hover:shadow-[0_2px_0_0_hsl(var(--primary)/0.4)] hover:translate-y-[2px] transition-all"
+                onClick={() => navigate("/auth")}
+                className="w-full h-14 rounded-2xl text-base font-bold uppercase tracking-wider shadow-[0_4px_0_0_hsl(var(--primary)/0.4)] hover:shadow-[0_2px_0_0_hsl(var(--primary)/0.4)] hover:translate-y-[2px] transition-all gap-2"
               >
-                Empezar Ahora
+                <LogIn className="h-5 w-5" />
+                Iniciar Sesión
               </Button>
               <Button
                 variant="outline"
-                onClick={() => navigate("/auth")}
+                onClick={() => navigate("/auth?mode=signup")}
                 className="w-full h-14 rounded-2xl text-base font-bold uppercase tracking-wider border-2 border-border shadow-[0_4px_0_0_hsl(var(--border))] hover:shadow-[0_2px_0_0_hsl(var(--border))] hover:translate-y-[2px] transition-all"
               >
-                Ya Tengo Una Cuenta
+                Crear Cuenta
               </Button>
             </div>
 
