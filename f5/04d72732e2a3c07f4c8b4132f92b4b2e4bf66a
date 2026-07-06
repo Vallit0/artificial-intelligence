@@ -1,0 +1,108 @@
+src/components/admin/SedesPanel.tsx
+  s_c7abdcd159792a::t_07fa39eda23658 249
+  s_c7abdcd159792a::t_3139508cc7f7c1 346-360
+  s_c7abdcd159792a::t_5360d8cd66b1fd 34-40,44
+  s_c7abdcd159792a::t_58fcb9d6163200 58
+src/components/admin/ConfigPanel.tsx
+  s_c7abdcd159792a::t_8c34672c9609f2 41-44
+  s_c7abdcd159792a::t_d3df6c88e587f8 47-117
+  s_c7abdcd159792a::t_48a456a07dcfc9 164-167
+  s_c7abdcd159792a::t_207de85b9cd8ab 137-140
+  s_c7abdcd159792a::t_15220ef707ecb2 23-27
+  s_c7abdcd159792a::t_6553fe3dca2e9a 290-305
+  s_c7abdcd159792a::t_a74c4af65c7cfa 340-355
+server/src/routes/admin.ts
+  s_c7abdcd159792a::t_a6623c0eabf00b 2
+  s_c7abdcd159792a::t_271a638db907fd 356,427,517,531,541
+server/prisma/migrations/20260706000000_add_certificate_signatures/migration.sql
+  s_c7abdcd159792a::t_4a14774b65746b 1-10
+src/hooks/useAppConfig.ts
+  s_c7abdcd159792a::t_cb4cec3cb085ab 19-23
+  s_c7abdcd159792a::t_7f89a382df6c81 49-52
+src/components/admin/CreateUserModal.tsx
+  s_c7abdcd159792a::t_e75f73443bfcc6 307
+  s_c7abdcd159792a::t_e5500d3d000fbc 89-97,99-100,102-103
+  s_c7abdcd159792a::t_2c6aa3236939c7 24
+  s_c7abdcd159792a::t_7e90452edeb10b 267-285
+  s_c7abdcd159792a::t_ed38f0f68bc4e3 301
+  s_c7abdcd159792a::t_2ae7b0793cc1c5 255-256
+  s_c7abdcd159792a::t_715b1abd0509c9 83
+  s_c7abdcd159792a::t_842bd97a0bcc61 121
+  s_c7abdcd159792a::t_e1fc93f87fb0fc 262
+  s_c7abdcd159792a::t_c387cf56ec22c0 111-112
+  s_c7abdcd159792a::t_3f0c4c9aba6c49 266
+server/tests/MANUAL.md
+  s_c7abdcd159792a::t_8584851a7bab2b 106
+src/components/StudentCertificateModal.tsx
+  s_c7abdcd159792a::t_cb26dfbe406250 1-126
+src/pages/Progress.tsx
+  s_c7abdcd159792a::t_fa1bfe3eaedbe2 353-369
+  s_c7abdcd159792a::t_45f4c428f11568 17,19-20
+  s_c7abdcd159792a::t_3ac41887a3a490 26,31-48
+  s_c7abdcd159792a::t_bdd11c5157606c 240-249
+src/lib/countries.ts
+  s_c7abdcd159792a::t_b9d19a74e2de10 1-23
+src/pages/Auth.tsx
+  s_c7abdcd159792a::t_58167f9d93ba90 22
+  s_c7abdcd159792a::t_ef70108269d1ce 237-249,259,261,264
+  s_c7abdcd159792a::t_5c2d986dd61ef5 44
+  s_c7abdcd159792a::t_333c091cf7a06b 267
+  s_c7abdcd159792a::t_bf1335cc0c9526 320
+  s_c7abdcd159792a::t_fc73727722cc26 59-66,68-69,71-72
+  s_c7abdcd159792a::t_e987d703422174 33
+  s_c7abdcd159792a::t_b00159e86ec140 19
+  s_c7abdcd159792a::t_0712543edf9284 235-236
+src/components/auth/ChangeMyPasswordModal.tsx
+  s_c7abdcd159792a::t_604d9f83a80484 29
+src/components/admin/CertificatePreview.tsx
+  s_c7abdcd159792a::t_b129d71e2b360f 17-19,23-24
+  s_c7abdcd159792a::t_29393cb24efd33 25-32
+  s_c7abdcd159792a::t_b5777bab10c3ef 33-35
+  s_c7abdcd159792a::t_a1c013f3a08e69 105-112,123-130
+src/components/admin/ResetStudentPasswordModal.tsx
+  s_c7abdcd159792a::t_cf4b64a47d88e8 35
+server/src/services/appConfig.service.ts
+  s_c7abdcd159792a::t_34a2a69d1bb6de 47-59
+  s_c7abdcd159792a::t_4711ffee42a24f 73-76
+  s_c7abdcd159792a::t_e487b2d3b1d50d 20-23
+src/pages/ResetPassword.tsx
+  s_c7abdcd159792a::t_16649043fd6210 48-49
+  s_c7abdcd159792a::t_6ed19cf7c12b92 181
+server/prisma/schema.prisma
+  s_c7abdcd159792a::t_ca0542560f2249 528-533
+server/src/routes/auth.ts
+  s_c7abdcd159792a::t_23700e952529e9 39,242,254-255,297-298
+server/src/services/admin.service.ts
+  s_c7abdcd159792a::t_a58a257eda2765 73-74,225-226,324-325
+server/src/services/auth.service.ts
+  s_c7abdcd159792a::t_13a6115d24cb3b 98-100
+server/tests/integration/userManagement.test.ts
+  s_c7abdcd159792a::t_15bcf4e091d9b9 186,195,288,299
+src/components/admin/BulkUploadModal.tsx
+  s_c7abdcd159792a::t_90eda7f3a55458 92-93
+src/components/admin/CertificateModal.tsx
+  s_c7abdcd159792a::t_a611ad80fb48f3 38-39,136-137
+src/pages/ExamenFinalObjeciones.tsx
+  s_c7abdcd159792a::t_32e22ee4d9c1eb 318,321-325
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "f504d72732e2a3c07f4c8b4132f92b4b2e4bf66a",
+  "prompts": {},
+  "humans": {
+    "h_fe03d8619f57ba": {
+      "author": "vallit0 <evallecyt@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_c7abdcd159792a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84430494-ef4e-4c2f-bb7c-7a67b3a19a54",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "vallit0 <evallecyt@gmail.com>"
+    }
+  }
+}
