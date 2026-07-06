@@ -3,9 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Award, Clock, GraduationCap, Loader2, Save, Settings } from "lucide-react";
+import { Award, Clock, Eye, EyeOff, GraduationCap, Loader2, Save, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { usePlatformConfig, APP_CONFIG_DEFAULTS, type AppConfigPatch } from "@/hooks/useAppConfig";
+import CertificatePreview from "./CertificatePreview";
 
 // Estado local del formulario. Las duraciones se editan en MINUTOS (la DB
 // guarda segundos); el resto se mapea 1:1.
@@ -111,6 +112,64 @@ function SignatureField({ label, value, onChange, onError }: SignatureFieldProps
       <p className="text-[11px] text-muted-foreground">
         PNG con fondo transparente recomendado. Se dibuja sobre la línea de firma.
       </p>
+    </div>
+  );
+}
+
+// Vista previa de EJEMPLO del certificado dentro del panel de configuración.
+// Reusa el mismo CertificatePreview que se descarga, alimentado con los valores
+// que el admin está editando (nombres/curso/firmas en vivo) más un nombre y una
+// nota de muestra. Escalado a ~0.55 para caber en el panel. Es solo un ejemplo:
+// no descarga ni depende de un estudiante real.
+function CertificateExample({ level, form }: { level: 1 | 2; form: FormState }) {
+  const [show, setShow] = useState(false);
+
+  const instructorName = level === 1 ? form.certificateLevel1InstructorName : form.certificateInstructorName;
+  const directorName = level === 1 ? form.certificateLevel1DirectorName : form.certificateDirectorName;
+  const courseName = level === 1 ? form.certificateLevel1CourseName : form.certificateCourseName;
+  const instructorSignature = level === 1 ? form.certificateLevel1InstructorSignature : form.certificateInstructorSignature;
+  const directorSignature = level === 1 ? form.certificateLevel1DirectorSignature : form.certificateDirectorSignature;
+  const sampleGrade = level === 1 ? form.passThresholdProspeccion || 95 : form.passThresholdObjeciones || 95;
+
+  // CertificatePreview mide 800×~566. Lo escalamos para caber en el panel.
+  const SCALE = 0.55;
+  const W = 800;
+  const H = 566;
+
+  return (
+    <div className="sm:col-span-2 space-y-2">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => setShow((s) => !s)}
+      >
+        {show ? <EyeOff className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
+        {show ? "Ocultar ejemplo" : "Ver ejemplo del certificado"}
+      </Button>
+      {show && (
+        <div className="space-y-1">
+          <div className="overflow-auto rounded-lg border bg-muted p-4 flex justify-center">
+            <div style={{ width: W * SCALE, height: H * SCALE }}>
+              <div style={{ transform: `scale(${SCALE})`, transformOrigin: "top left" }}>
+                <CertificatePreview
+                  level={level}
+                  studentName="Nombre del Estudiante"
+                  grade={sampleGrade}
+                  instructorName={instructorName}
+                  directorName={directorName}
+                  courseName={courseName}
+                  instructorSignature={instructorSignature}
+                  directorSignature={directorSignature}
+                />
+              </div>
+            </div>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Ejemplo con datos de muestra. Refleja los nombres, el curso y las firmas de arriba tal como los verá el estudiante.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -303,6 +362,7 @@ export default function ConfigPanel() {
                 onError={(m) => toast({ title: "Error", description: m, variant: "destructive" })}
               />
             </div>
+            <CertificateExample level={1} form={form} />
           </div>
         </section>
 
@@ -353,6 +413,7 @@ export default function ConfigPanel() {
                 onError={(m) => toast({ title: "Error", description: m, variant: "destructive" })}
               />
             </div>
+            <CertificateExample level={2} form={form} />
           </div>
         </section>
 
