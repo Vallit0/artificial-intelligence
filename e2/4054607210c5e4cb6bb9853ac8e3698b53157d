@@ -1,0 +1,56 @@
+server/tests/integration/accessControl.test.ts
+  s_150cafe3c3ec90::t_7c1cb715b15524 1-167,172-187,193-196,198-395
+  s_d2e88ccd7eff92::t_e1f6316d995c32 188-192,197
+  s_d2e88ccd7eff92::t_14f013bb6943a9 168-171
+src/components/admin/BulkUploadModal.tsx
+  s_d2e88ccd7eff92::t_b28dd8ebce276c 2,15-21,23,27-29,37-38,44-47,62-108,115-116,143-148,152-154,156-159,162-180,182-183,194-197,200-201,206,209-217,219,221,225,235,257-264,267,273,287,297-298,300-335,347,356-359,373,378,381,429-438
+src/components/admin/CreateUserModal.tsx
+  s_d2e88ccd7eff92::t_366a95c8686dd7 111-119,128
+  s_d2e88ccd7eff92::t_fd922b0957aac9 24
+  s_d2e88ccd7eff92::t_f3d3a78bc878a1 86,91-93
+  s_d2e88ccd7eff92::t_0acc2138b2cae1 139-143
+  s_d2e88ccd7eff92::t_51ae0e2e315a0c 338-375
+  s_d2e88ccd7eff92::t_7b0af7d85eec96 167-169
+  s_d2e88ccd7eff92::t_571634ab453be3 94
+server/src/services/admin.service.ts
+  s_d2e88ccd7eff92::t_244a1557306aa6 31-52,108-109,111,154,166
+  s_d2e88ccd7eff92::t_6b4add16d9ac50 53
+  s_d2e88ccd7eff92::t_181ff2570ca222 110
+  s_d2e88ccd7eff92::t_5f22efd39e1e91 151-153
+  s_d2e88ccd7eff92::t_b576c0261268c2 155-157,163-165
+  s_d2e88ccd7eff92::t_27db68a02833eb 167
+  s_d2e88ccd7eff92::t_a2d137db702ed9 105-106,149-150,158-162,184-187,214-229,232-238,241-248,260-262,266-267,269-275,277-278
+.claude/settings.local.json
+  s_150cafe3c3ec90::t_ba9c8f00da7cf3 189-191
+server/tests/integration/userManagement.test.ts
+  s_d2e88ccd7eff92::t_41387ff5780978 367-536
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "e24054607210c5e4cb6bb9853ac8e3698b53157d",
+  "prompts": {},
+  "humans": {
+    "h_fe03d8619f57ba": {
+      "author": "vallit0 <evallecyt@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_150cafe3c3ec90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6638bc36-a670-4a16-ba3a-2d870d4306b9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "vallit0 <evallecyt@gmail.com>"
+    },
+    "s_d2e88ccd7eff92": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8def7fa3-b367-46d5-8d95-25ffe0863a27",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "vallit0 <evallecyt@gmail.com>"
+    }
+  }
+}
