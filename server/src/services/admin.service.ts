@@ -28,6 +28,29 @@ interface CreateUserInput {
   lastName?: string;
   phoneNumber?: string;
   isAdmin?: boolean;          // legacy — equivale a role=admin
+  // División dentro de la sede (UUID o nombre). Para un learner define su
+  // `divisionId` y hereda el coach de la división. Para un coach significa
+  // que ese coach pasa a DIRIGIR la división (Division.coachId) y se
+  // re-sincroniza el coach de sus learners. Ignorada para admin/instructor.
+  divisionId?: string | null;
+}
+
+// Resuelve una referencia de división (UUID o nombre, case-insensitive) dentro
+// de una sede. La división debe estar activa y pertenecer a la sede indicada
+// — refuerza el aislamiento por sede. Lanza BadRequestError si no matchea.
+async function resolveDivisionRef(ref: string, sedeId: string) {
+  const division = await prisma.division.findFirst({
+    where: {
+      sedeId,
+      isActive: true,
+      OR: [{ id: ref }, { name: { equals: ref, mode: 'insensitive' } }],
+    },
+    select: { id: true, coachId: true },
+  });
+  if (!division) {
+    throw new BadRequestError('División inválida o no pertenece a la sede indicada');
+  }
+  return division;
 }
 
 interface StudentWithStats {
@@ -79,8 +102,13 @@ export async function createUser(input: CreateUserInput, caller: AuthUser) {
   if (!sedeRef) {
     throw new BadRequestError('sedeId es requerido');
   }
+  // Acepta UUID, slug o nombre (case-insensitive) — el nombre es cómodo para
+  // la carga por Excel, donde el admin escribe la sede a mano.
   const sede = await prisma.sede.findFirst({
-    where: { isActive: true, OR: [{ id: sedeRef }, { slug: sedeRef }] },
+    where: {
+      isActive: true,
+      OR: [{ id: sedeRef }, { slug: sedeRef }, { name: { equals: sedeRef, mode: 'insensitive' } }],
+    },
     select: { id: true },
   });
   if (!sede) {
@@ -118,6 +146,25 @@ export async function createUser(input: CreateUserInput, caller: AuthUser) {
     throw new ConflictError('Este email ya está registrado');
   }
 
+  // Resolver la división (UUID o nombre) dentro de la sede, si se indicó.
+  const divisionRef = typeof input.divisionId === 'string' ? input.divisionId.trim() : '';
+  let division: { id: string; coachId: string | null } | null = null;
+  if (divisionRef) {
+    division = await resolveDivisionRef(divisionRef, sede.id);
+  }
+
+  // La división es obligatoria para un learner cuando la sede tiene divisiones
+  // activas (un alumno siempre debe caer en una división de su sede). Para
+  // coach es opcional: dirigir una división al crearlo es un caso puntual.
+  if (targetRole === 'learner' && !division) {
+    const activeDivisions = await prisma.division.count({
+      where: { sedeId: sede.id, isActive: true },
+    });
+    if (activeDivisions > 0) {
+      throw new BadRequestError('Debes asignar una división: la sede tiene divisiones activas');
+    }
+  }
+
   const passwordHash = await hashPassword(input.password);
 
   const user = await prisma.user.create({
@@ -134,6 +181,10 @@ export async function createUser(input: CreateUserInput, caller: AuthUser) {
       approvedBy: caller.id,
       approvedAt: new Date(),
       sedeId: sede.id,
+      // Un learner pertenece a la división y hereda su coach denormalizado.
+      // Coach/admin/instructor no llevan divisionId (el coach la DIRIGE, ver abajo).
+      divisionId: targetRole === 'learner' ? division?.id ?? null : null,
+      coachId: targetRole === 'learner' ? division?.coachId ?? null : null,
       roles: {
         create: { role: targetRole },
       },
@@ -160,15 +211,41 @@ export async function createUser(input: CreateUserInput, caller: AuthUser) {
         grantedBy: caller.id,
       },
     });
+
+    // Si se indicó una división, el coach recién creado pasa a DIRIGIRLA:
+    // se reemplaza su coach y se re-sincroniza el coach denormalizado de los
+    // learners de esa división (mismo criterio que updateDivision).
+    if (division) {
+      await prisma.$transaction(async (tx) => {
+        await tx.division.update({
+          where: { id: division!.id },
+          data: { coachId: user.id },
+        });
+        await tx.user.updateMany({
+          where: { divisionId: division!.id },
+          data: { coachId: user.id },
+        });
+      });
+    }
   }
 
-  return { id: user.id, email: user.email, role: targetRole, sedeId: sede.id };
+  return {
+    id: user.id,
+    email: user.email,
+    role: targetRole,
+    sedeId: sede.id,
+    divisionId: division?.id ?? null,
+  };
 }
 
-// Bulk create — el caller pasa un sedeId común a todo el lote (la UI hace
-// una creación masiva por sede), o cada item puede traer su propio sedeId.
-// Sólo admin global puede hacer bulk; coaches no porque por diseño la UI
-// de coaches crea uno por vez con permisos canCreateCoaches.
+// Bulk create — pensado para la carga masiva por Excel. El caller puede pasar
+// un `defaultSedeRef` común a todo el lote, y cada fila puede sobreescribirlo
+// con su propia sede. Cada fila soporta TODOS los campos de creación (rol,
+// teléfono, división por nombre/UUID) porque reutiliza `createUser` fila por
+// fila: así el comportamiento (validación, autorización, permisos de coach,
+// sincronización de división) es idéntico al alta individual y no se duplica.
+// Sólo admin global puede hacer bulk; coaches no porque por diseño la UI de
+// coaches crea uno por vez con permisos canCreateCoaches.
 export async function bulkCreateUsers(users: CreateUserInput[], caller: AuthUser, defaultSedeRef?: string) {
   if (!isGlobalAdmin(caller)) {
     throw new ForbiddenError('Sólo admin global puede hacer creación masiva');
@@ -180,85 +257,25 @@ export async function bulkCreateUsers(users: CreateUserInput[], caller: AuthUser
     throw new BadRequestError('Máximo 100 usuarios por lote');
   }
 
-  // Pre-resolver todas las sedes referenciadas para no consultarlas 1 por
-  // user. Construimos un mapa ref→id válido (sólo sedes activas).
-  const refsNeeded = new Set<string>();
-  if (defaultSedeRef) refsNeeded.add(defaultSedeRef);
-  for (const u of users) {
-    const ref = u.sedeId ?? u.sede;
-    if (ref) refsNeeded.add(ref);
-  }
-  const sedes = refsNeeded.size
-    ? await prisma.sede.findMany({
-        where: {
-          isActive: true,
-          OR: [
-            { id: { in: Array.from(refsNeeded) } },
-            { slug: { in: Array.from(refsNeeded) } },
-          ],
-        },
-        select: { id: true, slug: true },
-      })
-    : [];
-  const sedeIdByRef = new Map<string, string>();
-  for (const s of sedes) {
-    sedeIdByRef.set(s.id, s.id);
-    sedeIdByRef.set(s.slug, s.id);
-  }
-
-  const existingUsers = await prisma.user.findMany({
-    select: { email: true },
-  });
-  const existingEmails = new Set(existingUsers.map((u) => u.email.toLowerCase()));
-
-  // Procesamos en chunks paralelos. bcrypt es CPU-bound (~60ms con rounds=10),
-  // así que chunkear evita bloquear el event loop completo. CHUNK_SIZE=5
-  // mantiene el throughput sin saturar el pool de Prisma.
+  // Procesamos en chunks paralelos. bcrypt es CPU-bound (~60ms con rounds=10)
+  // y cada fila corre varias consultas Prisma; CHUNK_SIZE=5 mantiene el
+  // throughput sin bloquear el event loop ni saturar el pool.
   const CHUNK_SIZE = 5;
   const results: { email: string; success: boolean; error?: string }[] = new Array(users.length);
 
-  const processOne = async (userData: CreateUserInput) => {
-    const email = userData.email?.trim().toLowerCase();
-    if (!email || !isValidEmail(email)) {
-      return { email: email || 'desconocido', success: false, error: 'Email inválido' };
-    }
-    if (!userData.password || userData.password.length < 8) {
-      return { email, success: false, error: 'Contraseña debe tener al menos 8 caracteres' };
-    }
-    if (existingEmails.has(email)) {
-      return { email, success: false, error: 'Usuario ya existe' };
-    }
-    const ref = userData.sedeId ?? userData.sede ?? defaultSedeRef;
-    if (!ref) {
-      return { email, success: false, error: 'sedeId requerido' };
-    }
-    const resolvedSedeId = sedeIdByRef.get(ref);
-    if (!resolvedSedeId) {
-      return { email, success: false, error: 'Sede inválida o inactiva' };
-    }
-
+  const processOne = async (userData: CreateUserInput): Promise<{ email: string; success: boolean; error?: string }> => {
+    const email = userData.email?.trim().toLowerCase() || 'desconocido';
     try {
-      const passwordHash = await hashPassword(userData.password);
-      await prisma.user.create({
-        data: {
-          email,
-          passwordHash,
-          firstName: userData.firstName?.trim() || null,
-          lastName: userData.lastName?.trim() || null,
-          emailVerified: true,
-          // Bulk lo hace admin global → aprobados en el acto (ver createUser).
-          status: 'approved',
-          approvedBy: caller.id,
-          approvedAt: new Date(),
-          sedeId: resolvedSedeId,
-          roles: { create: { role: 'learner' } },
-        },
-      });
-      return { email, success: true };
+      // Cada fila hereda la sede default del lote si no trae la suya propia.
+      const row: CreateUserInput = { ...userData };
+      if (!row.sedeId && !row.sede && defaultSedeRef) {
+        row.sede = defaultSedeRef;
+      }
+      const created = await createUser(row, caller);
+      return { email: created.email, success: true };
     } catch (err: any) {
-      // P2002 = unique constraint. Pasa cuando dos emails iguales viajan en
-      // el mismo chunk: el pre-check con existingEmails sólo detecta dups
-      // contra la DB, no entre filas del lote.
+      // P2002 = unique constraint: dos emails iguales en el mismo chunk esquivan
+      // el findUnique de createUser (ambos ven la DB sin el registro aún).
       if (err?.code === 'P2002') {
         return { email, success: false, error: 'Usuario ya existe' };
       }
@@ -272,7 +289,6 @@ export async function bulkCreateUsers(users: CreateUserInput[], caller: AuthUser
     const chunkResults = await Promise.all(users.slice(start, end).map(processOne));
     for (let j = 0; j < chunkResults.length; j++) {
       results[start + j] = chunkResults[j];
-      if (chunkResults[j].success) existingEmails.add(chunkResults[j].email);
     }
   }
 

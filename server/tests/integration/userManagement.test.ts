@@ -364,4 +364,174 @@ describe('User management — regression suite', () => {
       expect(res.status).toBe(403);
     });
   });
+
+  // ============================================
+  // Asignación de división al crear (learner hereda coach; coach dirige)
+  // ============================================
+
+  describe('POST /admin/users — asignación de división al crear', () => {
+    async function createDivisionWithCoach(name: string, coachEmail: string) {
+      const coach = await seedUser({ email: coachEmail, role: 'coach', sedeId: sede.id });
+      const division = await prisma.division.create({
+        data: { sedeId: sede.id, name, coachId: coach.id },
+      });
+      return { coach, division };
+    }
+
+    it('learner con divisionId hereda el coach de la división', async () => {
+      const { coach, division } = await createDivisionWithCoach('Div A', 'coachA@um.test');
+      const res = await request(app)
+        .post('/api/admin/users')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          email: 'learner-div@um.test',
+          password: 'Password12345!',
+          role: 'learner',
+          sedeId: sede.id,
+          divisionId: division.id,
+        });
+      expect(res.status).toBe(201);
+      const created = await prisma.user.findUnique({
+        where: { email: 'learner-div@um.test' },
+        select: { divisionId: true, coachId: true },
+      });
+      expect(created?.divisionId).toBe(division.id);
+      expect(created?.coachId).toBe(coach.id);
+    });
+
+    it('acepta la división por nombre (case-insensitive)', async () => {
+      const { division } = await createDivisionWithCoach('Ventas Norte', 'coachN@um.test');
+      const res = await request(app)
+        .post('/api/admin/users')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          email: 'learner-name@um.test',
+          password: 'Password12345!',
+          role: 'learner',
+          sedeId: sede.id,
+          divisionId: 'ventas norte',
+        });
+      expect(res.status).toBe(201);
+      const created = await prisma.user.findUnique({
+        where: { email: 'learner-name@um.test' },
+        select: { divisionId: true },
+      });
+      expect(created?.divisionId).toBe(division.id);
+    });
+
+    it('learner SIN división falla si la sede tiene divisiones activas', async () => {
+      await createDivisionWithCoach('Div Obligatoria', 'coachO@um.test');
+      const res = await request(app)
+        .post('/api/admin/users')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          email: 'learner-nodiv@um.test',
+          password: 'Password12345!',
+          role: 'learner',
+          sedeId: sede.id,
+        });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/divisi/i);
+    });
+
+    it('coach nuevo con divisionId pasa a dirigir la división y re-sincroniza learners', async () => {
+      const { division } = await createDivisionWithCoach('Div Traspaso', 'oldcoach@um.test');
+      // Learner ya asignado a la división, apuntando al coach viejo.
+      const learner = await prisma.user.create({
+        data: {
+          email: 'existing-learner@um.test',
+          passwordHash: await hashPassword('Password12345!'),
+          emailVerified: true,
+          status: 'approved',
+          sedeId: sede.id,
+          divisionId: division.id,
+          coachId: division.coachId,
+          roles: { create: { role: 'learner' } },
+        },
+      });
+
+      const res = await request(app)
+        .post('/api/admin/users')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          email: 'newcoach@um.test',
+          password: 'Password12345!',
+          role: 'coach',
+          sedeId: sede.id,
+          divisionId: division.id,
+        });
+      expect(res.status).toBe(201);
+
+      const newCoach = await prisma.user.findUnique({
+        where: { email: 'newcoach@um.test' },
+        select: { id: true },
+      });
+      const refreshedDiv = await prisma.division.findUnique({
+        where: { id: division.id },
+        select: { coachId: true },
+      });
+      expect(refreshedDiv?.coachId).toBe(newCoach!.id);
+
+      const refreshedLearner = await prisma.user.findUnique({
+        where: { id: learner.id },
+        select: { coachId: true },
+      });
+      expect(refreshedLearner?.coachId).toBe(newCoach!.id);
+    });
+  });
+
+  // ============================================
+  // Bulk create — campos extendidos (rol, sede por nombre, división)
+  // ============================================
+
+  describe('POST /admin/users/bulk — campos extendidos', () => {
+    it('crea con rol coach y sede por nombre por-fila', async () => {
+      const res = await request(app)
+        .post('/api/admin/users/bulk')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          users: [
+            { email: 'bulk-coach@um.test', password: 'Password12345!', role: 'coach', sede: 'Test Sede' },
+            { email: 'bulk-learner@um.test', password: 'Password12345!', role: 'learner', sede: 'Test Sede' },
+          ],
+        });
+      expect(res.status).toBe(200);
+      expect(res.body.summary.created).toBe(2);
+      const coach = await prisma.user.findUnique({
+        where: { email: 'bulk-coach@um.test' },
+        include: { roles: true, coachPermissions: true },
+      });
+      expect(coach?.roles.some((r) => r.role === 'coach')).toBe(true);
+      expect(coach?.coachPermissions).not.toBeNull();
+    });
+
+    it('resuelve la división por nombre para un learner en bulk', async () => {
+      const coach = await seedUser({ email: 'bcoach@um.test', role: 'coach', sedeId: sede.id });
+      const division = await prisma.division.create({
+        data: { sedeId: sede.id, name: 'Bulk Div', coachId: coach.id },
+      });
+      const res = await request(app)
+        .post('/api/admin/users/bulk')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          users: [
+            {
+              email: 'bulk-div-learner@um.test',
+              password: 'Password12345!',
+              role: 'learner',
+              sede: 'Test Sede',
+              divisionId: 'Bulk Div',
+            },
+          ],
+        });
+      expect(res.status).toBe(200);
+      expect(res.body.summary.created).toBe(1);
+      const created = await prisma.user.findUnique({
+        where: { email: 'bulk-div-learner@um.test' },
+        select: { divisionId: true, coachId: true },
+      });
+      expect(created?.divisionId).toBe(division.id);
+      expect(created?.coachId).toBe(coach.id);
+    });
+  });
 });

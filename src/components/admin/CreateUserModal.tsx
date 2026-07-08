@@ -21,6 +21,7 @@ import { Loader2, AlertCircle, CheckCircle, GraduationCap, Shield, User } from "
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api-client";
 import { useSedes } from "@/hooks/useSedes";
+import { usePublicDivisions } from "@/hooks/useDivisions";
 import { COUNTRIES, DEFAULT_COUNTRY_CODE, countryLabel } from "@/lib/countries";
 
 type UserRole = "learner" | "coach" | "admin";
@@ -82,9 +83,14 @@ export default function CreateUserModal({
   const [role, setRole] = useState<UserRole>(defaultRole);
   const [country, setCountry] = useState<string>(DEFAULT_COUNTRY_CODE);
   const [sedeId, setSedeId] = useState<string>("");
+  const [divisionId, setDivisionId] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  // Divisiones activas de la sede elegida (endpoint público, sede-scoped).
+  // Cadena País → Sede → División: al cambiar la sede se recargan.
+  const { divisions, isLoading: divisionsLoading } = usePublicDivisions(sedeId || null);
 
   // Sedes activas del país seleccionado. Las sedes legacy sin país se tratan
   // como Guatemala (el país por defecto), para que no desaparezcan del listado.
@@ -102,6 +108,15 @@ export default function CreateUserModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [country, sedes]);
 
+  // Si la sede cambió y la división elegida ya no pertenece a la nueva lista,
+  // la limpiamos para no enviar una división de otra sede.
+  useEffect(() => {
+    if (divisionId && !divisions.some((d) => d.id === divisionId)) {
+      setDivisionId("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [divisions]);
+
   const resetForm = () => {
     setEmail("");
     setPassword("");
@@ -110,6 +125,7 @@ export default function CreateUserModal({
     setRole(defaultRole);
     setCountry(DEFAULT_COUNTRY_CODE);
     setSedeId("");
+    setDivisionId("");
     setError(null);
     setSuccess(false);
   };
@@ -120,6 +136,11 @@ export default function CreateUserModal({
     if (!password) return "La contraseña es requerida";
     if (password.length < 8) return "La contraseña debe tener al menos 8 caracteres";
     if (!sedeId) return "Debes seleccionar una sede";
+    // La división es obligatoria para un asesor cuando la sede tiene divisiones.
+    // Para un coach es opcional (dirigir una división al crearlo es puntual).
+    if (role === "learner" && divisions.length > 0 && !divisionId) {
+      return "Debes seleccionar una división";
+    }
     return null;
   };
 
@@ -143,6 +164,9 @@ export default function CreateUserModal({
         lastName: lastName.trim(),
         role,
         sedeId,
+        // Sólo se envía si el admin eligió una división. Para learner define
+        // su división+coach; para coach lo pone a dirigir esa división.
+        ...(divisionId ? { divisionId } : {}),
       });
 
       setSuccess(true);
@@ -310,6 +334,44 @@ export default function CreateUserModal({
               </SelectContent>
             </Select>
           </div>
+
+          {sedeId && divisions.length > 0 && (
+            <div className="space-y-2">
+              <Label htmlFor="division">
+                {role === "coach" ? "División a dirigir" : "División"}
+                {role === "learner" ? " *" : ""}
+              </Label>
+              <Select
+                value={divisionId}
+                onValueChange={setDivisionId}
+                disabled={isSubmitting || success || divisionsLoading}
+              >
+                <SelectTrigger id="division">
+                  <SelectValue
+                    placeholder={
+                      divisionsLoading
+                        ? "Cargando divisiones..."
+                        : role === "coach"
+                          ? "Sin asignar (opcional)"
+                          : "Seleccionar división"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {divisions.map((division) => (
+                    <SelectItem key={division.id} value={division.id}>
+                      {division.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                {role === "coach"
+                  ? "El coach pasará a dirigir esta división (reemplaza al coach actual)."
+                  : "El asesor hereda el coach de la división."}
+              </p>
+            </div>
+          )}
 
           {!lockRole && (
             <div className="space-y-2">
