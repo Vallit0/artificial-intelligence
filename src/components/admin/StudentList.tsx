@@ -19,12 +19,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { type Division } from "@/hooks/useDivisions";
-import { Award, Check, ChevronDown, ChevronUp, Clock, Eye, FileText, KeyRound, Lock, Pencil, Unlock, UserCog, UserPen } from "lucide-react";
+import { Award, Check, ChevronDown, ChevronUp, Clock, Eye, FileText, KeyRound, Lock, Pencil, Trash2, Unlock, UserCog, UserPen } from "lucide-react";
 import StudentDetailModal from "./StudentDetailModal";
 import GradeModal from "./GradeModal";
 import CertificateModal from "./CertificateModal";
 import EditNameModal from "./EditNameModal";
 import EditUserModal from "./EditUserModal";
+import DeleteUserModal from "./DeleteUserModal";
 import ResetStudentPasswordModal from "./ResetStudentPasswordModal";
 import { useToast } from "@/hooks/use-toast";
 import { UpdateUserPatch, type ExamKind } from "@/hooks/useStudents";
@@ -46,6 +47,9 @@ interface StudentListProps {
   // nombre simple (que también pueden usar los coaches).
   canEditUser?: boolean;
   onUpdateUser?: (userId: string, patch: UpdateUserPatch) => Promise<boolean>;
+  // Borrado de usuario (admin global). El backend gatea con requireGlobalAdmin
+  // y bloquea el auto-borrado.
+  canDeleteUser?: boolean;
 }
 
 const NO_DIVISION = "__none__";
@@ -59,7 +63,7 @@ const formatDuration = (seconds: number): string => {
   return `${minutes}m`;
 };
 
-export default function StudentList({ students, onAssignGrade, onToggleExamen, onBulkToggleExamen, onRefetch, divisions, canAssignDivision, onAssignDivision, isAdmin, currentUserId, canEditUser, onUpdateUser }: StudentListProps) {
+export default function StudentList({ students, onAssignGrade, onToggleExamen, onBulkToggleExamen, onRefetch, divisions, canAssignDivision, onAssignDivision, isAdmin, currentUserId, canEditUser, onUpdateUser, canDeleteUser }: StudentListProps) {
   const { toast } = useToast();
   const [assigningDivisionId, setAssigningDivisionId] = useState<string | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -67,6 +71,7 @@ export default function StudentList({ students, onAssignGrade, onToggleExamen, o
   const [certificate, setCertificate] = useState<{ student: Student; level: 1 | 2 } | null>(null);
   const [editNameStudent, setEditNameStudent] = useState<Student | null>(null);
   const [editUserStudent, setEditUserStudent] = useState<Student | null>(null);
+  const [deleteUserStudent, setDeleteUserStudent] = useState<Student | null>(null);
   const [resetPasswordStudent, setResetPasswordStudent] = useState<Student | null>(null);
   const [sortBy, setSortBy] = useState<"name" | "sessions" | "grade">("sessions");
   const [sortAsc, setSortAsc] = useState(false);
@@ -451,6 +456,19 @@ export default function StudentList({ students, onAssignGrade, onToggleExamen, o
                   >
                     <Pencil className="w-4 h-4" />
                   </Button>
+                  {/* Borrado: sólo admin global (el endpoint es requireGlobalAdmin)
+                      y nunca la propia cuenta (el backend igual lo bloquea). */}
+                  {canDeleteUser && student.id !== currentUserId && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      onClick={() => setDeleteUserStudent(student)}
+                      title="Eliminar usuario"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
                   {/* Certificados por nivel: disponibles automáticamente al
                       aprobar cada examen (N1 = Prospección, N2 = Objeciones). */}
                   {student.level2Unlocked && (
@@ -543,6 +561,13 @@ export default function StudentList({ students, onAssignGrade, onToggleExamen, o
         student={resetPasswordStudent}
         open={!!resetPasswordStudent}
         onOpenChange={(open) => !open && setResetPasswordStudent(null)}
+      />
+
+      <DeleteUserModal
+        student={deleteUserStudent}
+        open={!!deleteUserStudent}
+        onOpenChange={(open) => !open && setDeleteUserStudent(null)}
+        onSuccess={onRefetch}
       />
     </>
   );

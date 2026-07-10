@@ -90,7 +90,13 @@ export default function DeleteUserModal({
             Cancelar
           </AlertDialogCancel>
           <AlertDialogAction
-            onClick={handleDelete}
+            onClick={(e) => {
+              // Evita el auto-cierre del AlertDialog: así, si el borrado falla,
+              // el modal queda abierto mostrando el error. En éxito lo cerramos
+              // manualmente desde handleDelete.
+              e.preventDefault();
+              handleDelete();
+            }}
             disabled={isDeleting}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >

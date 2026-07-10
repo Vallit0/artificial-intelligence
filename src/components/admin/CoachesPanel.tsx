@@ -20,9 +20,19 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, GraduationCap, KeyRound, Loader2, Plus, Search, ShieldCheck, ShieldOff, UserPen } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { AlertCircle, GraduationCap, KeyRound, Loader2, Plus, Search, ShieldCheck, ShieldOff, Trash2, UserPen } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useCoaches, Coach } from "@/hooks/useCoaches";
+import { useCoaches, Coach, coachDisplayName } from "@/hooks/useCoaches";
 import EditCoachModal from "./EditCoachModal";
 import ResetStudentPasswordModal from "./ResetStudentPasswordModal";
 import CreateUserModal from "./CreateUserModal";
@@ -36,14 +46,23 @@ const toUserRef = (c: Coach) => ({
   last_name: c.lastName,
 });
 
-export default function CoachesPanel() {
-  const { coaches, isLoading, error, updatePermissions, refetch } = useCoaches();
+interface CoachesPanelProps {
+  // Borrar coaches usa DELETE /api/admin/users/:id (requireGlobalAdmin). Sólo
+  // se muestra el botón a un admin global; un coach con canCreateCoaches ve el
+  // panel pero no puede borrar.
+  canDelete?: boolean;
+}
+
+export default function CoachesPanel({ canDelete = false }: CoachesPanelProps) {
+  const { coaches, isLoading, error, updatePermissions, deleteCoach, refetch } = useCoaches();
   const { toast } = useToast();
   const [query, setQuery] = useState("");
   const [sedeFilter, setSedeFilter] = useState<string>("all");
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [editCoach, setEditCoach] = useState<Coach | null>(null);
   const [resetCoach, setResetCoach] = useState<Coach | null>(null);
+  const [confirmDeleteCoach, setConfirmDeleteCoach] = useState<Coach | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
 
   const sedeOptions = useMemo(() => {
@@ -81,6 +100,24 @@ export default function CoachesPanel() {
       toast({ title: "Error", description: message, variant: "destructive" });
     } finally {
       setPendingId(null);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirmDeleteCoach) return;
+    setDeleting(true);
+    try {
+      await deleteCoach(confirmDeleteCoach.id);
+      toast({
+        title: "Coach eliminado",
+        description: `${coachDisplayName(confirmDeleteCoach)} fue eliminado. Sus estudiantes y divisiones quedaron sin coach asignado.`,
+      });
+      setConfirmDeleteCoach(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error al eliminar";
+      toast({ title: "No se pudo eliminar", description: message, variant: "destructive" });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -252,6 +289,17 @@ export default function CoachesPanel() {
                           >
                             <KeyRound className="w-4 h-4" />
                           </Button>
+                          {canDelete && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              onClick={() => setConfirmDeleteCoach(coach)}
+                              title="Eliminar coach"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -302,6 +350,37 @@ export default function CoachesPanel() {
         lockRole
         title="Crear coach"
       />
+
+      <AlertDialog
+        open={confirmDeleteCoach !== null}
+        onOpenChange={(open) => !open && !deleting && setConfirmDeleteCoach(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              ¿Eliminar coach {confirmDeleteCoach ? coachDisplayName(confirmDeleteCoach) : ""}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción elimina permanentemente la cuenta del coach y todos sus datos.
+              Sus estudiantes asignados y las divisiones que dirige quedarán{" "}
+              <strong>sin coach</strong> (podés reasignarlos después). No se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleDelete();
+              }}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Eliminar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

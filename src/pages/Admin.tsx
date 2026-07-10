@@ -527,6 +527,7 @@ export default function Admin() {
                   currentUserId={user.id}
                   canEditUser={isAdmin}
                   onUpdateUser={updateUser}
+                  canDeleteUser={isAdmin}
                 />
               )}
             </ScrollArea>
@@ -609,7 +610,7 @@ export default function Admin() {
           </TabsContent>
 
           <TabsContent value="coaches">
-            <CoachesPanel />
+            <CoachesPanel canDelete={isAdmin} />
           </TabsContent>
 
           <TabsContent value="agents">
