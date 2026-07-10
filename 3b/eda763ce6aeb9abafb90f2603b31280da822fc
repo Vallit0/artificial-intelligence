@@ -1,0 +1,37 @@
+src/components/admin/CoachesPanel.tsx
+  s_9feceb3e5165df::t_e3f2f68b9dc5e6 353-383
+  s_9feceb3e5165df::t_74212944d7780c 49-57,64-65
+  s_9feceb3e5165df::t_2a2540ba797325 23-33,35
+  s_9feceb3e5165df::t_2c191480d71a9d 106-123
+  s_9feceb3e5165df::t_4584b261e7a987 292-302
+src/hooks/useCoaches.ts
+  s_9feceb3e5165df::t_edbf9f2a636245 69-83,88
+src/components/admin/StudentList.tsx
+  s_9feceb3e5165df::t_edb4f59aa01ff6 22
+  s_9feceb3e5165df::t_2302b20ec5be79 28,50-52,66,74,459-471,565-571
+src/components/admin/DeleteUserModal.tsx
+  s_9feceb3e5165df::t_deba76f642c88c 93-99
+src/pages/Admin.tsx
+  s_9feceb3e5165df::t_e6c08ecfeb4899 530,613
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "3beda763ce6aeb9abafb90f2603b31280da822fc",
+  "prompts": {},
+  "humans": {
+    "h_fe03d8619f57ba": {
+      "author": "vallit0 <evallecyt@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_9feceb3e5165df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f9b8fc8-1150-488c-bbe1-2e2dc830a2a6",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "vallit0 <evallecyt@gmail.com>"
+    }
+  }
+}
