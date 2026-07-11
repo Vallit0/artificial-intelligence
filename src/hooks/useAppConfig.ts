@@ -10,6 +10,9 @@ export interface AppConfig {
   callDurationObjecionesSec: number;
   passThresholdProspeccion: number;
   passThresholdObjeciones: number;
+  // Tiempo mínimo de práctica (segundos) requerido antes de rendir cada examen.
+  minPracticeSecondsProspeccion: number;
+  minPracticeSecondsObjeciones: number;
   certificateInstructorName: string | null;
   certificateDirectorName: string | null;
   certificateCourseName: string | null;
@@ -31,6 +34,8 @@ export const APP_CONFIG_DEFAULTS = {
   callDurationObjecionesSec: 600,
   passThresholdProspeccion: 75,
   passThresholdObjeciones: 80,
+  minPracticeSecondsProspeccion: 0,
+  minPracticeSecondsObjeciones: 0,
 } as const;
 
 export type AppConfigPatch = Partial<
@@ -40,6 +45,8 @@ export type AppConfigPatch = Partial<
     | "callDurationObjecionesSec"
     | "passThresholdProspeccion"
     | "passThresholdObjeciones"
+    | "minPracticeSecondsProspeccion"
+    | "minPracticeSecondsObjeciones"
     | "certificateInstructorName"
     | "certificateDirectorName"
     | "certificateCourseName"

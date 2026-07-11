@@ -4,8 +4,53 @@
 
 import prisma from '../db/index.js';
 import { PracticeSession, CreateSessionInput, UpdateSessionInput, SessionEvaluation, UserStats } from '../types/index.js';
-import { NotFoundError } from '../utils/errors.js';
+import { NotFoundError, ForbiddenError } from '../utils/errors.js';
 import { getAppConfig } from './appConfig.service.js';
+
+// Modos de práctica (practiceMode) que cuentan como práctica de cada nivel.
+// Los intentos de examen (examType != null) NUNCA cuentan. 'asesor' y 'coach'
+// son modos auxiliares que no gatean ningún examen.
+const PROSPECCION_PRACTICE_MODES = ['cliente', 'cliente_prospeccion'];
+const OBJECIONES_PRACTICE_MODES = ['objeciones'];
+
+// Suma el tiempo de práctica (segundos) acumulado por el usuario en cada nivel.
+export async function getPracticeSecondsByLevel(
+  userId: string,
+): Promise<{ prospeccion: number; objeciones: number }> {
+  const [prosp, obj] = await Promise.all([
+    prisma.practiceSession.aggregate({
+      where: { userId, examType: null, practiceMode: { in: PROSPECCION_PRACTICE_MODES } },
+      _sum: { durationSeconds: true },
+    }),
+    prisma.practiceSession.aggregate({
+      where: { userId, examType: null, practiceMode: { in: OBJECIONES_PRACTICE_MODES } },
+      _sum: { durationSeconds: true },
+    }),
+  ]);
+  return {
+    prospeccion: prosp._sum.durationSeconds || 0,
+    objeciones: obj._sum.durationSeconds || 0,
+  };
+}
+
+// Gate por tiempo de práctica: si hay un mínimo configurado para ese examen y
+// el estudiante no lo alcanzó, rechaza. 0 = sin requisito.
+async function assertPracticeTimeMet(userId: string, examType: string): Promise<void> {
+  const cfg = await getAppConfig();
+  const required =
+    examType === 'objeciones'
+      ? cfg.minPracticeSecondsObjeciones
+      : cfg.minPracticeSecondsProspeccion;
+  if (!required || required <= 0) return;
+  const practiced = await getPracticeSecondsByLevel(userId);
+  const have = examType === 'objeciones' ? practiced.objeciones : practiced.prospeccion;
+  if (have < required) {
+    const faltanMin = Math.ceil((required - have) / 60);
+    throw new ForbiddenError(
+      `Necesitás más práctica antes de rendir este examen. Te faltan ~${faltanMin} min de práctica.`,
+    );
+  }
+}
 
 // ============================================
 // Session Operations
@@ -25,7 +70,18 @@ export async function getUserSessions(userId: string, limit: number = 100): Prom
   return sessions.map(mapToSession);
 }
 
-export async function createSession(userId: string, input: CreateSessionInput): Promise<PracticeSession> {
+export async function createSession(
+  userId: string,
+  input: CreateSessionInput,
+  opts?: { bypassExamGate?: boolean },
+): Promise<PracticeSession> {
+  // Sesión de EXAMEN: verifica el tiempo mínimo de práctica configurado, salvo
+  // que el caller sea privilegiado (admin/coach global) — espeja el bypass del
+  // frontend. Las sesiones de práctica normales no se gatean.
+  if (input.examType && !opts?.bypassExamGate) {
+    await assertPracticeTimeMet(userId, input.examType);
+  }
+
   const session = await prisma.practiceSession.create({
     data: {
       userId,

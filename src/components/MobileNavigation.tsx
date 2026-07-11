@@ -60,7 +60,7 @@ const MobileNavigation = () => {
   return (
     <nav
       data-tour="nav-mobile"
-      className="fixed bottom-0 left-0 right-0 py-2 px-2 lg:hidden z-30"
+      className="fixed bottom-0 left-0 right-0 py-2 px-1 lg:hidden z-30"
       style={{
         background: "rgba(255,255,255,0.75)",
         backdropFilter: "blur(20px)",
@@ -92,7 +92,7 @@ const MobileNavigation = () => {
               key={item.href}
               onClick={() => navigate(item.href)}
               className={cn(
-                "flex flex-col items-center gap-1 px-3 py-2 rounded-2xl transition-all duration-200",
+                "flex flex-col items-center gap-1 px-2 py-2 rounded-2xl transition-all duration-200 min-w-0",
                 isActive ? "text-white" : "text-muted-foreground hover:text-foreground",
               )}
               style={{
@@ -113,7 +113,7 @@ const MobileNavigation = () => {
               startTutorial();
               navigate("/practice");
             }}
-            className="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl transition-all duration-200 text-muted-foreground hover:text-foreground"
+            className="flex flex-col items-center gap-1 px-2 py-2 rounded-2xl transition-all duration-200 text-muted-foreground hover:text-foreground min-w-0"
             title="Ver el tutorial guiado paso a paso"
           >
             <HelpCircle className="w-5 h-5" />
@@ -123,7 +123,7 @@ const MobileNavigation = () => {
         {canSwitchLevel && (
           <button
             onClick={toggle}
-            className="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl transition-all duration-200 text-muted-foreground hover:text-foreground"
+            className="flex flex-col items-center gap-1 px-2 py-2 rounded-2xl transition-all duration-200 text-muted-foreground hover:text-foreground min-w-0"
             title={`Cambiar a ${levelLabel(currentLevel === 1 ? 2 : 1)}`}
             style={{
               animation: animateLevelChange

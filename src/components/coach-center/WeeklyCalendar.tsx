@@ -47,8 +47,11 @@ export default function WeeklyCalendar({
 
   return (
     <div className="border rounded-xl overflow-hidden bg-card">
+     {/* Scroll horizontal en móvil: la semana de 7 días necesita un ancho
+         mínimo para no aplastar las columnas/citas. */}
+     <div className="overflow-x-auto">
       {/* Day headers */}
-      <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b">
+      <div className="grid grid-cols-[48px_repeat(7,minmax(84px,1fr))] border-b min-w-[640px]">
         <div className="border-r bg-muted/30" />
         {days.map((day, i) => {
           const today = isToday(day);
@@ -89,7 +92,7 @@ export default function WeeklyCalendar({
       </div>
 
       {/* Time grid */}
-      <div className="grid grid-cols-[60px_repeat(7,1fr)] overflow-y-auto max-h-[calc(64px*10+2px)]">
+      <div className="grid grid-cols-[48px_repeat(7,minmax(84px,1fr))] overflow-y-auto max-h-[calc(64px*10+2px)] min-w-[640px]">
         {HOURS.map((hour) => (
           <div key={hour} className="contents">
             {/* Hour label */}
@@ -129,6 +132,7 @@ export default function WeeklyCalendar({
           </div>
         ))}
       </div>
+     </div>
     </div>
   );
 }

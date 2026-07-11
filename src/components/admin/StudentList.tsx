@@ -19,7 +19,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { type Division } from "@/hooks/useDivisions";
-import { Award, Check, ChevronDown, ChevronUp, Clock, Eye, FileText, KeyRound, Lock, Pencil, Trash2, Unlock, UserCog, UserPen } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Award, Check, ChevronDown, ChevronUp, Clock, Eye, FileText, KeyRound, Lock, MoreVertical, Pencil, Trash2, Unlock, UserCog, UserPen } from "lucide-react";
 import StudentDetailModal from "./StudentDetailModal";
 import GradeModal from "./GradeModal";
 import CertificateModal from "./CertificateModal";
@@ -174,7 +181,7 @@ export default function StudentList({ students, onAssignGrade, onToggleExamen, o
         onValueChange={(v) => handleDivisionChange(student, v)}
         disabled={assigningDivisionId === student.id || !student.sedeId}
       >
-        <SelectTrigger className="h-8 w-[160px] mx-auto text-xs">
+        <SelectTrigger className="h-8 w-[130px] sm:w-[160px] mx-auto text-xs">
           <SelectValue placeholder="Sin división" />
         </SelectTrigger>
         <SelectContent>
@@ -408,91 +415,9 @@ export default function StudentList({ students, onAssignGrade, onToggleExamen, o
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex items-center justify-end gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => setSelectedStudent(student)}
-                    title="Ver detalle"
-                  >
-                    <Eye className="w-4 h-4" />
-                  </Button>
-                  {canEditUser && onUpdateUser ? (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => setEditUserStudent(student)}
-                      title="Editar usuario"
-                    >
-                      <UserCog className="w-4 h-4" />
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => setEditNameStudent(student)}
-                      title="Editar nombre"
-                    >
-                      <UserPen className="w-4 h-4" />
-                    </Button>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => setResetPasswordStudent(student)}
-                    title="Resetear contraseña"
-                  >
-                    <KeyRound className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => setGradeStudent(student)}
-                    title="Editar calificación"
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </Button>
-                  {/* Borrado: sólo admin global (el endpoint es requireGlobalAdmin)
-                      y nunca la propia cuenta (el backend igual lo bloquea). */}
-                  {canDeleteUser && student.id !== currentUserId && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive hover:text-destructive"
-                      onClick={() => setDeleteUserStudent(student)}
-                      title="Eliminar usuario"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  )}
-                  {/* Certificados por nivel: disponibles automáticamente al
-                      aprobar cada examen (N1 = Prospección, N2 = Objeciones). */}
-                  {student.level2Unlocked && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => setCertificate({ student, level: 1 })}
-                      title="Certificado de Nivel 1 (Prospección)"
-                    >
-                      <Award className="w-4 h-4 mr-1" />
-                      Cert. N1
-                    </Button>
-                  )}
-                  {student.courseCompleted && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => setCertificate({ student, level: 2 })}
-                      title="Certificado de Nivel 2 (Manejo de Objeciones)"
-                    >
-                      <Award className="w-4 h-4 mr-1" />
-                      Cert. N2
-                    </Button>
-                  )}
+                  {/* "Dar de Alta" queda visible por ser la acción principal;
+                      el resto (incluido Eliminar) se agrupa en un menú ⋯ para
+                      no desbordar la fila en móvil. */}
                   {student.finalGrade === null && (
                     <Button
                       variant="default"
@@ -500,10 +425,72 @@ export default function StudentList({ students, onAssignGrade, onToggleExamen, o
                       onClick={() => handleApprove(student)}
                       disabled={approvingId === student.id}
                     >
-                      <Check className="w-4 h-4 mr-1" />
-                      {approvingId === student.id ? "Aprobando..." : "Dar de Alta"}
+                      <Check className="w-4 h-4 sm:mr-1" />
+                      <span className="hidden sm:inline">
+                        {approvingId === student.id ? "Aprobando..." : "Dar de Alta"}
+                      </span>
                     </Button>
                   )}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" title="Acciones">
+                        <MoreVertical className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-52">
+                      <DropdownMenuItem onClick={() => setSelectedStudent(student)}>
+                        <Eye className="w-4 h-4 mr-2" />
+                        Ver detalle
+                      </DropdownMenuItem>
+                      {canEditUser && onUpdateUser ? (
+                        <DropdownMenuItem onClick={() => setEditUserStudent(student)}>
+                          <UserCog className="w-4 h-4 mr-2" />
+                          Editar usuario
+                        </DropdownMenuItem>
+                      ) : (
+                        <DropdownMenuItem onClick={() => setEditNameStudent(student)}>
+                          <UserPen className="w-4 h-4 mr-2" />
+                          Editar nombre
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem onClick={() => setResetPasswordStudent(student)}>
+                        <KeyRound className="w-4 h-4 mr-2" />
+                        Resetear contraseña
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setGradeStudent(student)}>
+                        <Pencil className="w-4 h-4 mr-2" />
+                        Editar calificación
+                      </DropdownMenuItem>
+                      {/* Certificados por nivel: disponibles al aprobar cada
+                          examen (N1 = Prospección, N2 = Objeciones). */}
+                      {student.level2Unlocked && (
+                        <DropdownMenuItem onClick={() => setCertificate({ student, level: 1 })}>
+                          <Award className="w-4 h-4 mr-2" />
+                          Certificado N1
+                        </DropdownMenuItem>
+                      )}
+                      {student.courseCompleted && (
+                        <DropdownMenuItem onClick={() => setCertificate({ student, level: 2 })}>
+                          <Award className="w-4 h-4 mr-2" />
+                          Certificado N2
+                        </DropdownMenuItem>
+                      )}
+                      {/* Borrado: sólo admin global (el endpoint es
+                          requireGlobalAdmin) y nunca la propia cuenta. */}
+                      {canDeleteUser && student.id !== currentUserId && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => setDeleteUserStudent(student)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Eliminar usuario
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </TableCell>
             </TableRow>

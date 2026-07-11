@@ -160,9 +160,9 @@ export default function LatencyTesterPanel() {
                 </p>
                 <div className="space-y-1.5">
                   {report.serverProbes.map((p) => (
-                    <div key={p.service} className="flex items-center justify-between text-xs">
-                      <span className="flex items-center gap-2">
-                        <span className="font-medium capitalize">{p.service}</span>
+                    <div key={p.service} className="flex items-center justify-between gap-2 text-xs">
+                      <span className="flex items-center gap-2 min-w-0">
+                        <span className="font-medium capitalize shrink-0">{p.service}</span>
                         {p.service === "elevenlabs" && (
                           <Badge variant="outline" className="text-[10px] flex items-center gap-0.5">
                             <Mic className="w-2.5 h-2.5" />
@@ -172,12 +172,12 @@ export default function LatencyTesterPanel() {
                         {p.skipped && (
                           <Badge variant="secondary" className="text-[10px]">no configurado</Badge>
                         )}
-                        <span className="text-muted-foreground font-mono">
+                        <span className="text-muted-foreground font-mono truncate">
                           {p.target}
                           {p.detail ? ` — ${p.detail}` : ""}
                         </span>
                       </span>
-                      <span className={`font-mono font-semibold tabular-nums ${
+                      <span className={`font-mono font-semibold tabular-nums shrink-0 ${
                         p.skipped
                           ? "text-muted-foreground"
                           : !p.ok

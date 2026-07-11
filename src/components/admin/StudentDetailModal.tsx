@@ -40,7 +40,7 @@ export default function StudentDetailModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh]">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl">
             {[student.first_name, student.last_name].filter(Boolean).join(' ') || "Sin nombre"}
@@ -49,21 +49,21 @@ export default function StudentDetailModal({
         </DialogHeader>
 
         {/* Summary Stats */}
-        <div className="grid grid-cols-3 gap-4 py-4">
-          <div className="text-center p-3 bg-muted rounded-lg">
-            <p className="text-2xl font-bold text-foreground">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4 py-4">
+          <div className="text-center p-2 sm:p-3 bg-muted rounded-lg">
+            <p className="text-lg sm:text-2xl font-bold text-foreground">
               {student.totalSessions}
             </p>
             <p className="text-xs text-muted-foreground">Sesiones</p>
           </div>
-          <div className="text-center p-3 bg-muted rounded-lg">
-            <p className="text-2xl font-bold text-foreground">
+          <div className="text-center p-2 sm:p-3 bg-muted rounded-lg">
+            <p className="text-lg sm:text-2xl font-bold text-foreground">
               {formatDuration(student.totalDuration)}
             </p>
             <p className="text-xs text-muted-foreground">Tiempo Total</p>
           </div>
-          <div className="text-center p-3 bg-muted rounded-lg">
-            <p className="text-2xl font-bold text-foreground">
+          <div className="text-center p-2 sm:p-3 bg-muted rounded-lg">
+            <p className="text-lg sm:text-2xl font-bold text-foreground">
               {student.averageScore !== null
                 ? `${Math.round(student.averageScore)}%`
                 : "-"}

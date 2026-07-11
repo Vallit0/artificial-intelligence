@@ -165,8 +165,10 @@ export default function AgentLatencyPanel() {
               />
             </div>
 
-            {/* Recent sessions table */}
-            <div className="border rounded-lg overflow-hidden">
+            {/* Recent sessions table — scroll horizontal en móvil (el grid tiene
+                un ancho mínimo para no aplastar las columnas de métricas). */}
+            <div className="border rounded-lg overflow-x-auto">
+              <div className="min-w-[640px]">
               <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-muted/40 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                 <div className="col-span-3">Estudiante</div>
                 <div className="col-span-2">Escenario</div>
@@ -209,6 +211,7 @@ export default function AgentLatencyPanel() {
                     </div>
                   </div>
                 ))}
+              </div>
               </div>
             </div>
 

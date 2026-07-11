@@ -636,7 +636,7 @@ const Practice = () => {
             aparece cuando la conexión se degrada; en verde no molesta. */}
         {sessionState === "active" && connectionQuality !== "good" && (
           <div
-            className={`absolute top-20 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full z-10 shadow-md animate-fade-in ${
+            className={`absolute top-20 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full z-10 shadow-md animate-fade-in max-w-[92vw] text-center ${
               connectionQuality === "offline"
                 ? "bg-red-500/15 text-red-600 dark:text-red-300 border border-red-500/30"
                 : "bg-amber-500/15 text-amber-600 dark:text-amber-300 border border-amber-500/30"
@@ -649,7 +649,7 @@ const Practice = () => {
             ) : (
               <Wifi className="h-4 w-4 shrink-0" />
             )}
-            <span className="text-sm font-semibold whitespace-nowrap">
+            <span className="text-xs sm:text-sm font-semibold">
               {connectionQuality === "offline"
                 ? "Sin conexión a internet"
                 : "Internet bajo · la voz puede entrecortarse"}
@@ -710,7 +710,7 @@ const Practice = () => {
 
             {/* Greeting */}
             <div
-              className="text-center mb-8 h-16 flex flex-col justify-center transition-all duration-500 ease-in-out"
+              className="text-center mb-8 min-h-16 flex flex-col justify-center transition-all duration-500 ease-in-out"
               style={{
                 opacity: greetingVisible ? 1 : 0,
                 transform: greetingVisible ? "translateY(0)" : "translateY(8px)",
@@ -797,7 +797,7 @@ const Practice = () => {
             )}
             <button onClick={() => handleStart(selectedAgent || undefined)}>
               <AICompanionOrb
-                size="lg"
+                size={isMobile ? "sm" : "lg"}
                 energy
                 speaking={false}
                 listening={isConnecting}
@@ -843,7 +843,7 @@ const Practice = () => {
               <AICompanionOrb speaking={demoCall ? demoSpeaking : isSpeaking} listening={demoCall ? !demoSpeaking : !isMuted} size={isMobile ? "sm" : "lg"} energy gradient={isLevel2 ? LEVEL2_ORB_GRADIENT : selectedAgent?.orbGradient} />
             </div>
 
-            <div className="fixed left-1/2 -translate-x-1/2 z-40 bottom-[5.5rem] lg:bottom-8">
+            <div className="fixed left-1/2 -translate-x-1/2 z-40 bottom-24 lg:bottom-8">
               <VoiceControls
                 isMuted={demoCall ? false : isMuted}
                 onMuteToggle={demoCall ? () => {} : toggleMute}

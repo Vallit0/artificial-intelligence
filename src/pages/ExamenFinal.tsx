@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, GraduationCap, AlertTriangle, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -47,7 +47,7 @@ export default function ExamenFinal() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, isAdmin, refreshUser, patchUser } = useAuth();
-  const { savePracticeSession, evaluateSession } = usePracticeSessions();
+  const { sessions, savePracticeSession, evaluateSession } = usePracticeSessions();
   const [examState, setExamState] = useState<ExamState>("idle");
   const [transcriptMessages, setTranscriptMessages] = useState<TranscriptMessage[]>([]);
   const [evaluation, setEvaluation] = useState<EvaluationResult | null>(null);
@@ -60,7 +60,25 @@ export default function ExamenFinal() {
   const examMaxSeconds = platformConfig?.callDurationProspeccionSec ?? EXAM_MAX_SECONDS;
   const passThreshold = platformConfig?.passThresholdProspeccion ?? 75;
 
-  const isLocked = !isAdmin && !user?.examenFinalEnabled;
+  // Tiempo de práctica de Prospección acumulado por el alumno (excluye intentos
+  // de examen). Debe alcanzar el mínimo configurable para poder rendir.
+  const practiceSeconds = useMemo(
+    () =>
+      sessions
+        .filter(
+          (s) =>
+            !s.exam_type &&
+            (s.practice_mode === "cliente" || s.practice_mode === "cliente_prospeccion"),
+        )
+        .reduce((acc, s) => acc + (s.duration_seconds || 0), 0),
+    [sessions],
+  );
+  const minPracticeSeconds = platformConfig?.minPracticeSecondsProspeccion ?? 0;
+  const needsMorePractice = !isAdmin && practiceSeconds < minPracticeSeconds;
+  const missingPracticeMin = Math.ceil((minPracticeSeconds - practiceSeconds) / 60);
+
+  // Bloqueado si el admin no lo habilitó O si aún no cumplió el tiempo de práctica.
+  const isLocked = !isAdmin && (!user?.examenFinalEnabled || needsMorePractice);
 
   const handleTranscript = useCallback((text: string, isUser: boolean) => {
     setTranscriptMessages((prev) => [
@@ -313,8 +331,9 @@ export default function ExamenFinal() {
                   </div>
                   <CardTitle className="text-2xl">Examen Final Bloqueado</CardTitle>
                   <CardDescription className="text-base max-w-lg mx-auto">
-                    Tu examen final aún no ha sido habilitado. Contacta a tu instructor o administrador
-                    para que te habilite el acceso cuando estés listo.
+                    {user?.examenFinalEnabled && needsMorePractice
+                      ? `Necesitás acumular más tiempo de práctica de Prospección antes de rendir. Te faltan aproximadamente ${missingPracticeMin} min de práctica.`
+                      : "Tu examen final aún no ha sido habilitado. Contacta a tu instructor o administrador para que te habilite el acceso cuando estés listo."}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col items-center gap-4">

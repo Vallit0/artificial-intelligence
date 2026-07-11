@@ -71,17 +71,17 @@ function StatCard({
       className="cursor-pointer transition-colors hover:border-primary/50 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       title="Ver desglose por tipo de llamada (agente)"
     >
-      <CardHeader className="pb-2">
+      <CardHeader className="pb-2 p-4 sm:p-6 sm:pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between gap-2">
-          <span className="flex items-center gap-2">
+          <span className="flex items-center gap-2 min-w-0">
             {icon}
-            {label}
+            <span className="truncate">{label}</span>
           </span>
-          <ChevronRight className="w-4 h-4 opacity-50" />
+          <ChevronRight className="w-4 h-4 opacity-50 shrink-0" />
         </CardTitle>
       </CardHeader>
-      <CardContent>
-        <p className="text-2xl font-bold text-foreground">{value}</p>
+      <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
+        <p className="text-xl sm:text-2xl font-bold text-foreground">{value}</p>
         <p className="text-xs text-muted-foreground">{hint}</p>
       </CardContent>
     </Card>
@@ -428,28 +428,28 @@ export default function Admin() {
         {/* Students List */}
         <Card>
           <CardHeader className="space-y-4">
-            <div className="flex flex-row items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <CardTitle>Estudiantes</CardTitle>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => exportStudentsToExcel(filteredStudents)}
                   disabled={filteredStudents.length === 0}
                 >
-                  <Download className="w-4 h-4 mr-2" />
-                  Exportar Excel
+                  <Download className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Exportar Excel</span>
                 </Button>
                 {isAdmin && (
                   <Button variant="outline" size="sm" onClick={() => setShowBulkModal(true)}>
-                    <Upload className="w-4 h-4 mr-2" />
-                    Carga Masiva
+                    <Upload className="w-4 h-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Carga Masiva</span>
                   </Button>
                 )}
                 {(isAdmin || !!user?.coachPermissions?.canCreateCoaches) && (
                   <Button data-tour="admin-new-user" size="sm" onClick={() => setShowCreateModal(true)}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Nuevo Usuario
+                    <Plus className="w-4 h-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Nuevo Usuario</span>
                   </Button>
                 )}
               </div>

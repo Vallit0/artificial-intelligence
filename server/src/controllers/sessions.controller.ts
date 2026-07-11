@@ -7,6 +7,7 @@ import { z } from 'zod';
 import * as sessionsService from '../services/sessions.service.js';
 import { AuthRequest } from '../types/index.js';
 import { handleError, BadRequestError } from '../utils/errors.js';
+import { isGlobalAdmin } from '../middleware/sedeScope.js';
 
 // Whitelist what the client can write. score/passed/aiFeedback are NEVER
 // accepted from the client — they are only set server-side by the evaluation
@@ -58,7 +59,9 @@ export async function create(req: AuthRequest, res: Response, next: NextFunction
     if (!parsed.success) {
       throw new BadRequestError('Datos de sesión inválidos');
     }
-    const session = await sessionsService.createSession(req.user!.id, parsed.data);
+    const session = await sessionsService.createSession(req.user!.id, parsed.data, {
+      bypassExamGate: isGlobalAdmin(req.user!),
+    });
     res.status(201).json(session);
   } catch (error) {
     const appError = handleError(error);

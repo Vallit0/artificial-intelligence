@@ -17,7 +17,7 @@ const VoiceControls = ({
   className,
 }: VoiceControlsProps) => {
   return (
-    <div className={cn("flex items-center gap-8", className)}>
+    <div className={cn("flex items-center gap-6 sm:gap-8", className)}>
       {/* Mute button */}
       <button
         onClick={onMuteToggle}

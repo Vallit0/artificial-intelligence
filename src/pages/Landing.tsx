@@ -143,20 +143,20 @@ const Landing = () => {
       {/* Header */}
       <header
         className={cn(
-          "flex items-center justify-between px-6 py-4 transition-all duration-500",
+          "flex items-center justify-between gap-2 px-4 sm:px-6 py-4 transition-all duration-500",
           fadeOut && !isInSession && "opacity-0 -translate-y-4",
           isInSession && "opacity-100 translate-y-0"
         )}
       >
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 min-w-0">
           <img
             src={logoSenoriales}
             alt="Centro de Negocios Señoriales"
-            className="h-10 w-auto"
+            className="h-8 sm:h-10 w-auto shrink-0"
           />
-          <span className="text-xl font-bold text-foreground">
+          <span className="text-base sm:text-xl font-bold text-foreground truncate">
             {headerText}
-            <span className="inline-block w-[2px] h-5 bg-foreground ml-0.5 animate-pulse" />
+            <span className="inline-block w-[2px] h-4 sm:h-5 bg-foreground ml-0.5 animate-pulse" />
           </span>
         </div>
         {!isInSession ? (

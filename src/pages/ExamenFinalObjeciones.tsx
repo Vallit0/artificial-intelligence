@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, GraduationCap, AlertTriangle, Award, FileImage, FileText, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -49,7 +49,7 @@ export default function ExamenFinalObjeciones() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, isAdmin, refreshUser, patchUser } = useAuth();
-  const { savePracticeSession, evaluateSession } = usePracticeSessions();
+  const { sessions, savePracticeSession, evaluateSession } = usePracticeSessions();
   const [examState, setExamState] = useState<ExamState>("idle");
   const [transcriptMessages, setTranscriptMessages] = useState<TranscriptMessage[]>([]);
   const [evaluation, setEvaluation] = useState<EvaluationResult | null>(null);
@@ -63,9 +63,22 @@ export default function ExamenFinalObjeciones() {
   const examMaxSeconds = platformConfig?.callDurationObjecionesSec ?? EXAM_MAX_SECONDS;
   const passThreshold = platformConfig?.passThresholdObjeciones ?? 80;
 
+  // Tiempo de práctica de Objeciones acumulado (excluye intentos de examen).
+  const practiceSeconds = useMemo(
+    () =>
+      sessions
+        .filter((s) => !s.exam_type && s.practice_mode === "objeciones")
+        .reduce((acc, s) => acc + (s.duration_seconds || 0), 0),
+    [sessions],
+  );
+  const minPracticeSeconds = platformConfig?.minPracticeSecondsObjeciones ?? 0;
+  const needsMorePractice = !isAdmin && practiceSeconds < minPracticeSeconds;
+  const missingPracticeMin = Math.ceil((minPracticeSeconds - practiceSeconds) / 60);
+
   // Gate: el examen de Objeciones está bloqueado hasta que un admin o el coach
-  // asignado lo habilite (flag examenObjecionesEnabled). El admin lo ve siempre.
-  const isLocked = !isAdmin && !user?.examenObjecionesEnabled;
+  // asignado lo habilite (flag examenObjecionesEnabled) Y el alumno cumpla el
+  // tiempo mínimo de práctica configurado. El admin lo ve siempre.
+  const isLocked = !isAdmin && (!user?.examenObjecionesEnabled || needsMorePractice);
 
   const studentName =
     [user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.email || "Estudiante";
@@ -312,18 +325,26 @@ export default function ExamenFinalObjeciones() {
                 </p>
               </div>
 
-              <div className="overflow-auto bg-muted p-4 rounded-lg flex justify-center">
-                <CertificatePreview
-                  ref={certificateRef}
-                  level={2}
-                  studentName={studentName}
-                  grade={evaluation?.score ?? 0}
-                  instructorName={platformConfig?.certificateInstructorName}
-                  directorName={platformConfig?.certificateDirectorName}
-                  courseName={platformConfig?.certificateCourseName}
-                  instructorSignature={platformConfig?.certificateInstructorSignature}
-                  directorSignature={platformConfig?.certificateDirectorSignature}
-                />
+              {/* El certificado mide 800px fijos (necesario para la captura
+                  html2canvas). En móvil escalamos SÓLO la vista: la caja
+                  externa toma el tamaño escalado y el nodo interno queda a
+                  800px para exportar en alta resolución. */}
+              <div className="overflow-hidden bg-muted p-4 rounded-lg flex justify-center">
+                <div className="w-[336px] h-[238px] sm:w-[600px] sm:h-[425px] md:w-[800px] md:h-[566px]">
+                  <div className="origin-top-left scale-[0.42] sm:scale-[0.75] md:scale-100">
+                    <CertificatePreview
+                      ref={certificateRef}
+                      level={2}
+                      studentName={studentName}
+                      grade={evaluation?.score ?? 0}
+                      instructorName={platformConfig?.certificateInstructorName}
+                      directorName={platformConfig?.certificateDirectorName}
+                      courseName={platformConfig?.certificateCourseName}
+                      instructorSignature={platformConfig?.certificateInstructorSignature}
+                      directorSignature={platformConfig?.certificateDirectorSignature}
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="flex flex-col sm:flex-row gap-2 justify-center mt-6">
@@ -394,8 +415,9 @@ export default function ExamenFinalObjeciones() {
                   </div>
                   <CardTitle className="text-2xl">Examen de Objeciones Bloqueado</CardTitle>
                   <CardDescription className="text-base max-w-lg mx-auto">
-                    Tu examen de objeciones aún no ha sido habilitado. Contacta a tu instructor o
-                    administrador para que te habilite el acceso cuando estés listo.
+                    {user?.examenObjecionesEnabled && needsMorePractice
+                      ? `Necesitás acumular más tiempo de práctica de Objeciones antes de rendir. Te faltan aproximadamente ${missingPracticeMin} min de práctica.`
+                      : "Tu examen de objeciones aún no ha sido habilitado. Contacta a tu instructor o administrador para que te habilite el acceso cuando estés listo."}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col items-center gap-4">

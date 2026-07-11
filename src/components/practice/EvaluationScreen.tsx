@@ -95,7 +95,7 @@ const EvaluationScreen = ({
   if (isEvaluating) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background px-6 animate-fade-in">
-        <div className="bg-card border-2 border-border rounded-3xl p-8 sm:p-12 w-full max-w-md shadow-[0_4px_0_0_hsl(var(--border))] text-center">
+        <div className="bg-card border-2 border-border rounded-3xl p-6 sm:p-12 w-full max-w-md shadow-[0_4px_0_0_hsl(var(--border))] text-center">
           <Loader2 className="w-16 h-16 text-secondary animate-spin mx-auto mb-6" />
           <h1 
             className="text-xl sm:text-2xl font-bold text-foreground mb-2"
@@ -114,7 +114,7 @@ const EvaluationScreen = ({
   if (!evaluation) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background px-6 animate-fade-in">
-        <div className="bg-card border-2 border-border rounded-3xl p-8 sm:p-12 w-full max-w-md shadow-[0_4px_0_0_hsl(var(--border))] text-center">
+        <div className="bg-card border-2 border-border rounded-3xl p-6 sm:p-12 w-full max-w-md shadow-[0_4px_0_0_hsl(var(--border))] text-center">
           <XCircle className="w-16 h-16 text-destructive mx-auto mb-6" />
           <h1 
             className="text-xl sm:text-2xl font-bold text-foreground mb-2"
@@ -178,7 +178,7 @@ const EvaluationScreen = ({
             <span className="font-bold text-foreground">Tu puntaje</span>
             <span 
               className={cn(
-                "text-3xl font-bold",
+                "text-2xl sm:text-3xl font-bold",
                 evaluation.passed ? "text-secondary" : "text-foreground"
               )}
             >

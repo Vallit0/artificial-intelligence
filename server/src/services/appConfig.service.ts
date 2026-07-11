@@ -11,6 +11,8 @@ export interface AppConfigPatch {
   callDurationObjecionesSec?: number;
   passThresholdProspeccion?: number;
   passThresholdObjeciones?: number;
+  minPracticeSecondsProspeccion?: number;
+  minPracticeSecondsObjeciones?: number;
   certificateInstructorName?: string | null;
   certificateDirectorName?: string | null;
   certificateCourseName?: string | null;
@@ -64,6 +66,9 @@ export async function updateAppConfig(patch: AppConfigPatch) {
     callDurationObjecionesSec: clampInt(patch.callDurationObjecionesSec, 60, 3600),
     passThresholdProspeccion: clampInt(patch.passThresholdProspeccion, 0, 100),
     passThresholdObjeciones: clampInt(patch.passThresholdObjeciones, 0, 100),
+    // Tiempo mínimo de práctica: 0 (sin requisito) hasta 10h.
+    minPracticeSecondsProspeccion: clampInt(patch.minPracticeSecondsProspeccion, 0, 36000),
+    minPracticeSecondsObjeciones: clampInt(patch.minPracticeSecondsObjeciones, 0, 36000),
     certificateInstructorName: cleanStr(patch.certificateInstructorName),
     certificateDirectorName: cleanStr(patch.certificateDirectorName),
     certificateCourseName: cleanStr(patch.certificateCourseName),

@@ -85,7 +85,7 @@ export default function StudentCertificateModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Download className="w-5 h-5" />
@@ -93,18 +93,24 @@ export default function StudentCertificateModal({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="overflow-auto bg-muted p-4 rounded-lg flex justify-center">
-          <CertificatePreview
-            ref={certificateRef}
-            level={level}
-            studentName={studentName}
-            grade={grade}
-            instructorName={instructorName}
-            directorName={directorName}
-            courseName={courseName}
-            instructorSignature={instructorSignature}
-            directorSignature={directorSignature}
-          />
+        {/* El nodo interno queda a 800px (para la captura html2canvas); en
+            móvil se escala sólo la vista. */}
+        <div className="overflow-hidden bg-muted p-4 rounded-lg flex justify-center">
+          <div className="w-[336px] h-[238px] sm:w-[600px] sm:h-[425px] md:w-[800px] md:h-[566px]">
+            <div className="origin-top-left scale-[0.42] sm:scale-[0.75] md:scale-100">
+              <CertificatePreview
+                ref={certificateRef}
+                level={level}
+                studentName={studentName}
+                grade={grade}
+                instructorName={instructorName}
+                directorName={directorName}
+                courseName={courseName}
+                instructorSignature={instructorSignature}
+                directorSignature={directorSignature}
+              />
+            </div>
+          </div>
         </div>
 
         <DialogFooter className="flex-col sm:flex-row gap-2">

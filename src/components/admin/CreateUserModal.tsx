@@ -370,6 +370,16 @@ export default function CreateUserModal({
                   ? "El coach pasará a dirigir esta división (reemplaza al coach actual)."
                   : "El asesor hereda el coach de la división."}
               </p>
+              {role === "coach" && divisionId && (
+                <Alert variant="destructive" className="border-amber-500/50 text-amber-700 dark:text-amber-400 [&>svg]:text-amber-600">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription className="text-[11px]">
+                    Ojo: <strong>todos los estudiantes que ya estén en esta división</strong> pasarán
+                    a ser dirigidos por este coach. Si querés que el coach arranque sin estudiantes,
+                    dejá la división "Sin asignar" y asignásela después.
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
           )}
 

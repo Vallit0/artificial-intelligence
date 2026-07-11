@@ -515,6 +515,11 @@ model AppConfig {
   // Umbral de aprobación (0-100) por examen.
   passThresholdProspeccion   Int      @default(75) @map("pass_threshold_prospeccion")
   passThresholdObjeciones    Int      @default(80) @map("pass_threshold_objeciones")
+  // Tiempo mínimo de PRÁCTICA (en segundos) que un estudiante debe acumular
+  // antes de poder rendir cada examen. 0 = sin requisito (comportamiento
+  // histórico). Sólo cuenta tiempo de práctica del nivel, no intentos de examen.
+  minPracticeSecondsProspeccion Int   @default(0) @map("min_practice_seconds_prospeccion")
+  minPracticeSecondsObjeciones  Int   @default(0) @map("min_practice_seconds_objeciones")
   // Datos del certificado de NIVEL 2 / Objeciones (vacío = línea sin nombre, como
   // hoy). Históricamente era el único certificado, por eso conserva el prefijo
   // `certificate*` sin sufijo de nivel para no romper compatibilidad.

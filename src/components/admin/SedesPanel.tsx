@@ -291,7 +291,7 @@ export default function SedesPanel() {
           }
         }}
       >
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? "Editar sede" : "Nueva sede"}</DialogTitle>
           </DialogHeader>

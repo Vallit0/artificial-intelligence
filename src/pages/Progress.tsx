@@ -256,7 +256,7 @@ const Progress = () => {
           <div className="max-w-4xl mx-auto px-4 py-8 pb-24 lg:pb-8">
             {/* Header */}
             <div className="mb-8">
-              <h1 className="text-3xl font-bold text-foreground mb-2">Mi Progreso</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">Mi Progreso</h1>
               <p className="text-muted-foreground">
                 Revisa tu avance hacia la certificación y tus estadísticas
               </p>
@@ -429,17 +429,17 @@ const Progress = () => {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid grid-cols-3 gap-4">
-                        <div className="text-center p-4 bg-muted/50 rounded-xl">
-                          <p className="text-2xl font-bold text-foreground">{weekStats.sessions}</p>
+                      <div className="grid grid-cols-3 gap-2 sm:gap-4">
+                        <div className="text-center p-3 sm:p-4 bg-muted/50 rounded-xl">
+                          <p className="text-xl sm:text-2xl font-bold text-foreground">{weekStats.sessions}</p>
                           <p className="text-xs text-muted-foreground">Sesiones</p>
                         </div>
-                        <div className="text-center p-4 bg-muted/50 rounded-xl">
-                          <p className="text-2xl font-bold text-foreground">{formatDuration(weekStats.time)}</p>
+                        <div className="text-center p-3 sm:p-4 bg-muted/50 rounded-xl">
+                          <p className="text-xl sm:text-2xl font-bold text-foreground">{formatDuration(weekStats.time)}</p>
                           <p className="text-xs text-muted-foreground">Tiempo</p>
                         </div>
-                        <div className="text-center p-4 bg-muted/50 rounded-xl">
-                          <p className="text-2xl font-bold text-foreground">
+                        <div className="text-center p-3 sm:p-4 bg-muted/50 rounded-xl">
+                          <p className="text-xl sm:text-2xl font-bold text-foreground">
                             {weekStats.avgRating > 0 ? `${weekStats.avgRating}` : "-"}
                           </p>
                           <p className="text-xs text-muted-foreground">Promedio</p>
@@ -464,18 +464,18 @@ const Progress = () => {
                             <div
                               key={session.id}
                               onClick={() => setReplaySessionId(session.id)}
-                              className="flex items-center justify-between p-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer group"
+                              className="flex items-center justify-between gap-2 p-3 sm:p-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer group"
                             >
-                              <div className="flex items-center gap-3">
-                                <Play className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                                <div>
-                                  <p className="font-medium text-foreground">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <Play className="w-4 h-4 shrink-0 text-muted-foreground group-hover:text-primary transition-colors" />
+                                <div className="min-w-0">
+                                  <p className="font-medium text-foreground truncate">
                                     {formatDistanceToNow(new Date(session.created_at), {
                                       addSuffix: true,
                                       locale: es,
                                     })}
                                   </p>
-                                  <p className="text-sm text-muted-foreground">
+                                  <p className="text-sm text-muted-foreground truncate">
                                     {session.score !== null
                                       ? `Score: ${session.score}/100${session.passed ? " - Aprobado" : ""}`
                                       : session.rating
@@ -484,7 +484,7 @@ const Progress = () => {
                                   </p>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 shrink-0">
                                 {session.score !== null && (
                                   <span className={`text-sm font-bold px-2 py-1 rounded-full ${
                                     session.passed

@@ -106,7 +106,7 @@ export default function CalendarHeader({
       {/* Row 2: Filters */}
       <div className="flex items-center gap-3 flex-wrap">
         <Select value={selectedDirector} onValueChange={onDirectorChange}>
-          <SelectTrigger className="w-[200px] h-8 text-sm">
+          <SelectTrigger className="w-full sm:w-[200px] h-8 text-sm">
             <SelectValue placeholder="Todos los directores" />
           </SelectTrigger>
           <SelectContent>

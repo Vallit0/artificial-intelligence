@@ -86,10 +86,10 @@ export default function StudentGroupSummary({ students }: StudentGroupSummaryPro
             <Layers className="w-5 h-5 text-primary" />
             Resumen de práctica por grupo
           </CardTitle>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm text-muted-foreground">Agrupar por:</span>
             <Select value={groupBy} onValueChange={(v) => setGroupBy(v as GroupBy)}>
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="w-full min-w-[8rem] flex-1 sm:w-40 sm:flex-none">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

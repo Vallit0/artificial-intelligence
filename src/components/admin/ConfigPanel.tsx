@@ -15,6 +15,9 @@ interface FormState {
   callDurationObjecionesMin: number;
   passThresholdProspeccion: number;
   passThresholdObjeciones: number;
+  // Tiempo mínimo de práctica requerido antes de rendir cada examen (minutos).
+  minPracticeProspeccionMin: number;
+  minPracticeObjecionesMin: number;
   certificateInstructorName: string;
   certificateDirectorName: string;
   certificateCourseName: string;
@@ -33,6 +36,8 @@ const EMPTY: FormState = {
   callDurationObjecionesMin: APP_CONFIG_DEFAULTS.callDurationObjecionesSec / 60,
   passThresholdProspeccion: APP_CONFIG_DEFAULTS.passThresholdProspeccion,
   passThresholdObjeciones: APP_CONFIG_DEFAULTS.passThresholdObjeciones,
+  minPracticeProspeccionMin: APP_CONFIG_DEFAULTS.minPracticeSecondsProspeccion / 60,
+  minPracticeObjecionesMin: APP_CONFIG_DEFAULTS.minPracticeSecondsObjeciones / 60,
   certificateInstructorName: "",
   certificateDirectorName: "",
   certificateCourseName: "",
@@ -87,7 +92,7 @@ function SignatureField({ label, value, onChange, onError }: SignatureFieldProps
   return (
     <div className="space-y-1">
       <Label className="text-xs">{label}</Label>
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         {value ? (
           <img
             src={value}
@@ -101,7 +106,7 @@ function SignatureField({ label, value, onChange, onError }: SignatureFieldProps
           type="file"
           accept="image/png,image/jpeg"
           onChange={handleFile}
-          className="max-w-[220px] cursor-pointer"
+          className="w-full sm:max-w-[220px] cursor-pointer"
         />
         {value && (
           <Button type="button" variant="ghost" size="sm" onClick={() => onChange("")}>
@@ -187,6 +192,8 @@ export default function ConfigPanel() {
       callDurationObjecionesMin: Math.round(config.callDurationObjecionesSec / 60),
       passThresholdProspeccion: config.passThresholdProspeccion,
       passThresholdObjeciones: config.passThresholdObjeciones,
+      minPracticeProspeccionMin: Math.round((config.minPracticeSecondsProspeccion ?? 0) / 60),
+      minPracticeObjecionesMin: Math.round((config.minPracticeSecondsObjeciones ?? 0) / 60),
       certificateInstructorName: config.certificateInstructorName ?? "",
       certificateDirectorName: config.certificateDirectorName ?? "",
       certificateCourseName: config.certificateCourseName ?? "",
@@ -206,6 +213,8 @@ export default function ConfigPanel() {
   // Convierte minutos a segundos para la DB, clamp a 1–60 min.
   const minToSec = (min: number) => Math.max(1, Math.min(60, Math.round(min || 0))) * 60;
   const clampPct = (n: number) => Math.max(0, Math.min(100, Math.round(n || 0)));
+  // Tiempo mínimo de práctica: permite 0 (sin requisito), hasta 600 min (10h).
+  const minToSecMin0 = (min: number) => Math.max(0, Math.min(600, Math.round(min || 0))) * 60;
 
   const handleSave = async () => {
     setSaving(true);
@@ -214,6 +223,8 @@ export default function ConfigPanel() {
       callDurationObjecionesSec: minToSec(form.callDurationObjecionesMin),
       passThresholdProspeccion: clampPct(form.passThresholdProspeccion),
       passThresholdObjeciones: clampPct(form.passThresholdObjeciones),
+      minPracticeSecondsProspeccion: minToSecMin0(form.minPracticeProspeccionMin),
+      minPracticeSecondsObjeciones: minToSecMin0(form.minPracticeObjecionesMin),
       certificateInstructorName: form.certificateInstructorName.trim() || null,
       certificateDirectorName: form.certificateDirectorName.trim() || null,
       certificateCourseName: form.certificateCourseName.trim() || null,
@@ -310,6 +321,41 @@ export default function ConfigPanel() {
                 max={100}
                 value={form.passThresholdObjeciones}
                 onChange={(e) => set("passThresholdObjeciones", Number(e.target.value))}
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* Tiempo mínimo de práctica antes del examen */}
+        <section className="space-y-3">
+          <h3 className="flex items-center gap-2 text-sm font-semibold">
+            <Clock className="w-4 h-4 text-muted-foreground" />
+            Tiempo mínimo de práctica antes del examen (minutos)
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            El estudiante debe acumular este tiempo de práctica del nivel para poder rendir el
+            examen (se suma a la habilitación por estudiante). <strong>0 = sin requisito.</strong>{" "}
+            No cuenta el tiempo de los intentos de examen.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Prospección (Nivel 1)</Label>
+              <Input
+                type="number"
+                min={0}
+                max={600}
+                value={form.minPracticeProspeccionMin}
+                onChange={(e) => set("minPracticeProspeccionMin", Number(e.target.value))}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Objeciones (Nivel 2)</Label>
+              <Input
+                type="number"
+                min={0}
+                max={600}
+                value={form.minPracticeObjecionesMin}
+                onChange={(e) => set("minPracticeObjecionesMin", Number(e.target.value))}
               />
             </div>
           </div>
