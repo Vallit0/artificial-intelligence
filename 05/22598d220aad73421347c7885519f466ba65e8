@@ -1,0 +1,26 @@
+src/components/MobileNavigation.tsx
+  s_67765e1a132386::t_592ea5d01d7a5d 2
+src/components/onboarding/TourRunner.tsx
+  s_67765e1a132386::t_0ba458fa91c738 71-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "0522598d220aad73421347c7885519f466ba65e8",
+  "prompts": {},
+  "humans": {
+    "h_fe03d8619f57ba": {
+      "author": "vallit0 <evallecyt@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_67765e1a132386": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1d15c19e-ae39-42bc-b12a-d77446c54b37",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "vallit0 <evallecyt@gmail.com>"
+    }
+  }
+}
