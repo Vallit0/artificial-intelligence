@@ -1,0 +1,103 @@
+src/components/VoiceControls.tsx
+  s_9feceb3e5165df::t_aff5d097e3e2fa 20
+src/components/admin/AgentLatencyPanel.tsx
+  s_9feceb3e5165df::t_d6c96783af540a 215
+  s_9feceb3e5165df::t_557a4b2c038f82 168-171
+src/pages/Landing.tsx
+  s_9feceb3e5165df::t_e482215fad85f0 146,151,155,157,159
+src/hooks/useAppConfig.ts
+  s_9feceb3e5165df::t_f1dd7301f9307a 13-15
+  s_9feceb3e5165df::t_5fa9acb5135cba 48-49
+  s_9feceb3e5165df::t_4649165e7cdc98 37-38
+src/components/coach-center/CalendarHeader.tsx
+  s_9feceb3e5165df::t_0a204f098d1b84 109
+src/pages/Progress.tsx
+  s_9feceb3e5165df::t_0c29ba86ad0b91 467,469-472,478,487
+  s_9feceb3e5165df::t_109b54aef3e4b6 432-434,437-438,441-442
+  s_9feceb3e5165df::t_b5d4ea2d7ed2af 259
+src/components/admin/StudentList.tsx
+  s_9feceb3e5165df::t_e79b3e94b3217e 22-29
+  s_9feceb3e5165df::t_3dd08dd8cfa3ee 184,418-420,428-431,434-493
+src/components/coach-center/WeeklyCalendar.tsx
+  s_9feceb3e5165df::t_653670f48f9f5a 95
+  s_9feceb3e5165df::t_4695626b624241 135
+  s_9feceb3e5165df::t_d657bf3c33613f 50-52,54
+src/components/admin/ConfigPanel.tsx
+  s_9feceb3e5165df::t_e3508b9c5bf553 329-363
+  s_9feceb3e5165df::t_101a6b0ad16c4f 195-196
+  s_9feceb3e5165df::t_a6bf64c3671284 95,109
+  s_9feceb3e5165df::t_4a1d51cb9f3c48 18-20
+  s_9feceb3e5165df::t_8f454a97b86619 216-217
+  s_9feceb3e5165df::t_7e73848543cfd6 39-40
+  s_9feceb3e5165df::t_5d20c70a10ddf3 226-227
+src/components/MobileNavigation.tsx
+  s_9feceb3e5165df::t_84b8937fa358c7 116,126
+  s_9feceb3e5165df::t_cf2c149f34a355 95
+  s_9feceb3e5165df::t_61c90de7f04928 63
+src/pages/ExamenFinalObjeciones.tsx
+  s_9feceb3e5165df::t_a071062e96d7b5 1
+  s_9feceb3e5165df::t_8032548113a4af 52,66-77,79-81,328-347,418-420
+server/src/services/appConfig.service.ts
+  s_9feceb3e5165df::t_118f9e14bbb8d5 69-71
+  s_9feceb3e5165df::t_ad56e856f7088c 14-15
+src/components/admin/LatencyTesterPanel.tsx
+  s_9feceb3e5165df::t_f339d3f4f8c9d8 163-165
+  s_9feceb3e5165df::t_e93ef8d584503d 175,180
+server/prisma/migrations/20260710000000_add_min_practice_seconds/migration.sql
+  s_9feceb3e5165df::t_044a47d338c3df 1-5
+src/components/admin/StudentGroupSummary.tsx
+  s_9feceb3e5165df::t_cf2b18bde66c19 89,92
+src/components/admin/SedesPanel.tsx
+  s_9feceb3e5165df::t_ffd7308088955e 294
+src/pages/ExamenFinal.tsx
+  s_9feceb3e5165df::t_4d4f362accde59 1
+  s_9feceb3e5165df::t_9581101c6d2144 50,63-81,334-336
+src/components/coach-center/CitaFormDialog.tsx
+  s_9feceb3e5165df::t_523d604e3e5c19 187
+src/components/admin/DivisionsPanel.tsx
+  s_9feceb3e5165df::t_f20518563e33d7 293
+src/components/admin/CreateUserModal.tsx
+  s_9feceb3e5165df::t_4100df5b243f7f 373-382
+src/components/StudentCertificateModal.tsx
+  s_9feceb3e5165df::t_0c1b03f1ff2ed0 88,96-113
+server/src/services/sessions.service.ts
+  s_9feceb3e5165df::t_23bb528994e3c9 47-54,83
+  s_9feceb3e5165df::t_0f7cb720cb6e8c 7,10-46,74
+  s_9feceb3e5165df::t_f8e192decaccde 73
+  s_9feceb3e5165df::t_2d8bae577c528f 75-77,80-82
+  s_9feceb3e5165df::t_c237cd5cd8d849 84
+  s_9feceb3e5165df::t_2a50c6c3f77769 78-79
+server/prisma/schema.prisma
+  s_9feceb3e5165df::t_a8c7830e794e4a 518-522
+server/src/controllers/sessions.controller.ts
+  s_9feceb3e5165df::t_81175642c05d50 10,62-64
+src/components/admin/StudentDetailModal.tsx
+  s_9feceb3e5165df::t_8a9ea15ecbb08f 43,52-54,59-60,65-66
+src/components/practice/EvaluationScreen.tsx
+  s_9feceb3e5165df::t_59d901fa27b47a 98,117,181
+src/pages/Admin.tsx
+  s_9feceb3e5165df::t_133a2881fdae8b 74,76,78,80,83-84,431,433,440-441,445-446,451-452
+src/pages/Practice.tsx
+  s_9feceb3e5165df::t_5531da482b31e9 639,652,713,800,846
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "44d7b9804de2abbfeb549a4df85048525e5aa340",
+  "prompts": {},
+  "humans": {
+    "h_fe03d8619f57ba": {
+      "author": "vallit0 <evallecyt@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_9feceb3e5165df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f9b8fc8-1150-488c-bbe1-2e2dc830a2a6",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "vallit0 <evallecyt@gmail.com>"
+    }
+  }
+}
