@@ -68,6 +68,9 @@ const TourRunner = () => {
 
   // Lanza un tour: fija pasos, espera el primer anclaje y arranca.
   const launch = (id: string, onFinish?: () => void) => {
+    // En celular no corremos tutoriales guiados: la UI móvil no tiene los
+    // anclajes y el overlay estorba. Se quedan solo para escritorio.
+    if (isMobile) return;
     const tour = getTour(id);
     if (!tour) return;
     const stepList = tour.steps(isMobile);

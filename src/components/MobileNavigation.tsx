@@ -1,9 +1,8 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { Users, Phone, TrendingUp, Settings, Lock, ArrowRightLeft, Building2, GraduationCap, HelpCircle } from "lucide-react";
+import { Users, Phone, TrendingUp, Settings, Lock, ArrowRightLeft, Building2, GraduationCap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useLevelMode, useDidLevelJustChange, levelLabel } from "@/hooks/useLevelMode";
-import { startTutorial } from "@/lib/tutorial";
 
 interface NavItem {
   icon: React.ReactNode;
@@ -107,19 +106,6 @@ const MobileNavigation = () => {
             </button>
           );
         })}
-        {user && (
-          <button
-            onClick={() => {
-              startTutorial();
-              navigate("/practice");
-            }}
-            className="flex flex-col items-center gap-1 px-2 py-2 rounded-2xl transition-all duration-200 text-muted-foreground hover:text-foreground min-w-0"
-            title="Ver el tutorial guiado paso a paso"
-          >
-            <HelpCircle className="w-5 h-5" />
-            <span className="text-xs font-semibold">Tutorial</span>
-          </button>
-        )}
         {canSwitchLevel && (
           <button
             onClick={toggle}
