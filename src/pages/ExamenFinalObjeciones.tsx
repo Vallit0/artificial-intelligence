@@ -312,7 +312,7 @@ export default function ExamenFinalObjeciones() {
     return (
       <div className="min-h-screen bg-background">
         <LeftSidebar />
-        <main className="lg:ml-60 min-h-screen animate-fade-in">
+        <main className="ml-60 min-h-screen animate-fade-in">
           <ScrollArea className="h-screen">
             <div className="max-w-4xl mx-auto px-4 py-8">
               <div className="text-center mb-6">
@@ -387,7 +387,7 @@ export default function ExamenFinalObjeciones() {
     <div className="min-h-screen bg-background">
       <LeftSidebar />
 
-      <main className="lg:ml-60 min-h-screen animate-fade-in">
+      <main className="ml-60 min-h-screen animate-fade-in">
         <ScrollArea className="h-screen">
           <div className="max-w-4xl mx-auto px-4 py-8">
             {/* Header */}

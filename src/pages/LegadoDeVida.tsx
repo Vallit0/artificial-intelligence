@@ -123,7 +123,7 @@ const LegadoDeVida = () => {
     <div className="min-h-screen bg-background">
       <LeftSidebar />
 
-      <main className="lg:ml-60 min-h-screen flex flex-col animate-fade-in">
+      <main className="ml-60 min-h-screen flex flex-col animate-fade-in">
         {/* Header */}
         <div className="px-4 py-8">
           <div className="max-w-3xl mx-auto text-center animate-fade-in">

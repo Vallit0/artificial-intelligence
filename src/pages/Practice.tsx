@@ -592,7 +592,7 @@ const Practice = () => {
     <div className="min-h-screen bg-background flex">
       {user && <LeftSidebar />}
 
-      <div className={`flex-1 flex flex-col items-center justify-center relative ${user ? "lg:ml-60" : ""}`}>
+      <div className={`flex-1 flex flex-col items-center justify-center relative ${user ? "ml-60" : ""}`}>
         {/* Back button */}
         {(sessionState !== "idle" || selectedAgent || !user) && (
           <div className="absolute top-6 left-6 z-10">

@@ -19,7 +19,7 @@ const Prospecting = () => {
     <div className="min-h-screen bg-background">
       <LeftSidebar />
 
-      <main className="lg:ml-60 min-h-screen flex flex-col animate-fade-in">
+      <main className="ml-60 min-h-screen flex flex-col animate-fade-in">
         <div className="flex-1 py-8 sm:py-12 pb-24 lg:pb-12 overflow-y-auto">
           <ProspectingCarousel onStartPractice={handleStartPractice} />
         </div>
