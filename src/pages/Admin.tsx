@@ -212,7 +212,7 @@ export default function Admin() {
       <LeftSidebar />
 
       <main className="lg:ml-60 min-h-screen animate-fade-in">
-        <ScrollArea className="h-screen">
+        <ScrollArea className="h-[100dvh]">
           <div className="max-w-7xl mx-auto px-4 py-6 pb-24 lg:pb-6">
             {/* Header */}
             <div data-tour="admin-header" className="mb-6 flex items-center justify-between">
@@ -508,7 +508,7 @@ export default function Admin() {
             </div>
           </CardHeader>
           <CardContent className="p-0">
-            <ScrollArea className="h-[calc(100vh-400px)]">
+            <ScrollArea className="h-[calc(100dvh-400px)]">
               {studentsLoading ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="w-6 h-6 animate-spin text-primary" />
