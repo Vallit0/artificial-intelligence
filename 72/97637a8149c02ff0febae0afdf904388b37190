@@ -1,0 +1,24 @@
+src/pages/Admin.tsx
+  s_4bbc831db3caf5::t_56cd48cdadecb5 215,511
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "7297637a8149c02ff0febae0afdf904388b37190",
+  "prompts": {},
+  "humans": {
+    "h_fe03d8619f57ba": {
+      "author": "vallit0 <evallecyt@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4bbc831db3caf5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "02297825-abe7-4a68-a5c6-e831df56ba9e",
+        "model": "unknown"
+      },
+      "human_author": "vallit0 <evallecyt@gmail.com>"
+    }
+  }
+}
