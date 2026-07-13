@@ -1,0 +1,44 @@
+src/pages/Quests.tsx
+  s_1dcce74dec995f::t_64f009e509bea1 246
+src/pages/Prospecting.tsx
+  s_1dcce74dec995f::t_8768afbea07ab1 22
+src/pages/CoachCenter.tsx
+  s_1dcce74dec995f::t_cf67ada4863217 111
+src/pages/LegadoDeVida.tsx
+  s_1dcce74dec995f::t_04a358975bd1dd 126
+src/index.css
+  s_1dcce74dec995f::t_3402b15b1467f7 115-127
+src/pages/Progress.tsx
+  s_1dcce74dec995f::t_49f349d8db3745 254
+src/components/MobileNavigation.tsx
+  s_1dcce74dec995f::t_39ce5318dea128 62
+src/pages/Admin.tsx
+  s_1dcce74dec995f::t_f517b8c597b22d 214
+src/pages/ExamenFinal.tsx
+  s_1dcce74dec995f::t_440dd436d7fb59 306
+src/pages/ExamenFinalObjeciones.tsx
+  s_1dcce74dec995f::t_c53e4caaae7b28 315,390
+src/pages/Practice.tsx
+  s_1dcce74dec995f::t_d09330f550b547 595
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "325a2066cb253b9fef804402a48ab0c3dd964f59",
+  "prompts": {},
+  "humans": {
+    "h_fe03d8619f57ba": {
+      "author": "vallit0 <evallecyt@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_1dcce74dec995f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "62512864-b8cb-48d2-8260-65b45184cae7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "vallit0 <evallecyt@gmail.com>"
+    }
+  }
+}
