@@ -1,0 +1,46 @@
+src/pages/LegadoDeVida.tsx
+  s_743bbff266e4e0::t_c9c5d0003aeff4 126
+src/pages/Progress.tsx
+  s_743bbff266e4e0::t_a4c88c79b4bdd3 254
+src/pages/Quests.tsx
+  s_743bbff266e4e0::t_e06c814f90a457 246
+src/components/MobileNavigation.tsx
+  s_743bbff266e4e0::t_e09d1c138c18be 62
+src/pages/Prospecting.tsx
+  s_743bbff266e4e0::t_5243cd47e5d5e0 22
+src/pages/CoachCenter.tsx
+  s_743bbff266e4e0::t_5dc10bec77cc36 111
+.claude/settings.local.json
+  s_743bbff266e4e0::t_63eccefc0c5346 191-192
+src/components/scenarios/LeftSidebar.tsx
+  s_743bbff266e4e0::t_340292616b4116 84
+src/pages/Admin.tsx
+  s_743bbff266e4e0::t_d8cddd5ed5258b 214
+src/pages/ExamenFinal.tsx
+  s_743bbff266e4e0::t_508e1a63e60dd2 306
+src/pages/ExamenFinalObjeciones.tsx
+  s_743bbff266e4e0::t_07fb6d07662e9d 315,390
+src/pages/Practice.tsx
+  s_743bbff266e4e0::t_e06e7eb50e8306 595
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "f80a4a55cf0bf4990aced0381a28552ce60be1e6",
+  "prompts": {},
+  "humans": {
+    "h_fe03d8619f57ba": {
+      "author": "vallit0 <evallecyt@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_743bbff266e4e0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b6654dc2-6535-42b6-a114-339c046654d9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "vallit0 <evallecyt@gmail.com>"
+    }
+  }
+}
