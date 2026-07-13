@@ -188,7 +188,8 @@
       "Bash(awk 'NR>=210 && NR<=390 { if\\(length\\($0\\)>180\\) print NR\": [LINEA LARGA \"length\\($0\\)\" chars — data-URI truncada] \"substr\\($0,1,90\\)\"...\"; else print NR\": \"$0 }' index.html)",
       "Bash(start \"\" \"presentacion/tutoriales.html\")",
       "Skill(artifact-design)",
-      "Artifact"
+      "Artifact",
+      "Bash(pkill -f vite)"
     ]
   },
   "hooks": {

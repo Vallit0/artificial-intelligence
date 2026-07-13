@@ -81,7 +81,7 @@ const LeftSidebar = () => {
   return (
     <aside
       data-tour="nav-desktop"
-      className="flex flex-col w-60 min-h-screen fixed left-0 top-0 bottom-0 z-40 overflow-y-auto"
+      className="hidden lg:flex flex-col w-60 min-h-screen fixed left-0 top-0 bottom-0 z-40 overflow-y-auto"
       style={{
         background: "hsl(var(--sidebar-background))",
         borderRight: "1px solid hsl(var(--sidebar-border))",

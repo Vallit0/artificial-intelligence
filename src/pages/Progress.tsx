@@ -251,7 +251,7 @@ const Progress = () => {
       <LeftSidebar />
 
       {/* Main Content */}
-      <main className="ml-60 min-h-screen animate-fade-in">
+      <main className="lg:ml-60 min-h-screen animate-fade-in">
         <ScrollArea className="h-screen">
           <div className="max-w-4xl mx-auto px-4 py-8 pb-24 lg:pb-8">
             {/* Header */}
