@@ -1,0 +1,44 @@
+server/src/config/index.ts
+  s_cd8cf365adfbe7::t_33b3792e04c775 40
+src/pages/Landing.tsx
+  s_cd8cf365adfbe7::t_391c226c585e58 78
+  s_65ed5baa5c7823::t_e26da9bab388f5 144
+  s_65ed5baa5c7823::t_58fa7c60144e1e 265
+  s_65ed5baa5c7823::t_fd2f60c5ea5df9 13
+  s_65ed5baa5c7823::t_082e97d51c0db7 30
+.env.example
+  s_cd8cf365adfbe7::t_6686ab1b10cb7e 19-21
+.env.prod.example
+  s_cd8cf365adfbe7::t_6291f1c8745bb0 29-31
+src/pages/Auth.tsx
+  s_65ed5baa5c7823::t_b1b331dada0df5 205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "9bcf52a012725dd5a7cabe6e1be5b1bf14912853",
+  "prompts": {},
+  "humans": {
+    "h_fe03d8619f57ba": {
+      "author": "vallit0 <evallecyt@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_65ed5baa5c7823": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a960babb-ae3a-4df2-a713-64abfc4d3b03",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "vallit0 <evallecyt@gmail.com>"
+    },
+    "s_cd8cf365adfbe7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ff630131-d86f-4a16-9071-85c416d4ced3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "vallit0 <evallecyt@gmail.com>"
+    }
+  }
+}
