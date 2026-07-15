@@ -1,0 +1,24 @@
+.claude/settings.local.json
+  s_65ed5baa5c7823::t_748c0abfd806e6 192-228
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "378c317f207d5d0daf2347fe06a8fead9bd2fd39",
+  "prompts": {},
+  "humans": {
+    "h_fe03d8619f57ba": {
+      "author": "vallit0 <evallecyt@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_65ed5baa5c7823": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a960babb-ae3a-4df2-a713-64abfc4d3b03",
+        "model": "unknown"
+      },
+      "human_author": "vallit0 <evallecyt@gmail.com>"
+    }
+  }
+}
