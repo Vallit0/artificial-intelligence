@@ -202,7 +202,7 @@ const Auth = () => {
         <p className="text-sm text-muted-foreground text-center mb-8">
           {isLogin
             ? "Ingresa tus credenciales para continuar"
-            : "Empieza a entrenar con Álvaro"}
+            : "Empieza a entrenar con Margarita"}
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-3 w-full max-w-sm">

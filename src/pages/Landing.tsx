@@ -6,15 +6,11 @@ import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
 import { useElevenLabsConversation } from "@/hooks/useElevenLabsConversation";
-import { FreeTierTimer } from "@/components/practice/FreeTierTimer";
-import { TimeUpModal } from "@/components/practice/TimeUpModal";
 import AICompanionOrb from "@/components/AICompanionOrb";
 import VoiceControls from "@/components/VoiceControls";
 import logoSenoriales from "@/assets/logo-senoriales.png";
 
-type SessionState = "idle" | "connecting" | "active" | "timeup";
-
-const FREE_TIER_MAX_SECONDS = 180; // 3 minutos de demo libre (sin usuario)
+type SessionState = "idle" | "connecting" | "active";
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -31,7 +27,7 @@ const Landing = () => {
   const [headerText, setHeaderText] = useState("");
 
   const rotatingTexts = [
-    { title: "Álvaro", subtitle: "Tu coach personal de ventas" },
+    { title: "Margarita", subtitle: "Tu coach personal de ventas" },
     { title: "Centro de Negocios Digital", subtitle: "Señoriales Corporación de Servicio" },
   ];
 
@@ -75,11 +71,11 @@ const Landing = () => {
     isConnecting,
     isSpeaking,
     isMuted,
-    sessionTime,
     connect,
     disconnect,
     toggleMute,
   } = useElevenLabsConversation({
+    agentSecretName: "ELEVENLABS_AGENT_DEMO",
     onTranscript: handleTranscript,
     onError: handleError,
   });
@@ -124,20 +120,6 @@ const Landing = () => {
     setConnectionStatus("");
   };
 
-  const handleTimeUp = useCallback(() => {
-    disconnect();
-    setSessionState("timeup");
-  }, [disconnect]);
-
-  // Time up modal
-  if (sessionState === "timeup") {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <TimeUpModal open={true} characterName="Álvaro" />
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
@@ -159,7 +141,7 @@ const Landing = () => {
             <span className="inline-block w-[2px] h-4 sm:h-5 bg-foreground ml-0.5 animate-pulse" />
           </span>
         </div>
-        {!isInSession ? (
+        {!isInSession && (
           <Button
             variant="ghost"
             size="sm"
@@ -169,16 +151,6 @@ const Landing = () => {
             <LogIn className="h-4 w-4" />
             Iniciar Sesión
           </Button>
-        ) : (
-          <div className="flex items-center gap-3">
-            {sessionState === "active" && (
-              <FreeTierTimer
-                maxSeconds={FREE_TIER_MAX_SECONDS}
-                currentSeconds={sessionTime}
-                onTimeUp={handleTimeUp}
-              />
-            )}
-          </div>
         )}
       </header>
 
@@ -290,7 +262,7 @@ const Landing = () => {
                   className="text-xs sm:text-base font-bold text-muted-foreground text-center px-4"
                   style={{ fontFamily: "'Nunito', 'DIN Rounded', -apple-system, sans-serif" }}
                 >
-                  Hablando con Álvaro (Coach)
+                  Hablando con Margarita (Coach)
                 </p>
 
                 <AICompanionOrb energy speaking={isSpeaking} listening={!isMuted} size={isMobile ? "sm" : "lg"} />

@@ -37,6 +37,7 @@ const envSchema = z.object({
 
   ELEVENLABS_API_KEY: optionalString,
   ELEVENLABS_AGENT_ID: optionalString,
+  ELEVENLABS_AGENT_DEMO: optionalString,
   ELEVENLABS_AGENT_COACH: optionalString,
   ELEVENLABS_AGENT_ROLEPLAY_CLIENTE: optionalString,
   ELEVENLABS_AGENT_ROLEPLAY_ASESOR: optionalString,
