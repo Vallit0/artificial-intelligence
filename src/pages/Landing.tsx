@@ -27,8 +27,9 @@ const Landing = () => {
   const [headerText, setHeaderText] = useState("");
 
   const rotatingTexts = [
-    { title: "Margarita", subtitle: "Tu coach personal de ventas" },
-    { title: "Centro de Negocios Digital", subtitle: "Señoriales Corporación de Servicio" },
+    { title: "Margarita", subtitle: "Your personal sales coach" },
+    // "Señoriales Corporación de Servicio" es la razón social: no se traduce.
+    { title: "Digital Business Center", subtitle: "Señoriales Corporación de Servicio" },
   ];
 
   useEffect(() => {
@@ -43,7 +44,7 @@ const Landing = () => {
   }, []);
 
   useEffect(() => {
-    const fullText = "Centro de Negocios Señoriales";
+    const fullText = "Digital Business Center - Señoriales";
     let i = 0;
     const timer = setInterval(() => {
       i++;
@@ -60,7 +61,7 @@ const Landing = () => {
   }, []);
 
   const handleError = useCallback((error: string) => {
-    toast({ variant: "destructive", title: "Error de conexión", description: error });
+    toast({ variant: "destructive", title: "Connection error", description: error });
     setSessionState("idle");
     setFadeOut(false);
     setConnectionStatus("");
@@ -83,11 +84,11 @@ const Landing = () => {
   // Transition to active when connected
   if (isConnected && sessionState === "connecting") {
     setSessionState("active");
-    setConnectionStatus("Conectado");
+    setConnectionStatus("Connected");
   }
 
   if (isConnecting && !connectionStatus) {
-    setConnectionStatus("Conectando con el agente...");
+    setConnectionStatus("Connecting to the agent...");
   }
 
   const handleStart = () => {
@@ -104,7 +105,7 @@ const Landing = () => {
 
     setTimeout(() => {
       setSessionState("connecting");
-      setConnectionStatus("Solicitando permisos de micrófono...");
+      setConnectionStatus("Requesting microphone access...");
       setOrbGrowing(false);
       setOrbWinking(false);
       connect();
@@ -133,7 +134,7 @@ const Landing = () => {
         <div className="flex items-center gap-2 sm:gap-4 min-w-0">
           <img
             src={logoSenoriales}
-            alt="Centro de Negocios Señoriales"
+            alt="Digital Business Center - Señoriales"
             className="h-8 sm:h-10 w-auto shrink-0"
           />
           <span className="text-base sm:text-xl font-bold text-foreground truncate">
@@ -149,7 +150,7 @@ const Landing = () => {
             className="gap-2"
           >
             <LogIn className="h-4 w-4" />
-            Iniciar Sesión
+            Log In
           </Button>
         )}
       </header>
@@ -197,7 +198,7 @@ const Landing = () => {
               </div>
               <img
                 src={logoSenoriales}
-                alt="Centro de Negocios Señoriales"
+                alt="Digital Business Center - Señoriales"
                 className="h-12 w-auto mt-4 opacity-80"
               />
             </button>
@@ -215,18 +216,18 @@ const Landing = () => {
                 className="w-full h-14 rounded-2xl text-base font-bold uppercase tracking-wider shadow-[0_4px_0_0_hsl(var(--primary)/0.4)] hover:shadow-[0_2px_0_0_hsl(var(--primary)/0.4)] hover:translate-y-[2px] transition-all gap-2"
               >
                 <LogIn className="h-5 w-5" />
-                Iniciar Sesión
+                Log In
               </Button>
               <Button
                 variant="outline"
                 onClick={() => navigate("/auth?mode=signup")}
                 className="w-full h-14 rounded-2xl text-base font-bold uppercase tracking-wider border-2 border-border shadow-[0_4px_0_0_hsl(var(--border))] hover:shadow-[0_2px_0_0_hsl(var(--border))] hover:translate-y-[2px] transition-all"
               >
-                Crear Cuenta
+                Create Account
               </Button>
             </div>
 
-            {/* Free tier notice */}
+            {/* Free tier notice — el demo no tiene tope de tiempo (ver rama demo). */}
             <div
               className={cn(
                 "text-center mt-6 transition-all duration-500",
@@ -237,7 +238,7 @@ const Landing = () => {
               <p className="text-sm font-semibold text-muted-foreground">
                 <span className="inline-flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                  3 minutos gratis para probar
+                  Free to try — no time limit
                 </span>
               </p>
             </div>
@@ -262,7 +263,7 @@ const Landing = () => {
                   className="text-xs sm:text-base font-bold text-muted-foreground text-center px-4"
                   style={{ fontFamily: "'Nunito', 'DIN Rounded', -apple-system, sans-serif" }}
                 >
-                  Hablando con Margarita (Coach)
+                  Talking to Margarita (Coach)
                 </p>
 
                 <AICompanionOrb energy speaking={isSpeaking} listening={!isMuted} size={isMobile ? "sm" : "lg"} />
@@ -279,7 +280,7 @@ const Landing = () => {
             {sessionState === "connecting" && (
               <div className="flex flex-col items-center gap-4">
                 <AICompanionOrb energy speaking={false} listening={false} size={isMobile ? "sm" : "lg"} />
-                <p className="text-sm text-muted-foreground">Preparando sesión...</p>
+                <p className="text-sm text-muted-foreground">Preparing session...</p>
               </div>
             )}
 
