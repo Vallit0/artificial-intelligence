@@ -19,7 +19,12 @@ interface EvaluationResult {
   checklist?: { label: string; passed: boolean }[];
 }
 
-export type LatencyEventType = "connect" | "ttfa";
+// "connect" = total hasta establecer la sesión. Se desglosa en "mic"
+// (getUserMedia) + "handshake" (resto: WS + init del agente en ElevenLabs).
+// "greeting" = connect → primera vez que el agente habla (lo que el usuario
+// percibe como "tarda en contestar" al entrar). "ttfa" = turnos posteriores,
+// desde que el usuario termina de hablar hasta que el agente responde.
+export type LatencyEventType = "connect" | "ttfa" | "mic" | "handshake" | "greeting";
 
 export interface LatencyEvent {
   type: LatencyEventType;
@@ -111,6 +116,10 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
   const userSpeechEndRef = useRef<number | null>(null);
   const ttfaSamplesRef = useRef<number[]>([]);
   const connectMsRef = useRef<number | null>(null);
+  // Desglose del connect + latencia del saludo (instrumentación de diagnóstico).
+  const micMsRef = useRef<number | null>(null);
+  const connectedAtRef = useRef<number | null>(null);
+  const greetingEmittedRef = useRef(false);
   const [latencyStats, setLatencyStats] = useState<LatencyStats>({
     connectMs: null,
     lastTtfaMs: null,
@@ -125,22 +134,25 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     onLatencyRef.current?.(event);
     if (type === "connect") {
       connectMsRef.current = rounded;
-    } else {
-      ttfaSamplesRef.current.push(rounded);
+      setLatencyStats((prev) => ({ ...prev, connectMs: rounded }));
+      return;
     }
-    setLatencyStats((prev) => {
-      if (type === "connect") {
-        return { ...prev, connectMs: rounded };
-      }
-      const samples = prev.ttfaSamples + 1;
-      const total = (prev.avgTtfaMs ?? 0) * prev.ttfaSamples + rounded;
-      return {
-        ...prev,
-        lastTtfaMs: rounded,
-        avgTtfaMs: Math.round(total / samples),
-        ttfaSamples: samples,
-      };
-    });
+    if (type === "ttfa") {
+      ttfaSamplesRef.current.push(rounded);
+      setLatencyStats((prev) => {
+        const samples = prev.ttfaSamples + 1;
+        const total = (prev.avgTtfaMs ?? 0) * prev.ttfaSamples + rounded;
+        return {
+          ...prev,
+          lastTtfaMs: rounded,
+          avgTtfaMs: Math.round(total / samples),
+          ttfaSamples: samples,
+        };
+      });
+      return;
+    }
+    // mic / handshake / greeting: sólo se loguean y se emiten por callback. No
+    // contaminan las muestras de TTFA ni se persisten (diagnóstico en consola).
   }, []);
 
   const getLatencyReport = useCallback(() => ({
@@ -415,10 +427,19 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     },
     onConnect: () => {
       console.log("Connected to ElevenLabs agent");
+      const now = performance.now();
       if (connectStartRef.current !== null) {
-        emitLatency("connect", performance.now() - connectStartRef.current);
+        const total = now - connectStartRef.current;
+        emitLatency("connect", total);
+        // handshake = connect total menos el tiempo de micrófono ya medido, para
+        // ver cuánto es acceso al mic vs establecimiento de sesión en ElevenLabs.
+        if (micMsRef.current !== null) {
+          emitLatency("handshake", Math.max(0, total - micMsRef.current));
+        }
         connectStartRef.current = null;
       }
+      // Ancla para medir la latencia del saludo (primer habla del agente).
+      connectedAtRef.current = now;
       isConnectedRef.current = true;
       setIsConnecting(false);
       timerRef.current = setInterval(() => {
@@ -535,6 +556,9 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     userSpeechEndRef.current = null;
     connectMsRef.current = null;
     ttfaSamplesRef.current = [];
+    micMsRef.current = null;
+    connectedAtRef.current = null;
+    greetingEmittedRef.current = false;
     setLatencyStats({ connectMs: null, lastTtfaMs: null, avgTtfaMs: null, ttfaSamples: 0 });
 
     try {
@@ -587,6 +611,22 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
         if (data.overrides.firstMessage) {
           sessionOverrides.agent.firstMessage = data.overrides.firstMessage;
         }
+      }
+
+      // Instrumentación: aislar el costo del micrófono (getUserMedia) del resto
+      // del connect. Pedimos acceso al mic y soltamos el track de inmediato; como
+      // el permiso queda concedido, el getUserMedia interno del SDK justo después
+      // es ~instantáneo. Así separamos `mic` de `handshake` sin cambiar el flujo.
+      const micStart = performance.now();
+      try {
+        const probe = await navigator.mediaDevices.getUserMedia({ audio: true });
+        probe.getTracks().forEach((t) => t.stop());
+        const micMs = performance.now() - micStart;
+        micMsRef.current = micMs;
+        emitLatency("mic", micMs);
+      } catch (e) {
+        // Si falla, dejamos que el SDK maneje el mic (y su error) como antes.
+        console.warn("[LATENCY] getUserMedia probe falló, se deja al SDK:", e);
       }
 
       // Let the SDK handle microphone access internally
@@ -650,9 +690,19 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     }
   }, [sessionTime]);
 
-  // TTFA: measure from last user-transcript event to the moment the agent starts speaking
+  // Latencia del saludo + TTFA. Cuando el agente empieza a hablar:
+  //  - la PRIMERA vez tras conectar = "greeting" (connect → primera habla del
+  //    agente): esto es el "tarda en contestar" que percibe el usuario al entrar,
+  //    y hasta ahora no se medía (el array ttfa quedaba vacío en sesiones donde
+  //    el usuario sólo oía el saludo y se iba).
+  //  - las siguientes = TTFA, desde que el usuario terminó de hablar.
   useEffect(() => {
-    if (conversation.isSpeaking && userSpeechEndRef.current !== null) {
+    if (!conversation.isSpeaking) return;
+    if (!greetingEmittedRef.current && connectedAtRef.current !== null) {
+      greetingEmittedRef.current = true;
+      emitLatency("greeting", performance.now() - connectedAtRef.current);
+    }
+    if (userSpeechEndRef.current !== null) {
       emitLatency("ttfa", performance.now() - userSpeechEndRef.current);
       userSpeechEndRef.current = null;
     }
