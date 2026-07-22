@@ -108,6 +108,9 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
   const prefetchedUrlRef = useRef<string | null>(null);
   const prefetchedOverridesRef = useRef<{ prompt?: string; firstMessage?: string } | null>(null);
   const prefetchedVariantIdRef = useRef<string | null>(null);
+  // Agente para el que se pre-fetcheó el URL. Sirve para NO reusar un URL
+  // pre-fetcheado si el connect pide otro agente (evita conectar al equivocado).
+  const prefetchedAgentRef = useRef<string | null>(null);
   const [variantId, setVariantId] = useState<string | null>(null);
   const memoryContextRef = useRef<string | null>(null);
 
@@ -514,6 +517,7 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
         prefetchedUrlRef.current = data.signedUrl;
         prefetchedOverridesRef.current = data.overrides ?? null;
         prefetchedVariantIdRef.current = data.variantId ?? null;
+        prefetchedAgentRef.current = agentSecretNameRef.current ?? null;
         console.log("Signed URL pre-fetched for agent:", agentSecretNameRef.current);
       }
     } catch (error) {
@@ -542,11 +546,21 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     prefetchMemoryContext();
   }, [prefetchSignedUrl, prefetchMemoryContext]);
 
-  const connect = useCallback(async () => {
+  const connect = useCallback(async (overrideArgs?: { agentSecretName?: string | null; scenarioId?: string | null }) => {
     if (isConnectedRef.current || isConnecting) {
       console.log("Already connected or connecting, skipping");
       return;
     }
+
+    // El agente/escenario efectivos pueden venir EXPLÍCITOS desde el llamador.
+    // Esto evita una carrera: si la página hace setSelectedAgent(agent) y llama
+    // connect() en el mismo tick, agentSecretNameRef aún no se sincronizó (el
+    // useEffect corre tras el render) y resolveríamos al agente DEFAULT (Coach).
+    // Pasar el valor fresco del clic lo arregla.
+    const effectiveAgentSecret =
+      overrideArgs?.agentSecretName !== undefined ? overrideArgs.agentSecretName : agentSecretNameRef.current;
+    const effectiveScenarioId =
+      overrideArgs?.scenarioId !== undefined ? overrideArgs.scenarioId : scenarioIdRef.current;
 
     setIsConnecting(true);
     setSessionTime(0);
@@ -562,8 +576,11 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     setLatencyStats({ connectMs: null, lastTtfaMs: null, avgTtfaMs: null, ttfaSamples: 0 });
 
     try {
-      // Use pre-fetched URL if available, otherwise fetch now
-      const hasPreFetched = !!prefetchedUrlRef.current;
+      // Usa el URL pre-fetcheado SÓLO si fue para el mismo agente efectivo. Si
+      // el llamador pidió otro agente (o el ref no coincidía), lo ignoramos y
+      // pedimos fresco → nunca conectamos al agente equivocado.
+      const hasPreFetched =
+        !!prefetchedUrlRef.current && prefetchedAgentRef.current === (effectiveAgentSecret ?? null);
 
       let data: { signedUrl: string; scenario?: any; overrides?: { prompt?: string; firstMessage?: string } | null; variantId?: string };
 
@@ -575,14 +592,15 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
         };
       } else {
         data = await api.post<{ signedUrl: string; scenario?: any; overrides?: { prompt?: string; firstMessage?: string } | null; variantId?: string }>("/api/elevenlabs/conversation-token", {
-          scenarioId: scenarioIdRef.current,
-          agentSecretName: agentSecretNameRef.current,
+          scenarioId: effectiveScenarioId,
+          agentSecretName: effectiveAgentSecret,
         });
       }
 
       prefetchedUrlRef.current = null; // Consumed
       prefetchedOverridesRef.current = null;
       prefetchedVariantIdRef.current = null;
+      prefetchedAgentRef.current = null;
 
       // Expose variant ID for A/B testing
       setVariantId(data.variantId ?? null);

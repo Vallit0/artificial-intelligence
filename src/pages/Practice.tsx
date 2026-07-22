@@ -440,8 +440,13 @@ const Practice = () => {
     }
 
     playStartCall();
-    console.log("[TRACE] About to call connect()");
-    connect();
+    // Pasamos el agentSecretName FRESCO del clic: setSelectedAgent(agent) aún no
+    // propagó a activeAgentSecret ni al ref del hook en este mismo tick, así que
+    // sin esto connect() resolvería al agente DEFAULT (Coach). scenarioId viene
+    // de la URL (estable), se deja al ref.
+    const freshAgentSecret = agent?.agentSecretName ?? activeAgentSecret ?? null;
+    console.log("[TRACE] About to call connect() con agente:", freshAgentSecret);
+    connect({ agentSecretName: freshAgentSecret });
     console.log("[TRACE] connect() called");
   };
 
