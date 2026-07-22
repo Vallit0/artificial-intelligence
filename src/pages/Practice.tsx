@@ -400,43 +400,49 @@ const Practice = () => {
     console.log("[TRACE] handleStart called, agent:", agent?.id, agent?.agentSecretName);
     if (agent) setSelectedAgent(agent);
 
-    // Step 1: change orb color and grow
+    // Step 1: change orb color and grow. La animación del orb (crecer + guiño)
+    // es puramente estética y ahora corre EN PARALELO: ya no bloquea la conexión.
     if (agent) setOrbGradient(agent.orbGradient);
     setOrbGrowing(true);
-
-    // Step 2: wink after it grows
     setTimeout(() => setOrbWinking(true), 400);
-
-    // Step 3: after wink completes, transition to connecting
-    setTimeout(async () => {
-      console.log("[TRACE] setTimeout fired, calling connect()...");
-      setSessionState("connecting");
-      setConnectionStatus("Solicitando permisos de microfono...");
-      setTranscriptMessages([]);
-      setAgentEvaluation(null);
-
-      if (user) {
-        const practiceMode = derivePracticeMode(agent);
-        const sessionId = await savePracticeSession(
-          0,
-          undefined,
-          scenarioId || undefined,
-          variantId || undefined,
-          undefined,
-          practiceMode,
-        );
-        setCurrentSessionId(sessionId);
-      } else {
-        setCurrentSessionId(null);
-      }
-
-      playStartCall();
-      console.log("[TRACE] About to call connect()");
-      connect();
-      console.log("[TRACE] connect() called");
+    setTimeout(() => {
       setOrbGrowing(false);
       setOrbWinking(false);
     }, 1200);
+
+    // Step 2: conectar de inmediato. Antes esto vivía dentro de un setTimeout de
+    // 1200ms (esperaba a que terminara la animación) y encima AWAITaba
+    // savePracticeSession, así que el usuario perdía ~1.5s antes de que el SDK
+    // siquiera empezara a conectar con ElevenLabs.
+    console.log("[TRACE] calling connect() immediately (sin delay de animación)");
+    setSessionState("connecting");
+    setConnectionStatus("Solicitando permisos de microfono...");
+    setTranscriptMessages([]);
+    setAgentEvaluation(null);
+
+    // La fila de sesión se persiste en segundo plano: el sessionId sólo se
+    // necesita al EVALUAR (fin de la llamada), no para conectar. Tenerlo en
+    // await bloqueaba el connect() un round-trip completo sin razón.
+    if (user) {
+      const practiceMode = derivePracticeMode(agent);
+      savePracticeSession(
+        0,
+        undefined,
+        scenarioId || undefined,
+        variantId || undefined,
+        undefined,
+        practiceMode,
+      )
+        .then((sessionId) => setCurrentSessionId(sessionId))
+        .catch((err) => console.error("[TRACE] savePracticeSession falló:", err));
+    } else {
+      setCurrentSessionId(null);
+    }
+
+    playStartCall();
+    console.log("[TRACE] About to call connect()");
+    connect();
+    console.log("[TRACE] connect() called");
   };
 
   const autoStartedRef = useRef(false);

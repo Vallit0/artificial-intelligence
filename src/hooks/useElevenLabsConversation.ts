@@ -478,6 +478,12 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
 
   // Pre-fetch signed URL and memory context when agent changes
   const prefetchSignedUrl = useCallback(async () => {
+    // Sin agente resuelto todavía no hay nada útil que pre-cachear: pedir el token
+    // con agentSecretName=undefined misrutea al agente default (MISROUTE en el
+    // server) y el signed URL se descarta apenas se fija el agente real. Ese
+    // "Signed URL pre-fetched for agent: undefined" del log era un round-trip
+    // (y un fetch a ElevenLabs) desperdiciado. Lo evitamos.
+    if (!agentSecretNameRef.current) return;
     try {
       const data = await api.post<{ signedUrl: string; scenario?: any; overrides?: { prompt?: string; firstMessage?: string } | null; variantId?: string }>("/api/elevenlabs/conversation-token", {
         scenarioId: scenarioIdRef.current,
