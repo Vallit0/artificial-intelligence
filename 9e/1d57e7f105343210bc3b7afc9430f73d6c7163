@@ -1,0 +1,21 @@
+src/hooks/useElevenLabsConversation.ts
+  s_32c7634dd6e6d5::t_55a5315a77b169 111-113,520,549,555-564,579-583,595-596,603
+src/pages/Practice.tsx
+  s_32c7634dd6e6d5::t_6cc4dccbfb543a 443-449
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "9e1d57e7f105343210bc3b7afc9430f73d6c7163",
+  "prompts": {},
+  "sessions": {
+    "s_32c7634dd6e6d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1126bbe5-9567-45c0-ad78-db306483d96a",
+        "model": "unknown"
+      },
+      "human_author": "vallit0 <evallecyt@gmail.com>"
+    }
+  }
+}
