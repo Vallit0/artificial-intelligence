@@ -1,0 +1,20 @@
+src/hooks/useElevenLabsConversation.ts
+  s_32c7634dd6e6d5::t_50cfc85bd1be79 22-27
+  s_32c7634dd6e6d5::t_803b81e23b150f 119-122,137-140,142-152,154-155,430,432-438,441-442,559-561,616-631,693-698,700-705
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "3819933b878d4b538285012731e53699fe5b3ab5",
+  "prompts": {},
+  "sessions": {
+    "s_32c7634dd6e6d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1126bbe5-9567-45c0-ad78-db306483d96a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "vallit0 <evallecyt@gmail.com>"
+    }
+  }
+}
