@@ -1,0 +1,31 @@
+server/src/routes/memory.ts
+  s_2df7d7d88fabdb::t_a4cf436d963939 85-89
+  s_2df7d7d88fabdb::t_45ba00ac0e7653 26-28,33,35-37
+docs/integraciones.md
+  s_2df7d7d88fabdb::t_e9ea78510aee75 39-45
+  s_2df7d7d88fabdb::t_4a0244d0f966c3 70-77
+server/tests/integration/memory.test.ts
+  s_2df7d7d88fabdb::t_11e03ee60b2736 82-85,87-89
+server/src/middleware/toolSecret.ts
+  s_2df7d7d88fabdb::t_6abd00767bbb50 28-36,40-59,65-66,69
+server/scripts/diag-prospecting-connectivity.mjs
+  s_2df7d7d88fabdb::t_3c9006b739852c 1-114
+server/src/controllers/memory.controller.ts
+  s_2df7d7d88fabdb::t_bc82a20cba3f78 8-9,12-15,21,23-37,39-46,54-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "2f169244e96406fb14d2f64c9ad7ce6f9aaed455",
+  "prompts": {},
+  "sessions": {
+    "s_2df7d7d88fabdb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "16ad6c60-e2e9-4794-8ede-ba3bd46424e2",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "vallit0 <evallecyt@gmail.com>"
+    }
+  }
+}
