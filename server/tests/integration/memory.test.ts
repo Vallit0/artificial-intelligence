@@ -79,9 +79,14 @@ describe('Memory endpoints (ElevenLabs server tools)', () => {
   });
 
   describe('POST /api/memory/retrieve', () => {
-    it('devuelve 400 sin user_id', async () => {
+    // Corre a mitad de conversación con "Wait for response": nunca debe
+    // responder con error (colgaría el turno del agente). Sin user_id degrada a
+    // una memoria vacía con 200 en vez de 400.
+    it('degrada a memoria vacía (200) sin user_id', async () => {
       const res = await request(app).post('/api/memory/retrieve').send({});
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(200);
+      expect(res.body.memories).toEqual([]);
+      expect(res.body.last_session).toBeNull();
     });
 
     it('devuelve memorias ordenadas por importance desc', async () => {

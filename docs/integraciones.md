@@ -36,7 +36,13 @@ El sistema de memoria permite que los agentes de ElevenLabs recuerden informacio
 }
 ```
 
-6. En **Headers**, no se requieren headers adicionales (el endpoint es publico para que ElevenLabs pueda accederlo)
+6. En **Headers**, agrega el secreto compartido:
+
+| Header | Valor |
+|--------|-------|
+| `X-Tool-Secret` | El mismo valor que `TOOL_SHARED_SECRET` del `.env` del servidor |
+
+> ⚠️ **Importante:** el endpoint dejo de ser publico. Si `TOOL_SHARED_SECRET` esta configurado en el servidor y este header falta o no coincide, `/api/memory/retrieve` responde con una memoria vacia (200) en vez de la real — la conversacion NO se cuelga, pero el agente pierde el contexto del asesor. Para conservar la memoria, este header debe coincidir. (Como salvaguarda, aunque el header este mal, la agente ya recibe el contexto por la variable dinamica `advisor_context` que inyecta el frontend; el Server Tool es redundante y puedes desactivar su "Wait for response" si prefieres.)
 
 ### Paso 2: Configurar el Tool "save_advisor_memory"
 
@@ -60,6 +66,14 @@ El sistema de memoria permite que los agentes de ElevenLabs recuerden informacio
 ```
 
 3. Los parametros `content` y `category` deben estar marcados como **dynamic** para que el LLM los llene automaticamente.
+
+4. En **Headers**, agrega el mismo secreto compartido (obligatorio para `/save`):
+
+| Header | Valor |
+|--------|-------|
+| `X-Tool-Secret` | El mismo valor que `TOOL_SHARED_SECRET` del `.env` del servidor |
+
+> A diferencia de `/retrieve`, `/save` **rechaza con 401** si el header falta o no coincide (no degrada). Como su "Wait for response" esta **Desactivado**, un 401 no cuelga la conversacion, pero la memoria no se guardara hasta que el header sea correcto.
 
 ### Paso 3: Agregar Variables Dinamicas al Prompt del Agente
 

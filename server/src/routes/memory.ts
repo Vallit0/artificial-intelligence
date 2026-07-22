@@ -23,13 +23,18 @@ export const memoryRouter = Router();
  *       No usa JWT de usuario: se autentica con el header compartido `X-Tool-Secret`.
  *       Devuelve las memorias ordenadas por importance descendente (luego por updatedAt desc) más el resumen
  *       de la última sesión del asesor.
+ *       Como se invoca a mitad de conversación con "Wait for response", NUNCA responde con error: ante un
+ *       secreto inválido/ausente, `user_id` faltante o un fallo interno degrada a `{ memories: [], last_session: null }`
+ *       (HTTP 200) para no colgar el turno del agente. Con el secreto correcto devuelve la memoria real.
  *     security: []
  *     parameters:
  *       - in: header
  *         name: X-Tool-Secret
- *         required: true
+ *         required: false
  *         schema: { type: string }
- *         description: Secreto compartido con ElevenLabs (TOOL_SHARED_SECRET). En dev puede omitirse si la variable no está configurada.
+ *         description: >-
+ *           Secreto compartido con ElevenLabs (TOOL_SHARED_SECRET). Si falta o no coincide, la respuesta
+ *           es una memoria vacía (200) en lugar de un 401, para no colgar la conversación.
  *     requestBody:
  *       required: true
  *       content:
@@ -76,11 +81,12 @@ export const memoryRouter = Router();
  *                     weaknesses: { type: string, nullable: true }
  *                     recommendation: { type: string, nullable: true }
  *                     date: { type: string, format: date-time }
- *       400: { description: 'Falta user_id', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
- *       401: { description: 'Secreto de tool inválido', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
- *       500: { description: 'Secreto de tool no configurado (solo en producción)', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
  */
-memoryRouter.post('/retrieve', requireToolSecret, memoryController.retrieve);
+// /retrieve corre a mitad de conversación (Wait for response). NO usa el
+// middleware requireToolSecret porque un 401/500 colgaría el turno del agente;
+// el controller valida el secreto internamente y degrada a memoria vacía (200)
+// ante cualquier fallo. /save sí bloquea con el middleware (ver abajo).
+memoryRouter.post('/retrieve', memoryController.retrieve);
 
 /**
  * @openapi
