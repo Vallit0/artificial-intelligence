@@ -36,6 +36,7 @@ export interface AuthUser {
   lastName?: string;
   examenFinalEnabled?: boolean;
   examenObjecionesEnabled?: boolean;
+  examPracticeBypass?: boolean;
   level2Unlocked?: boolean;
   courseCompleted?: boolean;
   tutorialCompleted?: boolean;

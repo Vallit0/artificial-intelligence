@@ -70,6 +70,7 @@ export interface UpdateUserPatch {
   divisionId?: string | null;
   examenFinalEnabled?: boolean;
   examenObjecionesEnabled?: boolean;
+  examPracticeBypass?: boolean;
   level2Unlocked?: boolean;
   courseCompleted?: boolean;
   tutorialCompleted?: boolean;

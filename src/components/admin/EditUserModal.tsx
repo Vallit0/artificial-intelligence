@@ -49,6 +49,7 @@ interface EditableUser {
   roles: string[];
   examenFinalEnabled: boolean;
   examenObjecionesEnabled: boolean;
+  examPracticeBypass: boolean;
   level2Unlocked: boolean;
   courseCompleted: boolean;
   tutorialCompleted: boolean;
@@ -58,6 +59,7 @@ interface EditableUser {
 const FLAGS: { key: keyof EditableUser; label: string }[] = [
   { key: "examenFinalEnabled", label: "Examen Prospección habilitado" },
   { key: "examenObjecionesEnabled", label: "Examen Objeciones habilitado" },
+  { key: "examPracticeBypass", label: "Bypass tiempo de práctica (testing)" },
   { key: "level2Unlocked", label: "Objeciones desbloqueado" },
   { key: "courseCompleted", label: "Curso completado" },
   { key: "tutorialCompleted", label: "Tutorial completado" },
@@ -104,6 +106,7 @@ export default function EditUserModal({ student, open, onOpenChange, onSubmit }:
         setFlags({
           examenFinalEnabled: data.examenFinalEnabled,
           examenObjecionesEnabled: data.examenObjecionesEnabled,
+          examPracticeBypass: data.examPracticeBypass,
           level2Unlocked: data.level2Unlocked,
           courseCompleted: data.courseCompleted,
           tutorialCompleted: data.tutorialCompleted,

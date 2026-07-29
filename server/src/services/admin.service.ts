@@ -612,6 +612,7 @@ export interface UpdateUserInput {
                               // cambiar de sede.
   examenFinalEnabled?: boolean;
   examenObjecionesEnabled?: boolean;
+  examPracticeBypass?: boolean;
   level2Unlocked?: boolean;
   courseCompleted?: boolean;
   tutorialCompleted?: boolean;
@@ -655,6 +656,7 @@ export async function getEditableUser(userId: string, caller: AuthUser) {
     roles: user.roles.map((r) => r.role),
     examenFinalEnabled: user.examenFinalEnabled,
     examenObjecionesEnabled: user.examenObjecionesEnabled,
+    examPracticeBypass: user.examPracticeBypass,
     level2Unlocked: user.level2Unlocked,
     courseCompleted: user.courseCompleted,
     tutorialCompleted: user.tutorialCompleted,
@@ -786,6 +788,7 @@ export async function updateUser(userId: string, input: UpdateUserInput, caller:
   if (input.phoneNumber !== undefined) data.phoneNumber = input.phoneNumber?.trim() || null;
   if (input.examenFinalEnabled !== undefined) data.examenFinalEnabled = input.examenFinalEnabled;
   if (input.examenObjecionesEnabled !== undefined) data.examenObjecionesEnabled = input.examenObjecionesEnabled;
+  if (input.examPracticeBypass !== undefined) data.examPracticeBypass = input.examPracticeBypass;
   if (input.level2Unlocked !== undefined) data.level2Unlocked = input.level2Unlocked;
   if (input.courseCompleted !== undefined) data.courseCompleted = input.courseCompleted;
   if (input.tutorialCompleted !== undefined) data.tutorialCompleted = input.tutorialCompleted;

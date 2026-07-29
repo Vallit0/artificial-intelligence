@@ -238,6 +238,7 @@ const updateUserSchema = z
     divisionId: z.string().uuid().nullable().optional(),
     examenFinalEnabled: z.boolean().optional(),
     examenObjecionesEnabled: z.boolean().optional(),
+    examPracticeBypass: z.boolean().optional(),
     level2Unlocked: z.boolean().optional(),
     courseCompleted: z.boolean().optional(),
     tutorialCompleted: z.boolean().optional(),

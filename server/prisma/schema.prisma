@@ -135,6 +135,12 @@ model User {
   // Gatea el examen final de Objeciones (Nivel 2). Mismo control que Prospección.
   // Default false = bloqueado para todos hasta que admin/coach lo habilite.
   examenObjecionesEnabled Boolean @default(false) @map("examen_objeciones_enabled")
+  // Bypass del tiempo mínimo de práctica requerido para rendir los exámenes
+  // (min_practice_seconds_* de AppConfig). Pensado para QA/testing: permite a un
+  // estudiante puntual rendir el examen SIN haber acumulado los minutos de
+  // práctica. NO otorga acceso al examen por sí solo (eso lo dan los
+  // examen*Enabled); sólo salta el gate de tiempo de práctica. Default false.
+  examPracticeBypass Boolean  @default(false) @map("exam_practice_bypass")
   level2Unlocked     Boolean  @default(false) @map("level2_unlocked")
   // Se marca al aprobar el examen final de Nivel 2 (Manejo de Objeciones).
   // Habilita la descarga del certificado de finalización del programa.

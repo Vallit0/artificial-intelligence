@@ -36,7 +36,13 @@ export async function getPracticeSecondsByLevel(
 // Gate por tiempo de práctica: si hay un mínimo configurado para ese examen y
 // el estudiante no lo alcanzó, rechaza. 0 = sin requisito.
 async function assertPracticeTimeMet(userId: string, examType: string): Promise<void> {
-  const cfg = await getAppConfig();
+  const [cfg, user] = await Promise.all([
+    getAppConfig(),
+    prisma.user.findUnique({ where: { id: userId }, select: { examPracticeBypass: true } }),
+  ]);
+  // Bypass por-usuario (QA/testing): un admin habilitó a este estudiante para
+  // rendir el examen sin cumplir el tiempo mínimo de práctica.
+  if (user?.examPracticeBypass) return;
   const required =
     examType === 'objeciones'
       ? cfg.minPracticeSecondsObjeciones

@@ -74,7 +74,9 @@ export default function ExamenFinal() {
     [sessions],
   );
   const minPracticeSeconds = platformConfig?.minPracticeSecondsProspeccion ?? 0;
-  const needsMorePractice = !isAdmin && practiceSeconds < minPracticeSeconds;
+  // El bypass por-usuario (QA/testing) exime del requisito de práctica, igual que el admin.
+  const needsMorePractice =
+    !isAdmin && !user?.examPracticeBypass && practiceSeconds < minPracticeSeconds;
   const missingPracticeMin = Math.ceil((minPracticeSeconds - practiceSeconds) / 60);
 
   // Bloqueado si el admin no lo habilitó O si aún no cumplió el tiempo de práctica.

@@ -15,6 +15,9 @@ export interface ApiUser {
   lastName?: string;
   examenFinalEnabled?: boolean;
   examenObjecionesEnabled?: boolean;
+  // Bypass del tiempo mínimo de práctica (QA/testing): permite rendir el examen
+  // sin haber acumulado los minutos configurados. No habilita el examen por sí solo.
+  examPracticeBypass?: boolean;
   level2Unlocked?: boolean;
   courseCompleted?: boolean;
   // false mientras el usuario no haya visto/saltado el tour del primer login.

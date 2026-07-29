@@ -72,7 +72,9 @@ export default function ExamenFinalObjeciones() {
     [sessions],
   );
   const minPracticeSeconds = platformConfig?.minPracticeSecondsObjeciones ?? 0;
-  const needsMorePractice = !isAdmin && practiceSeconds < minPracticeSeconds;
+  // El bypass por-usuario (QA/testing) exime del requisito de práctica, igual que el admin.
+  const needsMorePractice =
+    !isAdmin && !user?.examPracticeBypass && practiceSeconds < minPracticeSeconds;
   const missingPracticeMin = Math.ceil((minPracticeSeconds - practiceSeconds) / 60);
 
   // Gate: el examen de Objeciones está bloqueado hasta que un admin o el coach
