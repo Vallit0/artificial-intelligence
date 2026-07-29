@@ -1,0 +1,49 @@
+src/lib/prospectingPromptBuilder.ts
+  s_311a38149c95da::t_a4c217d2172bcc 161
+src/pages/Practice.tsx
+  s_311a38149c95da::t_642898fd0c1f3f 93
+  s_311a38149c95da::t_9dd713ac5d57fb 826
+  s_311a38149c95da::t_b5f418428ba919 832
+  s_311a38149c95da::t_86854314769c2c 102
+  s_311a38149c95da::t_e7b2b63fbcc33e 137
+src/components/admin/ProspectingScenariosPanel.tsx
+  s_311a38149c95da::t_b522c6175264e9 47
+  s_311a38149c95da::t_a32bb6251efab2 536
+src/pages/IntroMargarita.tsx
+  s_311a38149c95da::t_192c876bf224c5 637
+  s_311a38149c95da::t_0b6d4543bcb242 513
+  s_311a38149c95da::t_8e9ba187464a87 10-12
+  s_311a38149c95da::t_0334ec4893ed94 465
+  s_311a38149c95da::t_67251cdcd5c952 744
+  s_311a38149c95da::t_25f673b7ed900c 499
+src/pages/Landing.tsx
+  s_311a38149c95da::t_2135fc36e1813b 34
+  s_311a38149c95da::t_dce999659dcb0d 136
+  s_311a38149c95da::t_b0a96b70229300 293
+src/App.tsx
+  s_311a38149c95da::t_147500ad511bab 19
+  s_311a38149c95da::t_7fff16ae59f2f4 66-67
+src/lib/demoMode.ts
+  s_311a38149c95da::t_4a9c73a92294aa 32,113,125,280
+  s_311a38149c95da::t_46a16ca5535a67 187
+  s_311a38149c95da::t_559418c855d375 129
+  s_311a38149c95da::t_353711f9df520e 241,244
+src/pages/Auth.tsx
+  s_311a38149c95da::t_c0d8397671b043 205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "1b1766efd42f89955990e010e31eb63639a5a695",
+  "prompts": {},
+  "sessions": {
+    "s_311a38149c95da": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e1c0460c-f7b0-45e5-9d7f-edeb7ce11eb3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "vallit0 <evallecyt@gmail.com>"
+    }
+  }
+}
