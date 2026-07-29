@@ -16,7 +16,7 @@ import Prospecting from "./pages/Prospecting";
 import Admin from "./pages/Admin";
 import ResetPassword from "./pages/ResetPassword";
 import CoachCenter from "./pages/CoachCenter";
-import IntroAlvaro from "./pages/IntroAlvaro";
+import IntroMargarita from "./pages/IntroMargarita";
 import TourRunner from "@/components/onboarding/TourRunner";
 import TutorialCenter from "@/components/onboarding/TutorialCenter";
 
@@ -63,8 +63,8 @@ const AppRoutes = () => (
     {/* Public landing page */}
     <Route path="/" element={<Landing />} />
 
-    {/* Video de presentación de Álvaro (misma UI, auto-reproducible) */}
-    <Route path="/intro" element={<IntroAlvaro />} />
+    {/* Video de presentación de Margarita (misma UI, auto-reproducible) */}
+    <Route path="/intro" element={<IntroMargarita />} />
     
     {/* Practice can be accessed by anyone (free tier) or authenticated users */}
     <Route path="/practice" element={<Practice />} />

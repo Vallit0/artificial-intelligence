@@ -31,7 +31,7 @@ const Landing = () => {
   const [headerText, setHeaderText] = useState("");
 
   const rotatingTexts = [
-    { title: "Álvaro", subtitle: "Tu coach personal de ventas" },
+    { title: "Margarita", subtitle: "Tu coach personal de ventas" },
     { title: "Centro de Negocios Digital", subtitle: "Señoriales Corporación de Servicio" },
   ];
 
@@ -133,7 +133,7 @@ const Landing = () => {
   if (sessionState === "timeup") {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <TimeUpModal open={true} characterName="Álvaro" />
+        <TimeUpModal open={true} characterName="Margarita" />
       </div>
     );
   }
@@ -290,7 +290,7 @@ const Landing = () => {
                   className="text-xs sm:text-base font-bold text-muted-foreground text-center px-4"
                   style={{ fontFamily: "'Nunito', 'DIN Rounded', -apple-system, sans-serif" }}
                 >
-                  Hablando con Álvaro (Coach)
+                  Hablando con Margarita (Coach)
                 </p>
 
                 <AICompanionOrb energy speaking={isSpeaking} listening={!isMuted} size={isMobile ? "sm" : "lg"} />

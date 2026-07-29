@@ -7,9 +7,9 @@ import AICompanionOrb from "@/components/AICompanionOrb";
 import logoSenoriales from "@/assets/logo-senoriales.png";
 
 /**
- * Video de presentación de Álvaro — Motion Design.
+ * Video de presentación de Margarita — Motion Design.
  * Muestra la UI REAL del software (vistas reales cargadas en iframes) con la
- * orbe de Álvaro viajando por encima como guía.
+ * orbe de Margarita viajando por encima como guía.
  *
  *   /intro          → loop con controles
  *   /intro?clean=1  → sin controles (captura limpia con OBS / Win+G)
@@ -462,7 +462,7 @@ const ORB_POSES: Record<
   outro: { x: 0, y: "-16vh", scale: 0.6, opacity: 1, excited: true, look: { x: 0, y: 0.9 } },
 };
 
-const TALK = ["Hola,", "soy", "Álvaro."];
+const TALK = ["Hola,", "soy", "Margarita."];
 
 // "Practica" queda estático; solo cambia la segunda parte.
 const MODES: { t: string; c: string }[] = [
@@ -496,7 +496,7 @@ const PROGRESS_TOUR: TourStep[] = [
 
 
 /* ================= Componente principal ================= */
-const IntroAlvaro = () => {
+const IntroMargarita = () => {
   const navigate = useNavigate();
   const clean = new URLSearchParams(window.location.search).has("clean");
 
@@ -510,7 +510,7 @@ const IntroAlvaro = () => {
   const scene = SCENES[i].key;
   const pose = ORB_POSES[scene];
 
-  // Escenas de "personaje" (Álvaro hablándote de frente): alterna mirada cámara ↔ contenido.
+  // Escenas de "personaje" (Margarita hablándote de frente): alterna mirada cámara ↔ contenido.
   const talky = scene === "meet" || scene === "talk" || scene === "modes" || scene === "outro";
   const effLook = talky && gazeCamera ? { x: 0, y: 0 } : pose.look ?? null;
 
@@ -634,7 +634,7 @@ const IntroAlvaro = () => {
             </motion.p>
             <h1 className="text-5xl sm:text-8xl font-extrabold text-foreground tracking-tight leading-[0.95]" style={{ fontFamily: DISPLAY }}>
               <Kinetic text="Conoce a" />
-              <Kinetic text="Álvaro" className="mt-1" wordClassName={() => "text-secondary"} />
+              <Kinetic text="Margarita" className="mt-1" wordClassName={() => "text-secondary"} />
             </h1>
           </motion.div>
         )}
@@ -741,4 +741,4 @@ const IntroAlvaro = () => {
   );
 };
 
-export default IntroAlvaro;
+export default IntroMargarita;

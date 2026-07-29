@@ -29,7 +29,7 @@ export const DEMO_USER: ApiUser = {
   courseCompleted: false,
   tutorialCompleted: true,
   sede: { id: "sede-gt", name: "Guatemala HQ" },
-  coach: { id: "coach-1", name: "Coach Álvaro" },
+  coach: { id: "coach-1", name: "Coach Margarita" },
   division: { id: "div-1", name: "Equipo Ventas A" },
   coachPermissions: {
     canCreateCoaches: true,
@@ -110,7 +110,7 @@ const STUDENTS = NAMES.map(([fn, ln], i) => {
     sedeName: sede.name,
     country: sede.country,
     coachId: `coach-${(i % 3) + 1}`,
-    coachName: ["Coach Álvaro", "Coach Marta", "Coach René"][i % 3],
+    coachName: ["Coach Margarita", "Coach Marta", "Coach René"][i % 3],
     divisionId: `div-${(i % 4) + 1}`,
     divisionName: ["Equipo Ventas A", "Equipo Ventas B", "Corporativo", "Retail"][i % 4],
   };
@@ -122,11 +122,11 @@ const DIVISIONS = ["Equipo Ventas A", "Equipo Ventas B", "Corporativo", "Retail"
   isActive: true,
   createdAt: dateBack(150),
   sede: SEDES[i % SEDES.length],
-  coach: { id: `coach-${(i % 3) + 1}`, name: ["Coach Álvaro", "Coach Marta", "Coach René"][i % 3], email: "coach@senoriales.com" },
+  coach: { id: `coach-${(i % 3) + 1}`, name: ["Coach Margarita", "Coach Marta", "Coach René"][i % 3], email: "coach@senoriales.com" },
   learnerCount: 5 + i * 2,
 }));
 
-const COACHES = ["Álvaro", "Marta", "René", "Lucía"].map((fn, i) => ({
+const COACHES = ["Margarita", "Marta", "René", "Lucía"].map((fn, i) => ({
   id: `coach-${i + 1}`,
   email: `${fn.toLowerCase()}@senoriales.com`,
   firstName: fn,
@@ -184,7 +184,7 @@ const CITAS = Array.from({ length: 6 }).map((_, i) => {
     createdAt: dateBack(2),
     updatedAt: dateBack(1),
     asesor: { id: `stu-${i}`, email: `${fn.toLowerCase()}@senoriales.com`, firstName: fn, lastName: ln },
-    creator: { id: "coach-1", email: "alvaro@senoriales.com", firstName: "Coach", lastName: "Álvaro" },
+    creator: { id: "coach-1", email: "margarita@senoriales.com", firstName: "Coach", lastName: "Margarita" },
   };
 });
 
@@ -238,10 +238,10 @@ export function getDemoResponse(method: string, rawPath: string): unknown {
         callDurationObjecionesSec: 600,
         passThresholdProspeccion: 75,
         passThresholdObjeciones: 80,
-        certificateInstructorName: "Lic. Álvaro Pérez",
+        certificateInstructorName: "Lic. Margarita Pérez",
         certificateDirectorName: "Dra. Marta Solís",
         certificateCourseName: "Maestría en Ventas Consultivas",
-        certificateLevel1InstructorName: "Lic. Álvaro Pérez",
+        certificateLevel1InstructorName: "Lic. Margarita Pérez",
         certificateLevel1DirectorName: "Dra. Marta Solís",
         certificateLevel1CourseName: "Prospección Profesional",
         updatedAt: dateBack(5),
@@ -277,7 +277,7 @@ export function getDemoResponse(method: string, rawPath: string): unknown {
         sedeId: SEDES[i % SEDES.length].id,
         sedeName: SEDES[i % SEDES.length].name,
         coachId: "coach-1",
-        coachName: "Coach Álvaro",
+        coachName: "Coach Margarita",
       }));
     case "/api/admin/analytics/usage":
       return {

@@ -158,7 +158,7 @@ export interface BuilderParams {
 
 export const DEFAULT_BUILDER_PARAMS: BuilderParams = {
   agent_metadata: {
-    agent_name: "Álvaro",
+    agent_name: "Margarita",
     accent: "guatemalteco",
     version: "1.0.0",
   },

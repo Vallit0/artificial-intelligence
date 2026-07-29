@@ -90,7 +90,7 @@ const practiceAgentSuggestions: AgentSuggestion[] = [
   {
     id: "roleplay-cliente",
     label: "Role-Play Cliente",
-    description: "Álvaro es un Cliente",
+    description: "Margarita es un Cliente",
     icon: Swords,
     agentSecretName: "ELEVENLABS_AGENT_ROLEPLAY_CLIENTE",
     color: "from-secondary/15 to-secondary/5 border-secondary/30 hover:border-secondary/60",
@@ -99,7 +99,7 @@ const practiceAgentSuggestions: AgentSuggestion[] = [
   {
     id: "roleplay-asesor",
     label: "Role-Play Asesor",
-    description: "Álvaro es un Asesor",
+    description: "Margarita es un Asesor",
     icon: UserCheck,
     agentSecretName: "ELEVENLABS_AGENT_ROLEPLAY_ASESOR",
     color: "from-orange-500/15 to-orange-500/5 border-orange-500/30 hover:border-orange-500/60",
@@ -134,13 +134,11 @@ const objectionsAgentSuggestions: AgentSuggestion[] = practiceAgentSuggestions
   // llamada (Coach, Roleplay) y los enruta a agentes ElevenLabs distintos vía
   // secret name (sufijo _NIVEL2). El Examen Final se conserva pero apunta a su
   // propia página de objeciones (no a la compuerta del Nivel 1). También
-  // sustituye el persona "Álvaro" por "Alvaro" en las descripciones y unifica
-  // el orbe a un tono morado para diferenciar visualmente el nivel.
+  // unifica el orbe a un tono morado para diferenciar visualmente el nivel.
   .filter((agent) => !LEVEL2_HIDDEN_IDS.has(agent.id))
   .map((agent) => {
     const next: AgentSuggestion = {
       ...agent,
-      description: agent.description.replace(/Álvaro/g, "Alvaro"),
       orbGradient: LEVEL2_ORB_GRADIENT,
     };
     if (agent.agentSecretName) {
@@ -825,13 +823,13 @@ const Practice = () => {
         {sessionState === "active" && (
           <div className="flex flex-col items-center justify-center w-full h-full px-4 pb-32 lg:pb-24 animate-fade-in">
             <div className="flex flex-col items-center gap-3 sm:gap-6">
-              {/* Persona name (Álvaro / Nelson) */}
+              {/* Persona name (Margarita / Nelson) */}
               {selectedAgent && (
                 <p
                   className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.25em] text-muted-foreground/70"
                   style={{ fontFamily: "'Nunito', 'DIN Rounded', -apple-system, sans-serif" }}
                 >
-                  Personaje · {currentLevel === 1 ? "Álvaro" : "Alvaro"}
+                  Personaje · Margarita
                 </p>
               )}
               {/* Agent label */}
