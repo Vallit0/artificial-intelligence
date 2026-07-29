@@ -1,0 +1,47 @@
+server/tests/integration/practiceGateBypass.test.ts
+  s_311a38149c95da::t_65e1747b0e351e 1-118
+src/lib/api-client.ts
+  s_311a38149c95da::t_753b15dd886488 18-20
+src/components/admin/EditUserModal.tsx
+  s_311a38149c95da::t_5c19e4f4bb68a7 62
+  s_311a38149c95da::t_b3a6ba53e73f6f 52
+  s_311a38149c95da::t_4228da892fe5cc 109
+src/hooks/useStudents.ts
+  s_311a38149c95da::t_f1aa5ba533b65d 73
+server/src/services/admin.service.ts
+  s_311a38149c95da::t_c5941448db6581 659
+  s_311a38149c95da::t_bb1b4c3e2558f6 615
+  s_311a38149c95da::t_1780aa4d874893 791
+server/src/routes/admin.ts
+  s_311a38149c95da::t_d257bff140a3e9 241
+server/src/services/auth.service.ts
+  s_311a38149c95da::t_f536abaca6f316 45
+server/src/services/sessions.service.ts
+  s_311a38149c95da::t_84b711923a758e 39-45
+server/src/types/index.ts
+  s_311a38149c95da::t_ac40a0ba0df20a 39
+server/prisma/migrations/20260728000000_add_exam_practice_bypass/migration.sql
+  s_311a38149c95da::t_7f8019d2b63707 1-10
+src/pages/ExamenFinal.tsx
+  s_311a38149c95da::t_e9f40af591d59c 77-79
+src/pages/ExamenFinalObjeciones.tsx
+  s_311a38149c95da::t_bca27c77b61075 75-77
+server/prisma/schema.prisma
+  s_311a38149c95da::t_dbba07ec4a4019 138-143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "6329ef25515d99d776a00df6ecac7afa55423a5d",
+  "prompts": {},
+  "sessions": {
+    "s_311a38149c95da": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e1c0460c-f7b0-45e5-9d7f-edeb7ce11eb3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "vallit0 <evallecyt@gmail.com>"
+    }
+  }
+}
