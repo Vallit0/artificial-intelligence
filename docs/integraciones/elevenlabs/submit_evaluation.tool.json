@@ -1,0 +1,91 @@
+{
+  "type": "client",
+  "name": "submit_evaluation",
+  "description": "Envia la evaluacion final de la conversacion al sistema. DEBE llamarse una sola vez al finalizar la conversacion con el puntaje del usuario en cada dimension de la tecnica de ventas.",
+  "expects_response": false,
+  "response_timeout_secs": 1,
+  "parameters": [
+    {
+      "id": "score",
+      "type": "number",
+      "description": "Puntaje total de la conversacion de 0 a 100. Promedio ponderado de las 5 dimensiones.",
+      "dynamic_variable": "",
+      "constant_value": "",
+      "required": true,
+      "value_type": "llm_prompt"
+    },
+    {
+      "id": "passed",
+      "type": "boolean",
+      "description": "true si el score total es mayor o igual a 70 y el usuario demostro dominio suficiente de la tecnica de ventas; false en caso contrario.",
+      "dynamic_variable": "",
+      "constant_value": "",
+      "required": true,
+      "value_type": "llm_prompt"
+    },
+    {
+      "id": "feedback",
+      "type": "string",
+      "description": "Retroalimentacion cualitativa en espanol para el usuario (2 a 4 oraciones). Destaca lo positivo y areas de mejora concretas.",
+      "dynamic_variable": "",
+      "constant_value": "",
+      "required": true,
+      "value_type": "llm_prompt"
+    },
+    {
+      "id": "apertura",
+      "type": "number",
+      "description": "Puntaje de 0 a 100 en la apertura de la conversacion: saludo, rapport, presentacion clara.",
+      "dynamic_variable": "",
+      "constant_value": "",
+      "required": true,
+      "value_type": "llm_prompt"
+    },
+    {
+      "id": "escucha_activa",
+      "type": "number",
+      "description": "Puntaje de 0 a 100 en escucha activa: preguntas abiertas, parafraseo, deteccion de necesidades.",
+      "dynamic_variable": "",
+      "constant_value": "",
+      "required": true,
+      "value_type": "llm_prompt"
+    },
+    {
+      "id": "manejo_objeciones",
+      "type": "number",
+      "description": "Puntaje de 0 a 100 en manejo de objeciones: como responde a dudas, precio, tiempo, confianza.",
+      "dynamic_variable": "",
+      "constant_value": "",
+      "required": true,
+      "value_type": "llm_prompt"
+    },
+    {
+      "id": "propuesta_valor",
+      "type": "number",
+      "description": "Puntaje de 0 a 100 en propuesta de valor: claridad del beneficio, diferenciacion, personalizacion al cliente.",
+      "dynamic_variable": "",
+      "constant_value": "",
+      "required": true,
+      "value_type": "llm_prompt"
+    },
+    {
+      "id": "cierre",
+      "type": "number",
+      "description": "Puntaje de 0 a 100 en el cierre: llamada a la accion, confirmacion de proximos pasos, despedida.",
+      "dynamic_variable": "",
+      "constant_value": "",
+      "required": true,
+      "value_type": "llm_prompt"
+    }
+  ],
+  "dynamic_variables": {
+    "dynamic_variable_placeholders": {}
+  },
+  "assignments": [],
+  "disable_interruptions": false,
+  "force_pre_tool_speech": "auto",
+  "tool_call_sound": null,
+  "tool_call_sound_behavior": "auto",
+  "execution_mode": "immediate",
+  "response_mocks": []
+}
