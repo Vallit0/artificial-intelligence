@@ -1,0 +1,36 @@
+src/lib/api-client.ts
+  s_57532e058a56fa::t_1fa6ff18ad079f 26
+server/src/controllers/auth.controller.ts
+  s_57532e058a56fa::t_1fa6ff18ad079f 96
+src/lib/productos.ts
+  s_57532e058a56fa::t_947d55c7379b9f 1-385
+src/components/cremacion/CremacionRevealOverlay.tsx
+  s_57532e058a56fa::t_64cbc74ebb88b0 1-132
+src/pages/ProductosCremacion.tsx
+  s_57532e058a56fa::t_dda748ed004658 1,17-23,42-54,57,59-62,64-65,67-71,76,79-94,97-106,109-110,112-113,115,118-120,130,148-150,160-161,192-235,237,243,277-294,297,300,303,310-330,337-343,367,373,382,408,416-426,430,433,435,439,443-447,450,455-460,464-465,467-486,488,494,497-503,508,513-518,520-525,528-531,534-539,542-585,597-609,619,625,628,630
+src/App.tsx
+  s_57532e058a56fa::t_051110ba771304 22,184-185
+src/hooks/useLevelMode.tsx
+  s_57532e058a56fa::t_051110ba771304 50-54,61,100,162-163,166-185,203-204,206
+scripts/parse-productos-docx.py
+  s_57532e058a56fa::t_fc22ad047bdf07 1-236,238-241
+  s_57532e058a56fa::t_1fa6ff18ad079f 237
+src/data/productos.generated.ts
+  s_57532e058a56fa::t_f399fa8da9323a 1-5775
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "835aa5240142f5e785cde1175a62c6d663c0ae6f",
+  "prompts": {},
+  "sessions": {
+    "s_57532e058a56fa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c604e440-d64a-4c52-8fa8-56276d51c70f",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "vallit0 <evallecyt@gmail.com>"
+    }
+  }
+}
