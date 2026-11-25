@@ -1,0 +1,46 @@
+src/lib/cremacion-theme.ts
+  s_57532e058a56fa::t_241c6069ef5e20 1-7,31
+  s_57532e058a56fa::t_fe1679acbe58a5 8-30,32-42
+src/components/MobileNavigation.tsx
+  s_57532e058a56fa::t_662ed0608827d1 21,64-68,81,83-94,96-98,113
+  s_57532e058a56fa::t_241c6069ef5e20 2-3,46-54,95
+src/lib/cremacionCatalog.ts
+  s_57532e058a56fa::t_8f54fd237ebb0e 1-381
+src/lib/cremacionFaq.ts
+  s_57532e058a56fa::t_a8df2cd7aa3329 1-367
+src/pages/ProductosCremacion.tsx
+  s_57532e058a56fa::t_241c6069ef5e20 6-8,32-33,50,110,135-138,151,237-243,468
+  s_57532e058a56fa::t_0755d9cb7ad0ac 1-5,9-31,34-49,51-109,111-134,139-150,152-236,244-467,469-512
+src/components/scenarios/LeftSidebar.tsx
+  s_57532e058a56fa::t_241c6069ef5e20 16,18,56-65,176
+  s_57532e058a56fa::t_662ed0608827d1 15,21,38,77-82,119,129,160-175,177-193,195
+src/components/cremacion/CremacionCampaignBanner.tsx
+  s_57532e058a56fa::t_838fdaea7db4b4 1-113
+src/App.tsx
+  s_57532e058a56fa::t_241c6069ef5e20 21,88,94-101
+  s_57532e058a56fa::t_662ed0608827d1 20,89-93,102-105
+src/pages/DudasCremacion.tsx
+  s_57532e058a56fa::t_80f06485c65322 1-391
+src/hooks/useLevelMode.tsx
+  s_57532e058a56fa::t_2908881833e230 6-12,18-24,44-49,55-69,93,100-101,155-164,174-177,179
+src/pages/Practice.tsx
+  s_57532e058a56fa::t_241c6069ef5e20 38,40,170-173,181-182,191-200,204,214,852-865,902-903
+  s_57532e058a56fa::t_662ed0608827d1 1,18-19,37,41-48,169,174-180,183-190,201-203,205-213,215-219,229,235-248,281-294,710-711,713-732,799,815-819,822-827,829,869,941,980
+  s_57532e058a56fa::t_d19394fe31cf4a 866
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4795de4934ab609168503d4fb087c9b0ca89a94b",
+  "prompts": {},
+  "sessions": {
+    "s_57532e058a56fa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c604e440-d64a-4c52-8fa8-56276d51c70f",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "vallit0 <evallecyt@gmail.com>"
+    }
+  }
+}
