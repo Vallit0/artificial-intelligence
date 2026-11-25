@@ -1,0 +1,25 @@
+src/components/cremacion/CremacionRevealOverlay.tsx
+  s_57532e058a56fa::t_6a46f0c4643056 6-11,27,51-55,60-61,95,115-133,146-147,150,153-155
+  s_57532e058a56fa::t_8d5e3ccf997ab9 156
+src/hooks/useLevelMode.tsx
+  s_57532e058a56fa::t_6a46f0c4643056 51-53,56-57,64-73,178-197,203-206,231-232,234
+src/components/UserMenu.tsx
+  s_57532e058a56fa::t_6a46f0c4643056 3-4,20,22-28,87-89
+  s_57532e058a56fa::t_950bef1bfa507b 90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4da65b6f4b49cfba94b974c87244495e703211df",
+  "prompts": {},
+  "sessions": {
+    "s_57532e058a56fa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c604e440-d64a-4c52-8fa8-56276d51c70f",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "vallit0 <evallecyt@gmail.com>"
+    }
+  }
+}
