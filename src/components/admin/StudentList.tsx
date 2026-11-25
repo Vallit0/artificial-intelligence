@@ -36,6 +36,8 @@ import DeleteUserModal from "./DeleteUserModal";
 import ResetStudentPasswordModal from "./ResetStudentPasswordModal";
 import { useToast } from "@/hooks/use-toast";
 import { UpdateUserPatch, type ExamKind } from "@/hooks/useStudents";
+import { usePlatformConfig } from "@/hooks/useAppConfig";
+import { evaluateExamGate } from "@/lib/exam-gate";
 
 interface StudentListProps {
   students: Student[];
@@ -72,6 +74,8 @@ const formatDuration = (seconds: number): string => {
 
 export default function StudentList({ students, onAssignGrade, onToggleExamen, onBulkToggleExamen, onRefetch, divisions, canAssignDivision, onAssignDivision, isAdmin, currentUserId, canEditUser, onUpdateUser, canDeleteUser }: StudentListProps) {
   const { toast } = useToast();
+  // Mínimos de práctica configurados: sin esto no se puede calcular cuánto falta.
+  const { config: platformConfig } = usePlatformConfig();
   const [assigningDivisionId, setAssigningDivisionId] = useState<string | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [gradeStudent, setGradeStudent] = useState<Student | null>(null);
@@ -163,6 +167,59 @@ export default function StudentList({ students, onAssignGrade, onToggleExamen, o
             description: "No se pudo actualizar la división.",
             variant: "destructive",
           },
+    );
+  };
+
+  // Estado del auto-desbloqueo de un examen: cuánta práctica lleva el alumno y
+  // cuánta le falta para que se habilite solo. El examen se abre por tiempo O
+  // por el toggle manual, así que distinguimos ambos casos (ver lib/exam-gate).
+  const renderExamProgress = (student: Student, exam: ExamKind) => {
+    const isObjeciones = exam === "objeciones";
+    const label = isObjeciones ? "Obj" : "Pros";
+    const practiceSeconds = isObjeciones
+      ? student.practiceSecondsObjeciones
+      : student.practiceSecondsProspeccion;
+    const minPracticeSeconds =
+      (isObjeciones
+        ? platformConfig?.minPracticeSecondsObjeciones
+        : platformConfig?.minPracticeSecondsProspeccion) ?? 0;
+
+    const gate = evaluateExamGate({
+      isAdmin: false, // queremos ver el estado del ALUMNO, no el del admin que mira
+      examEnabled: isObjeciones ? student.examenObjecionesEnabled : student.examenFinalEnabled,
+      practiceBypass: student.examPracticeBypass,
+      practiceSeconds,
+      minPracticeSeconds,
+    });
+
+    let detail: string;
+    let tone: string;
+    if (!gate.hasAutoUnlock) {
+      // Mínimo en 0: no hay auto-desbloqueo, sólo manda el toggle manual.
+      detail = "sin auto";
+      tone = "text-muted-foreground";
+    } else if (gate.remainingSeconds === 0) {
+      detail = "listo";
+      tone = "text-emerald-600 dark:text-emerald-400";
+    } else {
+      detail = `faltan ${formatDuration(gate.remainingSeconds)}`;
+      tone = "text-amber-600 dark:text-amber-400";
+    }
+
+    return (
+      <div
+        className="flex items-center justify-between gap-2 text-xs"
+        title={`${label}: ${formatDuration(practiceSeconds)} practicados${
+          gate.hasAutoUnlock ? ` de ${formatDuration(minPracticeSeconds)} requeridos` : ""
+        }${student.examPracticeBypass ? " · bypass QA activo" : ""}`}
+      >
+        <span className="text-muted-foreground">{label}</span>
+        <span className={tone}>
+          {formatDuration(practiceSeconds)}
+          {" · "}
+          {detail}
+        </span>
+      </div>
     );
   };
 
@@ -330,6 +387,9 @@ export default function StudentList({ students, onAssignGrade, onToggleExamen, o
             </TableHead>
             <TableHead className="text-center">División</TableHead>
             <TableHead className="text-center">Tiempo Total</TableHead>
+            <TableHead className="text-center" title="Práctica acumulada por nivel y cuánto falta para que el examen se habilite solo">
+              Falta p/ Examen
+            </TableHead>
             <TableHead className="text-center">Exámenes</TableHead>
             <TableHead className="text-center">Nivel</TableHead>
             <TableHead className="text-right">Acciones</TableHead>
@@ -361,6 +421,12 @@ export default function StudentList({ students, onAssignGrade, onToggleExamen, o
                 <div className="flex items-center justify-center gap-1 text-muted-foreground">
                   <Clock className="w-4 h-4" />
                   {formatDuration(student.totalDuration)}
+                </div>
+              </TableCell>
+              <TableCell className="text-center">
+                <div className="flex flex-col items-stretch gap-1">
+                  {renderExamProgress(student, "prospeccion")}
+                  {renderExamProgress(student, "objeciones")}
                 </div>
               </TableCell>
               <TableCell className="text-center">

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { KeyRound, LogOut, BarChart3 } from "lucide-react";
+import { KeyRound, LogOut, BarChart3, UserPen } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -11,11 +11,19 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ChangeMyPasswordModal } from "@/components/auth/ChangeMyPasswordModal";
+import { EditMyNameModal } from "@/components/auth/EditMyNameModal";
 
 const UserMenu = () => {
-  const { user, signOut } = useAuth();
+  const { user, roles, signOut } = useAuth();
   const navigate = useNavigate();
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [nameModalOpen, setNameModalOpen] = useState(false);
+
+  // Sólo admin/coach pueden auto-editar su nombre (el de los learners lo
+  // administra el admin porque sale en los certificados). Espeja el check del
+  // backend en PATCH /auth/me.
+  const canEditOwnName = roles.includes("admin") || roles.includes("coach");
+  const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(" ");
 
   const handleSignOut = async () => {
     await signOut();
@@ -23,6 +31,9 @@ const UserMenu = () => {
   };
 
   const getInitial = () => {
+    if (user?.firstName) {
+      return user.firstName[0].toUpperCase();
+    }
     if (user?.email) {
       return user.email[0].toUpperCase();
     }
@@ -45,7 +56,7 @@ const UserMenu = () => {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
           <div className="px-3 py-2">
-            <p className="text-sm font-medium text-foreground">Mi Cuenta</p>
+            <p className="text-sm font-medium text-foreground truncate">{fullName || "Mi Cuenta"}</p>
             <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
           </div>
           <DropdownMenuSeparator />
@@ -53,6 +64,12 @@ const UserMenu = () => {
             <BarChart3 className="mr-2 h-4 w-4" />
             Ver mi progreso
           </DropdownMenuItem>
+          {canEditOwnName && (
+            <DropdownMenuItem onClick={() => setNameModalOpen(true)}>
+              <UserPen className="mr-2 h-4 w-4" />
+              {fullName ? "Editar mi nombre" : "Poner mi nombre"}
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem onClick={() => setPasswordModalOpen(true)}>
             <KeyRound className="mr-2 h-4 w-4" />
             Cambiar contraseña
@@ -69,6 +86,7 @@ const UserMenu = () => {
         open={passwordModalOpen}
         onOpenChange={setPasswordModalOpen}
       />
+      <EditMyNameModal open={nameModalOpen} onOpenChange={setNameModalOpen} />
     </>
   );
 };

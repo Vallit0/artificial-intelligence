@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, GraduationCap, AlertTriangle, Award, FileImage, FileText, Lock } from "lucide-react";
+import { ArrowLeft, GraduationCap, AlertTriangle, Award, FileImage, FileText, Lock, PhoneOff, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useElevenLabsConversation } from "@/hooks/useElevenLabsConversation";
@@ -16,6 +16,10 @@ import LeftSidebar from "@/components/scenarios/LeftSidebar";
 import MobileNavigation from "@/components/MobileNavigation";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { api } from "@/lib/api-client";
+import { evaluateExamGate } from "@/lib/exam-gate";
+import { useExamGateSync } from "@/hooks/useExamGateSync";
+import { aggregateTimeByMode } from "@/lib/time-by-mode";
+import ExamTimeSourcesDialog from "@/components/ExamTimeSourcesDialog";
 
 interface TranscriptMessage {
   id: string;
@@ -40,7 +44,10 @@ interface EvaluationResult {
   checklist?: { label: string; passed: boolean }[];
 }
 
-type ExamState = "idle" | "active" | "evaluating" | "evaluated" | "certificate";
+// "interrupted" = la llamada se cayo sin que la conversacion terminara de
+// forma valida (el agente colgo por su cuenta). El intento NO se evalua: el
+// alumno decide si reengancha o si cierra y manda a evaluar lo que lleva.
+type ExamState = "idle" | "active" | "interrupted" | "evaluating" | "evaluated" | "certificate";
 
 // Examen de Objeciones: la llamada se cierra (y evalúa) al llegar a 10 min.
 const EXAM_MAX_SECONDS = 10 * 60;
@@ -49,7 +56,8 @@ export default function ExamenFinalObjeciones() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, isAdmin, refreshUser, patchUser } = useAuth();
-  const { sessions, savePracticeSession, evaluateSession } = usePracticeSessions();
+  const { sessions, savePracticeSession, evaluateSession, refetch: refetchSessions } =
+    usePracticeSessions();
   const [examState, setExamState] = useState<ExamState>("idle");
   const [transcriptMessages, setTranscriptMessages] = useState<TranscriptMessage[]>([]);
   const [evaluation, setEvaluation] = useState<EvaluationResult | null>(null);
@@ -59,28 +67,47 @@ export default function ExamenFinalObjeciones() {
 
   // Duración y umbral configurables por el admin (AppConfig); fallback a los
   // defaults históricos de Objeciones mientras la config carga.
-  const { config: platformConfig } = usePlatformConfig();
+  const { config: platformConfig, refetch: refetchConfig } = usePlatformConfig();
   const examMaxSeconds = platformConfig?.callDurationObjecionesSec ?? EXAM_MAX_SECONDS;
   const passThreshold = platformConfig?.passThresholdObjeciones ?? 80;
 
-  // Tiempo de práctica de Objeciones acumulado (excluye intentos de examen).
-  const practiceSeconds = useMemo(
+  // Desglose por modo, para saber cuánto suma a este examen y poder explicarle
+  // al alumno qué escenarios cuentan (ver ExamTimeSourcesDialog).
+  const timeByMode = useMemo(
     () =>
-      sessions
-        .filter((s) => !s.exam_type && s.practice_mode === "objeciones")
-        .reduce((acc, s) => acc + (s.duration_seconds || 0), 0),
+      aggregateTimeByMode(
+        sessions.map((s) => ({
+          durationSeconds: s.duration_seconds,
+          practiceMode: s.practice_mode,
+          examType: s.exam_type,
+        })),
+      ),
     [sessions],
   );
+  // Tiempo de práctica de Objeciones acumulado (excluye intentos de examen) —
+  // los mismos modos que cuenta el gate del backend para este examen.
+  const practiceSeconds = timeByMode.roleplayObjecionesSeconds;
   const minPracticeSeconds = platformConfig?.minPracticeSecondsObjeciones ?? 0;
-  // El bypass por-usuario (QA/testing) exime del requisito de práctica, igual que el admin.
-  const needsMorePractice =
-    !isAdmin && !user?.examPracticeBypass && practiceSeconds < minPracticeSeconds;
-  const missingPracticeMin = Math.ceil((minPracticeSeconds - practiceSeconds) / 60);
 
-  // Gate: el examen de Objeciones está bloqueado hasta que un admin o el coach
-  // asignado lo habilite (flag examenObjecionesEnabled) Y el alumno cumpla el
-  // tiempo mínimo de práctica configurado. El admin lo ve siempre.
-  const isLocked = !isAdmin && (!user?.examenObjecionesEnabled || needsMorePractice);
+  // Gate: el examen de Objeciones se habilita con el toggle del admin/coach
+  // asignado (examenObjecionesEnabled) O automáticamente al alcanzar el mínimo
+  // de práctica de Objeciones. El admin lo ve siempre.
+  const gate = evaluateExamGate({
+    isAdmin,
+    examEnabled: !!user?.examenObjecionesEnabled,
+    practiceBypass: !!user?.examPracticeBypass,
+    practiceSeconds,
+    minPracticeSeconds,
+  });
+  const { isLocked, hasAutoUnlock, remainingMinutes: missingPracticeMin } = gate;
+
+  // Mientras esté bloqueado, revalida el gate para que el examen se destrabe sin
+  // recargar (el instructor lo habilitó, o el alumno ya cumplió el tiempo). Una
+  // vez desbloqueado se apaga: no queremos requests de fondo durante el examen.
+  useExamGateSync(
+    () => Promise.all([refetchSessions(), refetchConfig(), refreshUser()]).then(() => undefined),
+    { enabled: isLocked },
+  );
 
   const studentName =
     [user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.email || "Estudiante";
@@ -105,10 +132,48 @@ export default function ExamenFinalObjeciones() {
     });
   }, [toast]);
 
+  // Senales que distinguen un fin de conversacion VALIDO de un corte del
+  // agente: el agente entrego su evaluacion, o se alcanzo el tope de duracion.
+  // Cualquier otra desconexion es un corte y no debe cerrar ni evaluar el examen.
+  const evaluationReceivedRef = useRef(false);
+  const maxDurationReachedRef = useRef(false);
+  const endHandledRef = useRef(false);
+  const cutCountRef = useRef(0);
+
   const handleAgentEvaluation = useCallback((evalResult: EvaluationResult) => {
     console.log("[DEBUG][EVAL][ExamenFinalObjeciones] handleAgentEvaluation invoked with:", evalResult);
+    evaluationReceivedRef.current = true;
     handleEndExamRef.current(evalResult);
   }, []);
+
+  // El agente corto la llamada. Antes esto terminaba y evaluaba el examen a
+  // ciegas: si ElevenLabs disparaba end_call a los 40 segundos, el alumno se
+  // quedaba con un punteo calculado sobre un transcript truncado. Ahora se
+  // valida que la conversacion realmente haya terminado.
+  const handleAgentCut = useCallback((reason?: string) => {
+    if (endHandledRef.current || evaluationReceivedRef.current) return;
+
+    if (maxDurationReachedRef.current) {
+      // Fin legitimo: se agoto el tiempo del examen.
+      handleEndExamRef.current();
+      return;
+    }
+
+    cutCountRef.current += 1;
+    console.warn(
+      "[EXAMEN][OBJECIONES] corte no solicitado del agente",
+      { reason: reason ?? "unknown", atSeconds: sessionDurationRef.current, cutCount: cutCountRef.current },
+    );
+    setExamState("interrupted");
+    toast({
+      variant: "destructive",
+      title: "Se cortó la llamada",
+      description: "El examen sigue abierto. Puedes reanudarlo sin perder el tiempo ni la conversación que llevas.",
+    });
+  }, [toast]);
+
+  const handleAgentCutRef = useRef(handleAgentCut);
+  handleAgentCutRef.current = handleAgentCut;
 
   const {
     isConnected,
@@ -130,11 +195,12 @@ export default function ExamenFinalObjeciones() {
     onTranscript: handleTranscript,
     onEvaluation: handleAgentEvaluation,
     onError: handleError,
-    onAgentDisconnected: () => {
-      handleEndExamRef.current();
+    onAgentDisconnected: (reason?: string) => {
+      handleAgentCutRef.current(reason);
     },
     maxDurationSec: examMaxSeconds,
     onMaxDuration: () => {
+      maxDurationReachedRef.current = true;
       handleEndExamRef.current();
     },
   });
@@ -144,6 +210,10 @@ export default function ExamenFinalObjeciones() {
   const handleStartExam = async () => {
     setTranscriptMessages([]);
     setEvaluation(null);
+    evaluationReceivedRef.current = false;
+    maxDurationReachedRef.current = false;
+    endHandledRef.current = false;
+    cutCountRef.current = 0;
 
     const sessionId = await savePracticeSession(0, undefined, undefined, undefined, "objeciones");
     setCurrentSessionId(sessionId);
@@ -153,6 +223,9 @@ export default function ExamenFinalObjeciones() {
   };
 
   const handleEndExam = useCallback(async (preEvaluation?: EvaluationResult) => {
+    if (endHandledRef.current) return;
+    endHandledRef.current = true;
+
     await disconnect();
 
     const sessionId = currentSessionId;
@@ -225,7 +298,29 @@ export default function ExamenFinalObjeciones() {
     setEvaluation(null);
     setTranscriptMessages([]);
     setCurrentSessionId(null);
+    evaluationReceivedRef.current = false;
+    maxDurationReachedRef.current = false;
+    endHandledRef.current = false;
+    cutCountRef.current = 0;
     setExamState("idle");
+  };
+
+  // Reengancha tras un corte del agente. Conserva la misma sesion y el mismo
+  // transcript acumulado, y resumeSession evita que el cronometro vuelva a cero
+  // (el alumno no gana minutos extra porque el agente colgo).
+  const handleResumeExam = async () => {
+    setExamState("active");
+    try {
+      await connect({ resumeSession: true });
+    } catch (err) {
+      console.error("[EXAMEN][OBJECIONES] fallo el reenganche:", err);
+      setExamState("interrupted");
+      toast({
+        variant: "destructive",
+        title: "No se pudo reanudar",
+        description: "Intenta de nuevo, o termina el examen para que se evalúe lo que llevas.",
+      });
+    }
   };
 
   const handleContinue = async () => {
@@ -417,10 +512,15 @@ export default function ExamenFinalObjeciones() {
                   </div>
                   <CardTitle className="text-2xl">Examen de Objeciones Bloqueado</CardTitle>
                   <CardDescription className="text-base max-w-lg mx-auto">
-                    {user?.examenObjecionesEnabled && needsMorePractice
-                      ? `Necesitás acumular más tiempo de práctica de Objeciones antes de rendir. Te faltan aproximadamente ${missingPracticeMin} min de práctica.`
+                    {hasAutoUnlock
+                      ? `Se habilita solo cuando acumules ${missingPracticeMin} min más de práctica de Objeciones. También podés pedirle a tu instructor que te lo habilite antes.`
                       : "Tu examen de objeciones aún no ha sido habilitado. Contacta a tu instructor o administrador para que te habilite el acceso cuando estés listo."}
                   </CardDescription>
+                  {hasAutoUnlock && (
+                    <div className="flex justify-center">
+                      <ExamTimeSourcesDialog data={timeByMode} />
+                    </div>
+                  )}
                 </CardHeader>
                 <CardContent className="flex flex-col items-center gap-4">
                   <div className="bg-muted/50 rounded-lg p-4 w-full max-w-md">
@@ -498,6 +598,56 @@ export default function ExamenFinalObjeciones() {
                   >
                     {isConnecting ? "Conectando..." : "Comenzar Examen"}
                   </Button>
+                </CardContent>
+              </Card>
+            ) : examState === "interrupted" ? (
+              /* La llamada se corto sin un fin de conversacion valido */
+              <Card className="border-amber-500/30">
+                <CardHeader className="text-center">
+                  <div className="mx-auto w-16 h-16 rounded-full bg-amber-500/10 flex items-center justify-center mb-4">
+                    <PhoneOff className="h-8 w-8 text-amber-500" />
+                  </div>
+                  <CardTitle className="text-2xl">Se cortó la llamada</CardTitle>
+                  <CardDescription className="text-base max-w-lg mx-auto">
+                    La conversación se interrumpió antes de terminar. Tu examen sigue abierto: no se
+                    ha calculado ningún punteo todavía.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="bg-muted/50 rounded-lg p-4 space-y-2 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Tiempo transcurrido</span>
+                      <span className="font-mono font-medium">{formatTime(sessionTime)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Intervenciones registradas</span>
+                      <span className="font-mono font-medium">{transcriptMessages.length}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Button
+                      size="lg"
+                      className="flex-1"
+                      onClick={handleResumeExam}
+                      disabled={isConnecting}
+                    >
+                      <RotateCw className="h-4 w-4 mr-2" />
+                      {isConnecting ? "Reconectando..." : "Reanudar examen"}
+                    </Button>
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => handleEndExam()}
+                      disabled={isConnecting}
+                    >
+                      Terminar y evaluar
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground text-center">
+                    Al reanudar conservas el tiempo y la conversación que llevabas.
+                  </p>
                 </CardContent>
               </Card>
             ) : (

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 
+export type AgentLanguage = "es" | "en";
+
 // Configuración global de la plataforma. Refleja el modelo AppConfig del
 // backend. La lectura (GET /api/config) está disponible para cualquier usuario
 // autenticado; la escritura (PUT /api/admin/config) es admin-only.
@@ -13,6 +15,9 @@ export interface AppConfig {
   // Tiempo mínimo de práctica (segundos) requerido antes de rendir cada examen.
   minPracticeSecondsProspeccion: number;
   minPracticeSecondsObjeciones: number;
+  // Idioma de los agentes de voz: "es" (default) o "en". Con "en" el cliente
+  // manda `overrides.agent.language = "en"` a ElevenLabs al conectar.
+  agentLanguage: AgentLanguage;
   certificateInstructorName: string | null;
   certificateDirectorName: string | null;
   certificateCourseName: string | null;
@@ -36,6 +41,7 @@ export const APP_CONFIG_DEFAULTS = {
   passThresholdObjeciones: 80,
   minPracticeSecondsProspeccion: 0,
   minPracticeSecondsObjeciones: 0,
+  agentLanguage: "es" as AgentLanguage,
 } as const;
 
 export type AppConfigPatch = Partial<
@@ -47,6 +53,7 @@ export type AppConfigPatch = Partial<
     | "passThresholdObjeciones"
     | "minPracticeSecondsProspeccion"
     | "minPracticeSecondsObjeciones"
+    | "agentLanguage"
     | "certificateInstructorName"
     | "certificateDirectorName"
     | "certificateCourseName"

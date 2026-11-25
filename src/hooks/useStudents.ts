@@ -33,6 +33,11 @@ export interface Student {
   gradedAt: string | null;
   examenFinalEnabled: boolean;
   examenObjecionesEnabled: boolean;
+  examPracticeBypass: boolean;
+  // Práctica acumulada por nivel (ALL-TIME, no acotada al período seleccionado):
+  // es la que usa el gate para el auto-desbloqueo del examen.
+  practiceSecondsProspeccion: number;
+  practiceSecondsObjeciones: number;
   level2Unlocked: boolean;
   courseCompleted: boolean;
   phoneNumber: string | null;
@@ -108,6 +113,9 @@ export const useStudents = (period: Period = EMPTY_PERIOD): UseStudentsReturn =>
         gradedAt: s.createdAt, // TODO: add gradeUpdatedAt to API
         examenFinalEnabled: s.examenFinalEnabled ?? false,
         examenObjecionesEnabled: s.examenObjecionesEnabled ?? false,
+        examPracticeBypass: s.examPracticeBypass ?? false,
+        practiceSecondsProspeccion: s.practiceSecondsProspeccion ?? 0,
+        practiceSecondsObjeciones: s.practiceSecondsObjeciones ?? 0,
         level2Unlocked: s.level2Unlocked ?? false,
         courseCompleted: s.courseCompleted ?? false,
         phoneNumber: s.phoneNumber ?? null,

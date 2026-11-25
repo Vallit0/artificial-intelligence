@@ -6,6 +6,7 @@ import { Award, Clock, TrendingUp, Flame, Calendar, Star, Trophy, Target, Zap, P
 import { usePracticeSessions } from "@/hooks/usePracticeSessions";
 import { aggregateTimeByMode } from "@/lib/time-by-mode";
 import { TimeByModeBreakdown } from "@/components/analytics/TimeByModeBreakdown";
+import ExamTimeSourcesDialog from "@/components/ExamTimeSourcesDialog";
 import { formatDistanceToNow, startOfWeek, endOfWeek, isWithinInterval, startOfDay, differenceInCalendarDays } from "date-fns";
 import { es } from "date-fns/locale";
 import LeftSidebar from "@/components/scenarios/LeftSidebar";
@@ -18,13 +19,23 @@ import { Button } from "@/components/ui/button";
 import { SessionReplayModal } from "@/components/replay/SessionReplayModal";
 import StudentCertificateModal from "@/components/StudentCertificateModal";
 import { useAuth } from "@/hooks/useAuth";
-
-const TARGET_TIME = 1500; // 25 minutes in seconds
+import { usePlatformConfig } from "@/hooks/useAppConfig";
+import { useExamGateSync } from "@/hooks/useExamGateSync";
+import { evaluateExamGate } from "@/lib/exam-gate";
 
 const Progress = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { sessions, totalPracticeTime, isLoading } = usePracticeSessions();
+  const { user, refreshUser } = useAuth();
+  const { sessions, totalPracticeTime, isLoading, refetch: refetchSessions } = usePracticeSessions();
+  // Umbrales de práctica que habilitan cada examen (los fija el admin en
+  // /admin → Configuración). Son la meta real que ve el alumno acá.
+  const { config: platformConfig, refetch: refetchConfig } = usePlatformConfig();
+
+  // Mantiene el avance al día sin recargar: si el instructor habilita el examen
+  // o mueve el umbral mientras el alumno mira esta pantalla, se refleja solo.
+  useExamGateSync(() =>
+    Promise.all([refetchSessions(), refetchConfig(), refreshUser()]).then(() => undefined),
+  );
   const [showCelebration, setShowCelebration] = useState(false);
   const [hasSeenCelebration, setHasSeenCelebration] = useState(false);
   const [replaySessionId, setReplaySessionId] = useState<string | null>(null);
@@ -61,10 +72,46 @@ const Progress = () => {
     [sessions],
   );
   const clienteTime = timeByMode.roleplayClienteSeconds;
+  const objecionesTime = timeByMode.roleplayObjecionesSeconds;
 
-  // Check if user has reached the target (sólo cuenta Role-Play Cliente)
+  // Progreso hacia el auto-desbloqueo de cada examen. Los modos que suman acá
+  // son los mismos que cuenta el gate del backend: Role-Play Cliente (incluye
+  // Prospección) para Nivel 1, Objeciones para Nivel 2.
+  const examLevels = useMemo(
+    () => [
+      {
+        key: "prospeccion" as const,
+        label: "Prospección (Nivel 1)",
+        practiced: clienteTime,
+        modeHint: "Role-Play Cliente (incluye Prospección)",
+        minSeconds: platformConfig?.minPracticeSecondsProspeccion ?? 0,
+        examEnabled: !!user?.examenFinalEnabled,
+      },
+      {
+        key: "objeciones" as const,
+        label: "Manejo de Objeciones (Nivel 2)",
+        practiced: objecionesTime,
+        modeHint: "Role-Play Objeciones",
+        minSeconds: platformConfig?.minPracticeSecondsObjeciones ?? 0,
+        examEnabled: !!user?.examenObjecionesEnabled,
+      },
+    ].map((lvl) => ({
+      ...lvl,
+      gate: evaluateExamGate({
+        isAdmin: false,
+        examEnabled: lvl.examEnabled,
+        practiceBypass: !!user?.examPracticeBypass,
+        practiceSeconds: lvl.practiced,
+        minPracticeSeconds: lvl.minSeconds,
+      }),
+    })),
+    [clienteTime, objecionesTime, platformConfig, user],
+  );
+
+  // Celebración al alcanzar el umbral del Nivel 1 (sólo si hay uno configurado).
+  const level1Gate = examLevels[0].gate;
   useEffect(() => {
-    if (clienteTime >= TARGET_TIME && !hasSeenCelebration && !isLoading) {
+    if (level1Gate.hasAutoUnlock && level1Gate.remainingSeconds === 0 && !hasSeenCelebration && !isLoading) {
       const celebrated = localStorage.getItem("certification_celebrated");
       if (!celebrated) {
         setShowCelebration(true);
@@ -72,7 +119,7 @@ const Progress = () => {
         localStorage.setItem("certification_celebrated", "true");
       }
     }
-  }, [totalPracticeTime, hasSeenCelebration, isLoading]);
+  }, [level1Gate, hasSeenCelebration, isLoading]);
 
   // Calculate streak
   const streak = useMemo(() => {
@@ -134,7 +181,12 @@ const Progress = () => {
   };
 
   const recentSessions = sessions.slice(0, 8);
-  const progressPercent = Math.min(100, Math.round((clienteTime / TARGET_TIME) * 100));
+  // % del nivel que el alumno todavía tiene pendiente (el primero sin desbloquear);
+  // si ya desbloqueó todo lo configurado, muestra 100%.
+  const pendingLevel = examLevels.find((l) => l.gate.hasAutoUnlock && l.gate.remainingSeconds > 0);
+  const progressPercent = pendingLevel
+    ? Math.min(100, Math.round((pendingLevel.practiced / pendingLevel.minSeconds) * 100))
+    : 100;
 
   // ============================================
   // Mini Milestones
@@ -324,32 +376,65 @@ const Progress = () => {
                     </Card>
                   </div>
 
-                  {/* Certification Progress */}
+                  {/* Progreso hacia la habilitación de cada examen */}
                   <Card data-tour="progress-cert">
                     <CardHeader className="pb-4">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-2">
                         <CardTitle className="flex items-center gap-2">
                           <Award className="w-6 h-6 text-primary" />
-                          Progreso de Certificación
+                          Progreso para habilitar tus exámenes
                         </CardTitle>
                         <span className="text-2xl font-bold text-primary">{progressPercent}%</span>
                       </div>
+                      {/* Aclara qué escenarios suman a cada examen: el tiempo de
+                          Coach/Asesor no acerca ninguno de los dos. */}
+                      <div className="flex justify-start">
+                        <ExamTimeSourcesDialog data={timeByMode} />
+                      </div>
                     </CardHeader>
                     <CardContent>
-                      <PracticeTimer
-                        totalSeconds={clienteTime}
-                        targetSeconds={TARGET_TIME}
-                        className="mb-4"
-                      />
-                      <p className="text-sm text-muted-foreground text-center">
-                        {clienteTime >= TARGET_TIME
-                          ? "¡Felicidades! Has completado la práctica de Role-Play Cliente requerida."
-                          : `Necesitas ${formatDuration(TARGET_TIME - clienteTime)} más de Role-Play Cliente para obtener tu certificación.`
-                        }
-                      </p>
-                      <p className="mt-1 text-center text-xs text-muted-foreground/70">
-                        Sólo cuenta el tiempo de Role-Play Cliente (incluye Prospección).
-                      </p>
+                      <div className="space-y-5">
+                        {examLevels.map((lvl) => (
+                          <div key={lvl.key}>
+                            <div className="flex items-center justify-between mb-2">
+                              <p className="text-sm font-medium text-foreground">{lvl.label}</p>
+                              {!lvl.gate.isLocked && (
+                                <span className="flex items-center gap-1 text-xs font-medium text-primary">
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  Examen habilitado
+                                </span>
+                              )}
+                            </div>
+
+                            {lvl.gate.hasAutoUnlock ? (
+                              <>
+                                <PracticeTimer
+                                  totalSeconds={lvl.practiced}
+                                  targetSeconds={lvl.minSeconds}
+                                />
+                                <p className="mt-2 text-sm text-muted-foreground text-center">
+                                  {lvl.gate.remainingSeconds === 0
+                                    ? `¡Listo! Completaste los ${formatDuration(lvl.minSeconds)} de práctica requeridos.`
+                                    : `Necesitás ${formatDuration(lvl.gate.remainingSeconds)} más de práctica para que este examen se habilite solo (meta: ${formatDuration(lvl.minSeconds)}).`}
+                                </p>
+                              </>
+                            ) : (
+                              // Sin umbral configurado: no hay meta de tiempo que
+                              // mostrar, sólo cuánto lleva practicado.
+                              <p className="text-sm text-muted-foreground text-center">
+                                Llevás {formatDuration(lvl.practiced)} de práctica.{" "}
+                                {lvl.gate.isLocked
+                                  ? "Tu instructor habilita este examen cuando te vea listo."
+                                  : "Tu instructor ya te habilitó este examen."}
+                              </p>
+                            )}
+
+                            <p className="mt-1 text-center text-xs text-muted-foreground/70">
+                              Sólo cuenta el tiempo de {lvl.modeHint}.
+                            </p>
+                          </div>
+                        ))}
+                      </div>
 
                       {(canViewCertN1 || canViewCertN2) && (
                         <div className="mt-5 pt-4 border-t flex flex-col sm:flex-row gap-2 justify-center">
