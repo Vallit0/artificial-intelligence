@@ -47,12 +47,18 @@ interface LevelModeContextValue {
   isCremacion: boolean;
   setTrack: (track: Track) => void;
   toggleTrack: () => void;
+  // Timestamp que dispara la animación de bienvenida a Cremación (0 = nada).
+  // Se emite la PRIMERA vez que el usuario enciende la pista en este
+  // navegador; replayReveal() la vuelve a mostrar (demo / QA).
+  revealToken: number;
+  replayReveal: () => void;
 }
 
 const LevelModeContext = createContext<LevelModeContextValue | undefined>(undefined);
 
 const STORAGE_KEY = "senoriales:admin-level-override";
 const TRACK_STORAGE_KEY = "senoriales:product-track";
+const CREMACION_INTRO_SEEN_KEY = "senoriales:cremacion-intro-seen";
 
 function readTrack(): Track {
   if (typeof window === "undefined") return "tradicional";
@@ -91,6 +97,7 @@ export const LevelModeProvider = ({ children }: { children: ReactNode }) => {
   const [override, setOverride] = useState<Level | null>(() => readOverride());
   const [lastChangeAt, setLastChangeAt] = useState(0);
   const [track, setTrackState] = useState<Track>(() => readTrack());
+  const [revealToken, setRevealToken] = useState(0);
 
   // Drop the override when the user logs out so the next login starts clean.
   useEffect(() => {
@@ -152,11 +159,29 @@ export const LevelModeProvider = ({ children }: { children: ReactNode }) => {
     writeOverride(null);
   }, []);
 
-  const setTrack = useCallback((next: Track) => {
-    setTrackState(next);
-    writeTrack(next);
-    setLastChangeAt(Date.now());
+  const replayReveal = useCallback(() => {
+    setRevealToken(Date.now());
   }, []);
+
+  const setTrack = useCallback(
+    (next: Track) => {
+      setTrackState(next);
+      writeTrack(next);
+      setLastChangeAt(Date.now());
+      // Mini evento de bienvenida sólo la primera vez que se enciende Cremación.
+      if (next === "cremacion" && typeof window !== "undefined") {
+        try {
+          if (!localStorage.getItem(CREMACION_INTRO_SEEN_KEY)) {
+            localStorage.setItem(CREMACION_INTRO_SEEN_KEY, String(Date.now()));
+            replayReveal();
+          }
+        } catch {
+          /* localStorage no disponible: sin animación, sin error */
+        }
+      }
+    },
+    [replayReveal],
+  );
 
   const toggleTrack = useCallback(() => {
     setTrack(track === "cremacion" ? "tradicional" : "cremacion");
@@ -175,8 +200,10 @@ export const LevelModeProvider = ({ children }: { children: ReactNode }) => {
       isCremacion: track === "cremacion",
       setTrack,
       toggleTrack,
+      revealToken,
+      replayReveal,
     }),
-    [currentLevel, setLevel, toggle, override, canSwitchLevel, resetOverride, lastChangeAt, track, setTrack, toggleTrack],
+    [currentLevel, setLevel, toggle, override, canSwitchLevel, resetOverride, lastChangeAt, track, setTrack, toggleTrack, revealToken, replayReveal],
   );
 
   return <LevelModeContext.Provider value={value}>{children}</LevelModeContext.Provider>;

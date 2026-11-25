@@ -23,7 +23,7 @@ export interface ApiUser {
   // false mientras el usuario no haya visto/saltado el tour del primer login.
   tutorialCompleted?: boolean;
   // Sólo presentes en la respuesta de /auth/me (datos de display).
-  sede?: { id: string; name: string } | null;
+  sede?: { id: string; name: string; country?: string | null } | null;
   coach?: { id: string; name: string } | null;
   division?: { id: string; name: string } | null;
   coachPermissions?: {

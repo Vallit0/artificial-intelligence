@@ -19,6 +19,7 @@ import CoachCenter from "./pages/CoachCenter";
 import IntroMargarita from "./pages/IntroMargarita";
 import ProductosCremacion from "./pages/ProductosCremacion";
 import DudasCremacion from "./pages/DudasCremacion";
+import CremacionRevealOverlay from "@/components/cremacion/CremacionRevealOverlay";
 import TourRunner from "@/components/onboarding/TourRunner";
 import TutorialCenter from "@/components/onboarding/TutorialCenter";
 
@@ -180,6 +181,8 @@ const App = () => (
             {/* Sistema global de tutoriales guiados (menú + runner Joyride) */}
             <TourRunner />
             <TutorialCenter />
+            {/* Bienvenida animada la primera vez que se enciende Cremación */}
+            <CremacionRevealOverlay />
           </LevelModeProvider>
         </AuthProvider>
       </BrowserRouter>
