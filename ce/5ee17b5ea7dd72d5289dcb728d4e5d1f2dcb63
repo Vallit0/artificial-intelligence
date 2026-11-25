@@ -1,0 +1,129 @@
+src/hooks/useElevenLabsConversation.ts
+  s_57532e058a56fa::t_6db5a2b4280f70 22-27,42-64,134-137,146-149,164-167,169-179,181-182,457,459-465,468-469,529-534,536,544-545,574,580-595,597-600,606-608,612-616,618,625,628-630,637-638,652-655,660-666,672-676,678-681,685-707,770-775,777-782
+server/src/services/elevenlabs.service.ts
+  s_57532e058a56fa::t_6db5a2b4280f70 42-85,88,93-96,100-109,113-120,137-141,148-155,157,159-162,164-171
+server/src/services/auth.service.ts
+  s_57532e058a56fa::t_6db5a2b4280f70 45
+src/App.tsx
+  s_57532e058a56fa::t_6db5a2b4280f70 19-21,68-69,88-105
+src/components/ExamTimeSourcesDialog.tsx
+  s_57532e058a56fa::t_6db5a2b4280f70 1-160
+src/hooks/useAppConfig.ts
+  s_57532e058a56fa::t_6db5a2b4280f70 4-5,18-20,44,56
+src/hooks/useExamGateSync.ts
+  s_57532e058a56fa::t_6db5a2b4280f70 1-59
+src/components/cremacion/CremacionCampaignBanner.tsx
+  s_57532e058a56fa::t_6db5a2b4280f70 1-113
+src/pages/ExamenFinalObjeciones.tsx
+  s_57532e058a56fa::t_6db5a2b4280f70 3,19-22,47-50,59-60,70,74-76,78-84,87-89,92-110,135-142,145,149-177,198-199,203,213-216,226-228,301-304,308-325,515-516,519-523,603-652
+server/tests/integration/agentLanguage.test.ts
+  s_57532e058a56fa::t_6db5a2b4280f70 1-122
+src/pages/ExamenFinal.tsx
+  s_57532e058a56fa::t_6db5a2b4280f70 19-22,54-55,64,68-70,72-78,81-85,88-105,358-359,362-366
+server/prisma/schema.prisma
+  s_57532e058a56fa::t_6db5a2b4280f70 138-143,529-532
+src/pages/IntroMargarita.tsx
+  s_57532e058a56fa::t_6db5a2b4280f70 1-744
+src/components/admin/ProspectingScenariosPanel.tsx
+  s_57532e058a56fa::t_6db5a2b4280f70 47,536
+src/lib/exam-gate.ts
+  s_57532e058a56fa::t_6db5a2b4280f70 1-60
+docs/integraciones.md
+  s_57532e058a56fa::t_6db5a2b4280f70 39-45,70-77
+src/lib/cremacionCatalog.ts
+  s_57532e058a56fa::t_6db5a2b4280f70 1-381
+server/src/services/appConfig.service.ts
+  s_57532e058a56fa::t_6db5a2b4280f70 9-25,33,90-91
+server/src/services/sessions.service.ts
+  s_57532e058a56fa::t_6db5a2b4280f70 13-14,36-75,77,109-111,113
+src/components/admin/ConfigPanel.tsx
+  s_57532e058a56fa::t_6db5a2b4280f70 6-7,9-14,27-28,49,206,238,280-307,375-379
+src/components/admin/StudentList.tsx
+  s_57532e058a56fa::t_6db5a2b4280f70 39-40,77-78,173-225,390-392,426-431
+server/scripts/diag-prospecting-connectivity.mjs
+  s_57532e058a56fa::t_6db5a2b4280f70 1-114
+src/components/practice/ExamUnlockCountdown.tsx
+  s_57532e058a56fa::t_6db5a2b4280f70 1-140
+server/src/routes/memory.ts
+  s_57532e058a56fa::t_6db5a2b4280f70 26-28,33,35-37,85-89
+src/components/UserMenu.tsx
+  s_57532e058a56fa::t_6db5a2b4280f70 2,14,17,20-26,34-36,59,67-72,89
+server/src/services/admin.service.ts
+  s_57532e058a56fa::t_6db5a2b4280f70 12,75-79,365-397,440-445,448,481-483,664,708,840
+server/tests/integration/practiceGateBypass.test.ts
+  s_57532e058a56fa::t_6db5a2b4280f70 1-118
+src/pages/DudasCremacion.tsx
+  s_57532e058a56fa::t_6db5a2b4280f70 1-391
+src/hooks/useLevelMode.tsx
+  s_57532e058a56fa::t_6db5a2b4280f70 6-12,18-24,44-49,55-69,93,100-101,155-164,174-177,179
+server/src/controllers/elevenlabs.controller.ts
+  s_57532e058a56fa::t_6db5a2b4280f70 14,18-35,70-89,91-92,96-97,99,101,117-126,160-162,168,173-182
+src/pages/ProductosCremacion.tsx
+  s_57532e058a56fa::t_6db5a2b4280f70 1-512
+server/src/controllers/memory.controller.ts
+  s_57532e058a56fa::t_6db5a2b4280f70 8-9,12-15,21,23-37,39-46,54-56
+src/lib/cremacionFaq.ts
+  s_57532e058a56fa::t_6db5a2b4280f70 1-367
+src/components/admin/EditUserModal.tsx
+  s_57532e058a56fa::t_6db5a2b4280f70 52,62,109
+src/lib/prospectingPromptBuilder.ts
+  s_57532e058a56fa::t_6db5a2b4280f70 161
+src/components/MobileNavigation.tsx
+  s_57532e058a56fa::t_6db5a2b4280f70 2-3,21,46-54,64-68,81,83-98,113
+src/pages/Practice.tsx
+  s_57532e058a56fa::t_6db5a2b4280f70 1,18-19,37-38,40-48,106,115,150,169-219,229,235-248,281-294,491-492,496,500-538,710-711,713-732,799,815-819,822-827,829,852-866,869,902-903,941,954,960,980
+src/lib/demoMode.ts
+  s_57532e058a56fa::t_6db5a2b4280f70 32,113,125,129,187,241,244,280
+src/components/scenarios/LeftSidebar.tsx
+  s_57532e058a56fa::t_6db5a2b4280f70 15-16,18,21,38,56-65,77-82,119,129,160-193,195
+server/src/types/index.ts
+  s_57532e058a56fa::t_6db5a2b4280f70 39
+server/tests/integration/profileName.test.ts
+  s_57532e058a56fa::t_6db5a2b4280f70 1-120
+src/lib/api-client.ts
+  s_57532e058a56fa::t_6db5a2b4280f70 18-20
+server/prisma/migrations/20260811000000_add_agent_language/migration.sql
+  s_57532e058a56fa::t_6db5a2b4280f70 1-7
+server/src/routes/auth.ts
+  s_57532e058a56fa::t_6db5a2b4280f70 313-354
+server/tests/integration/agentCountryRouting.test.ts
+  s_57532e058a56fa::t_6db5a2b4280f70 1-173
+server/tests/integration/examFlow.test.ts
+  s_57532e058a56fa::t_6db5a2b4280f70 35-39
+src/lib/cremacion-theme.ts
+  s_57532e058a56fa::t_6db5a2b4280f70 1-42
+src/components/admin/AgentConfigPanel.tsx
+  s_57532e058a56fa::t_6db5a2b4280f70 7,9-26,56-60,68,70,72-73,79-81,84,89-91,163-189
+server/prisma/migrations/20260728000000_add_exam_practice_bypass/migration.sql
+  s_57532e058a56fa::t_6db5a2b4280f70 1-10
+src/pages/Progress.tsx
+  s_57532e058a56fa::t_6db5a2b4280f70 9,22-24,28-38,75-109,111-112,114,122,184-189,379,382,385,389-393,396-437
+.env.example
+  s_57532e058a56fa::t_6db5a2b4280f70 41-47
+src/hooks/useStudents.ts
+  s_57532e058a56fa::t_6db5a2b4280f70 36-40,78,116-118
+server/src/middleware/toolSecret.ts
+  s_57532e058a56fa::t_6db5a2b4280f70 28-36,40-59,65-66,69
+server/src/routes/admin.ts
+  s_57532e058a56fa::t_6db5a2b4280f70 241
+server/tests/integration/memory.test.ts
+  s_57532e058a56fa::t_6db5a2b4280f70 82-85,87-89
+src/components/auth/EditMyNameModal.tsx
+  s_57532e058a56fa::t_6db5a2b4280f70 1-186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ce5ee17b5ea7dd72d5289dcb728d4e5d1f2dcb63",
+  "prompts": {},
+  "sessions": {
+    "s_57532e058a56fa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c604e440-d64a-4c52-8fa8-56276d51c70f",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "vallit0 <evallecyt@gmail.com>"
+    }
+  }
+}
