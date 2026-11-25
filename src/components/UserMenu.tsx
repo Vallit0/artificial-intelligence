@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { KeyRound, LogOut, BarChart3, UserPen } from "lucide-react";
+import { useLevelMode } from "@/hooks/useLevelMode";
+import { CremacionIcon } from "@/lib/cremacion-theme";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -15,7 +17,15 @@ import { EditMyNameModal } from "@/components/auth/EditMyNameModal";
 
 const UserMenu = () => {
   const { user, roles, signOut } = useAuth();
+  const { setTrack, resetReveal } = useLevelMode();
   const navigate = useNavigate();
+
+  // Reactiva la bienvenida de Cremación (borra "No mostrar de nuevo") y la
+  // reproduce ya, encendiendo la pista si hacía falta.
+  const handleReplayCremacionIntro = () => {
+    setTrack("cremacion");
+    resetReveal();
+  };
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [nameModalOpen, setNameModalOpen] = useState(false);
 
@@ -73,6 +83,10 @@ const UserMenu = () => {
           <DropdownMenuItem onClick={() => setPasswordModalOpen(true)}>
             <KeyRound className="mr-2 h-4 w-4" />
             Cambiar contraseña
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleReplayCremacionIntro}>
+            <CremacionIcon className="mr-2 h-4 w-4 text-orange-500" />
+            Ver bienvenida de Cremación
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleSignOut} className="text-destructive">

@@ -3,10 +3,12 @@ import { useSearchParams } from "react-router-dom";
 import { useLevelMode } from "@/hooks/useLevelMode";
 import { CremacionIcon } from "@/lib/cremacion-theme";
 
-// "Mini evento" que se reproduce la PRIMERA vez que el usuario enciende la
-// pista Cremación: una ola cálida cubre la pantalla, suben chispas suaves y la
-// interfaz queda en naranja al disiparse. No son llamas: son destellos.
-const DURATION_MS = 2600;
+// "Mini evento" que se reproduce al encender la pista Cremación: una ola
+// cálida cubre la pantalla, suben chispas suaves y la interfaz queda en naranja
+// al disiparse. No son llamas: son destellos. Sale cada vez hasta que el
+// usuario pulsa "No mostrar de nuevo"; desde el menú de usuario se puede
+// volver a habilitar.
+const DURATION_MS = 3600;
 
 const SPARKS = Array.from({ length: 46 }, (_, i) => {
   // Pseudo-aleatorio determinista para no cambiar en cada render.
@@ -22,7 +24,7 @@ const SPARKS = Array.from({ length: 46 }, (_, i) => {
 });
 
 const CremacionRevealOverlay = () => {
-  const { revealToken, replayReveal } = useLevelMode();
+  const { revealToken, replayReveal, dismissReveal } = useLevelMode();
   const [searchParams] = useSearchParams();
   const [visible, setVisible] = useState(false);
 
@@ -46,11 +48,17 @@ const CremacionRevealOverlay = () => {
 
   if (!visible) return null;
 
+  const handleDismiss = () => {
+    dismissReveal();
+    setVisible(false);
+  };
+
   return (
     <div
       key={revealToken}
       className="fixed inset-0 z-[120] pointer-events-none overflow-hidden"
-      aria-hidden
+      role="dialog"
+      aria-label="Bienvenida a Cremación"
       style={{ animation: `cremacionRevealFade ${DURATION_MS}ms ease-in-out forwards` }}
     >
       {/* Ola naranja que se expande desde abajo a la izquierda (donde vive el toggle) */}
@@ -84,7 +92,7 @@ const CremacionRevealOverlay = () => {
       <div className="absolute inset-0 flex items-center justify-center">
         <div
           className="flex flex-col items-center text-center px-6"
-          style={{ animation: "cremacionTitle 1.9s cubic-bezier(0.34, 1.56, 0.64, 1) 0.45s both" }}
+          style={{ animation: "cremacionTitle 2.9s cubic-bezier(0.34, 1.56, 0.64, 1) 0.45s both" }}
         >
           <span className="flex h-16 w-16 items-center justify-center rounded-3xl bg-white/90 text-orange-500 shadow-2xl mb-4">
             <CremacionIcon className="h-9 w-9" />
@@ -104,6 +112,25 @@ const CremacionRevealOverlay = () => {
         </div>
       </div>
 
+      {/* Controles (sí reciben clics) */}
+      <div
+        className="absolute bottom-8 left-0 right-0 flex items-center justify-center gap-3 pointer-events-auto"
+        style={{ animation: "cremacionControls 0.5s ease-out 0.6s both" }}
+      >
+        <button
+          onClick={() => setVisible(false)}
+          className="rounded-full bg-white/20 px-4 py-2 text-xs font-bold text-white backdrop-blur hover:bg-white/30 transition-colors"
+        >
+          Cerrar
+        </button>
+        <button
+          onClick={handleDismiss}
+          className="rounded-full bg-white px-4 py-2 text-xs font-bold text-orange-600 shadow-lg hover:bg-orange-50 transition-colors"
+        >
+          No mostrar de nuevo
+        </button>
+      </div>
+
       <style>{`
         @keyframes cremacionWave {
           0% { clip-path: circle(0% at 12% 88%); opacity: 1; }
@@ -116,13 +143,16 @@ const CremacionRevealOverlay = () => {
         }
         @keyframes cremacionTitle {
           0% { opacity: 0; transform: translateY(18px) scale(0.85); }
-          25% { opacity: 1; transform: translateY(0) scale(1); }
-          75% { opacity: 1; transform: translateY(0) scale(1); }
-          100% { opacity: 0; transform: translateY(-10px) scale(1.02); }
+          18% { opacity: 1; transform: translateY(0) scale(1); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
         }
         @keyframes cremacionRevealFade {
-          0%, 68% { opacity: 1; }
+          0%, 78% { opacity: 1; }
           100% { opacity: 0; }
+        }
+        @keyframes cremacionControls {
+          0% { opacity: 0; transform: translateY(8px); }
+          100% { opacity: 1; transform: translateY(0); }
         }
       `}</style>
     </div>

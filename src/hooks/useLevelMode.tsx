@@ -48,17 +48,29 @@ interface LevelModeContextValue {
   setTrack: (track: Track) => void;
   toggleTrack: () => void;
   // Timestamp que dispara la animación de bienvenida a Cremación (0 = nada).
-  // Se emite la PRIMERA vez que el usuario enciende la pista en este
-  // navegador; replayReveal() la vuelve a mostrar (demo / QA).
+  // Se emite cada vez que el usuario enciende la pista, hasta que pulsa
+  // "No mostrar de nuevo" (dismissReveal). resetReveal() borra esa marca y la
+  // vuelve a mostrar; replayReveal() sólo la reproduce una vez.
   revealToken: number;
   replayReveal: () => void;
+  dismissReveal: () => void;
+  resetReveal: () => void;
 }
 
 const LevelModeContext = createContext<LevelModeContextValue | undefined>(undefined);
 
 const STORAGE_KEY = "senoriales:admin-level-override";
 const TRACK_STORAGE_KEY = "senoriales:product-track";
-const CREMACION_INTRO_SEEN_KEY = "senoriales:cremacion-intro-seen";
+const CREMACION_INTRO_DISMISSED_KEY = "senoriales:cremacion-intro-dismissed";
+
+const isRevealDismissed = (): boolean => {
+  if (typeof window === "undefined") return true;
+  try {
+    return localStorage.getItem(CREMACION_INTRO_DISMISSED_KEY) === "1";
+  } catch {
+    return true;
+  }
+};
 
 function readTrack(): Track {
   if (typeof window === "undefined") return "tradicional";
@@ -163,21 +175,35 @@ export const LevelModeProvider = ({ children }: { children: ReactNode }) => {
     setRevealToken(Date.now());
   }, []);
 
+  // "No mostrar de nuevo": la animación deja de salir al encender Cremación.
+  const dismissReveal = useCallback(() => {
+    try {
+      localStorage.setItem(CREMACION_INTRO_DISMISSED_KEY, "1");
+    } catch {
+      /* sin localStorage no hay nada que recordar */
+    }
+    setRevealToken(0);
+  }, []);
+
+  // Vuelve a habilitar la bienvenida y la reproduce ahora mismo.
+  const resetReveal = useCallback(() => {
+    try {
+      localStorage.removeItem(CREMACION_INTRO_DISMISSED_KEY);
+    } catch {
+      /* ignore */
+    }
+    setRevealToken(Date.now());
+  }, []);
+
   const setTrack = useCallback(
     (next: Track) => {
       setTrackState(next);
       writeTrack(next);
       setLastChangeAt(Date.now());
-      // Mini evento de bienvenida sólo la primera vez que se enciende Cremación.
-      if (next === "cremacion" && typeof window !== "undefined") {
-        try {
-          if (!localStorage.getItem(CREMACION_INTRO_SEEN_KEY)) {
-            localStorage.setItem(CREMACION_INTRO_SEEN_KEY, String(Date.now()));
-            replayReveal();
-          }
-        } catch {
-          /* localStorage no disponible: sin animación, sin error */
-        }
+      // Mini evento de bienvenida al encender Cremación, salvo que el usuario
+      // haya pedido no verlo más.
+      if (next === "cremacion" && !isRevealDismissed()) {
+        replayReveal();
       }
     },
     [replayReveal],
@@ -202,8 +228,10 @@ export const LevelModeProvider = ({ children }: { children: ReactNode }) => {
       toggleTrack,
       revealToken,
       replayReveal,
+      dismissReveal,
+      resetReveal,
     }),
-    [currentLevel, setLevel, toggle, override, canSwitchLevel, resetOverride, lastChangeAt, track, setTrack, toggleTrack, revealToken, replayReveal],
+    [currentLevel, setLevel, toggle, override, canSwitchLevel, resetOverride, lastChangeAt, track, setTrack, toggleTrack, revealToken, replayReveal, dismissReveal, resetReveal],
   );
 
   return <LevelModeContext.Provider value={value}>{children}</LevelModeContext.Provider>;
