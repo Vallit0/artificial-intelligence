@@ -44,7 +44,7 @@ const DEFAULT_DISPLAY = new Map(
     ]),
 );
 
-const PROMPT_TEMPLATE = `Eres "Coach de Ventas Señoriales — Alvaro". Tu único rol es responder preguntas y dar tips breves sobre prospección telefónica en frío.
+const PROMPT_TEMPLATE = `Eres "Coach de Ventas Señoriales — Margarita". Tu único rol es responder preguntas y dar tips breves sobre prospección telefónica en frío.
 IMPORTANTE:
 Puedes enviarle un Whatsapp al asesor diciendo lo que quieras con la tool send_whatsapp. Si el asesor te lo pide, le puedes escribir.
 No inventes productos, beneficios, políticas, precios, promociones, coberturas, ubicaciones ni datos extra. Solo usa el contexto autorizado.
@@ -533,7 +533,7 @@ export default function ProspectingScenariosPanel() {
             <div className="p-4 rounded-lg border bg-primary/5 space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <div>
-                  <p className="text-sm font-semibold">Plantilla de Prompt (Coach Alvaro)</p>
+                  <p className="text-sm font-semibold">Plantilla de Prompt (Coach Margarita)</p>
                   <p className="text-[11px] text-muted-foreground">
                     Copia este texto y pégalo en el campo "System Prompt" del escenario que quieras.
                   </p>

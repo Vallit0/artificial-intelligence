@@ -3,10 +3,24 @@ import { useAuth } from "./useAuth";
 
 export type Level = 1 | 2;
 
+// Línea de producto ("pista") sobre la que se practica. Es ortogonal al
+// módulo: tanto Prospección como Objeciones pueden entrenarse para el
+// producto tradicional o para Cremación. Cremación cambia el coach / role
+// plays (sufijo `_CREMACION` en el secret name), la paleta (naranja) y habilita
+// el buscador de productos.
+export type Track = "tradicional" | "cremacion";
+
 // Nombre de cara al usuario de cada módulo. La plataforma ya no habla de
 // "niveles": el módulo 1 es "Prospección" y el módulo 2 "Objeciones".
 export const levelLabel = (level: Level): string =>
   level === 1 ? "Prospección" : "Objeciones";
+
+export const trackLabel = (track: Track): string =>
+  track === "cremacion" ? "Cremación" : "Tradicional";
+
+// Etiqueta compuesta: "Prospección" / "Prospección · Cremación".
+export const moduleLabel = (level: Level, track: Track): string =>
+  track === "cremacion" ? `${levelLabel(level)} · Cremación` : levelLabel(level);
 
 interface LevelModeContextValue {
   currentLevel: Level;
@@ -27,11 +41,32 @@ interface LevelModeContextValue {
   // whether to play the entry animation — this prevents pop animations from
   // re-running on every page navigation that remounts the sidebar.
   lastChangeAt: number;
+  // Línea de producto activa (tradicional | cremacion). Persistida en
+  // localStorage igual que el override de módulo.
+  currentTrack: Track;
+  isCremacion: boolean;
+  setTrack: (track: Track) => void;
+  toggleTrack: () => void;
 }
 
 const LevelModeContext = createContext<LevelModeContextValue | undefined>(undefined);
 
 const STORAGE_KEY = "senoriales:admin-level-override";
+const TRACK_STORAGE_KEY = "senoriales:product-track";
+
+function readTrack(): Track {
+  if (typeof window === "undefined") return "tradicional";
+  return localStorage.getItem(TRACK_STORAGE_KEY) === "cremacion" ? "cremacion" : "tradicional";
+}
+
+function writeTrack(track: Track) {
+  if (typeof window === "undefined") return;
+  if (track === "tradicional") {
+    localStorage.removeItem(TRACK_STORAGE_KEY);
+  } else {
+    localStorage.setItem(TRACK_STORAGE_KEY, track);
+  }
+}
 
 function readOverride(): Level | null {
   if (typeof window === "undefined") return null;
@@ -55,12 +90,15 @@ export const LevelModeProvider = ({ children }: { children: ReactNode }) => {
   const isCoach = roles.includes("coach");
   const [override, setOverride] = useState<Level | null>(() => readOverride());
   const [lastChangeAt, setLastChangeAt] = useState(0);
+  const [track, setTrackState] = useState<Track>(() => readTrack());
 
   // Drop the override when the user logs out so the next login starts clean.
   useEffect(() => {
     if (!user) {
       setOverride(null);
       writeOverride(null);
+      setTrackState("tradicional");
+      writeTrack("tradicional");
     }
   }, [user]);
 
@@ -114,6 +152,16 @@ export const LevelModeProvider = ({ children }: { children: ReactNode }) => {
     writeOverride(null);
   }, []);
 
+  const setTrack = useCallback((next: Track) => {
+    setTrackState(next);
+    writeTrack(next);
+    setLastChangeAt(Date.now());
+  }, []);
+
+  const toggleTrack = useCallback(() => {
+    setTrack(track === "cremacion" ? "tradicional" : "cremacion");
+  }, [setTrack, track]);
+
   const value = useMemo<LevelModeContextValue>(
     () => ({
       currentLevel,
@@ -123,8 +171,12 @@ export const LevelModeProvider = ({ children }: { children: ReactNode }) => {
       canSwitchLevel,
       resetOverride,
       lastChangeAt,
+      currentTrack: track,
+      isCremacion: track === "cremacion",
+      setTrack,
+      toggleTrack,
     }),
-    [currentLevel, setLevel, toggle, override, canSwitchLevel, resetOverride, lastChangeAt],
+    [currentLevel, setLevel, toggle, override, canSwitchLevel, resetOverride, lastChangeAt, track, setTrack, toggleTrack],
   );
 
   return <LevelModeContext.Provider value={value}>{children}</LevelModeContext.Provider>;

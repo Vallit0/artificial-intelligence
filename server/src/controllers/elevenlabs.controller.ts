@@ -11,9 +11,28 @@ import * as prospectingScenariosService from '../services/prospectingScenarios.s
 import * as abTestingService from '../services/abTesting.service.js';
 import * as aiAccessService from '../services/aiAccess.service.js';
 import * as authService from '../services/auth.service.js';
+import * as appConfigService from '../services/appConfig.service.js';
 import { AuthRequest } from '../types/index.js';
 import { handleError, BadRequestError, ForbiddenError } from '../utils/errors.js';
 import { getLogger } from '../utils/logger.js';
+import prisma from '../db/index.js';
+
+// País (ISO2) del usuario = país de su sede. null para anónimos (free-tier),
+// usuarios sin sede o sedes sin país → se enruta al agente base.
+async function resolveUserCountry(req: AuthRequest): Promise<string | null> {
+  const sedeId = req.user?.sedeId;
+  if (!sedeId) return null;
+  try {
+    const sede = await prisma.sede.findUnique({ where: { id: sedeId }, select: { country: true } });
+    return sede?.country?.trim().toUpperCase() || null;
+  } catch (err) {
+    getLogger({ component: 'elevenlabs', op: 'resolve-country' }).warn(
+      { err, sedeId },
+      'No se pudo resolver el país de la sede; se usa el agente base',
+    );
+    return null;
+  }
+}
 
 // Server-side recomputation: even though the agent sends score+passed, we
 // ignore them and derive everything from the validated breakdown so the client
@@ -48,20 +67,38 @@ export async function getConversationToken(req: AuthRequest, res: Response, next
       }
     }
 
-    // Run the four independent lookups in parallel — the signed-URL fetch hits ElevenLabs
-    // while the DB queries hit Postgres, so total latency is now max() instead of sum().
+    // Enrutamiento por país: el agente (y sus overrides/A-B) dependen del país
+    // de la sede del usuario. Es una query puntual a Postgres (~ms) que debe
+    // resolverse ANTES del signed URL porque define a qué agente conectamos.
+    const country = await resolveUserCountry(req);
+
+    // Primero se resuelve el agente efectivo (lookups rápidos en Postgres):
+    // los overrides y el experimento A/B se buscan por el secret name EFECTIVO
+    // (con sufijo de país si se enrutó a una variante). Si no, al agente de MX
+    // se le inyectaría el prompt del agente base y hablaría "a la guatemalteca".
+    const { agentId, effectiveSecretName, countryRouted } = await elevenlabsService.resolveAgent(
+      agentSecretName,
+      country,
+    );
+
+    // Overrides: para una variante por país se busca SÓLO su propia config
+    // (`<SECRET>_MX`); no se hereda la del base. Para el base, como siempre.
+    const overridesKey = agentSecretName ? (effectiveSecretName ?? agentSecretName) : null;
+
+    // Run the independent lookups in parallel — the signed-URL fetch hits ElevenLabs
+    // while the DB queries hit Postgres, so total latency is max() instead of sum().
     const userId = req.user?.id;
-    const [signedUrl, scenarioData, prospectingCfg, abAssignment] = await Promise.all([
-      elevenlabsService.getConversationSignedUrl(agentSecretName),
+    const [signedUrl, scenarioData, prospectingCfg, abAssignment, language] = await Promise.all([
+      elevenlabsService.getSignedUrlForAgentId(agentId),
       scenarioId
         ? scenariosService.getScenarioForConversation(scenarioId)
         : Promise.resolve(null),
-      agentSecretName
-        ? prospectingScenariosService.resolveConfig(agentSecretName)
+      overridesKey
+        ? prospectingScenariosService.resolveConfig(overridesKey)
         : Promise.resolve(null),
-      (agentSecretName && userId)
+      (overridesKey && userId)
         ? abTestingService
-            .findActiveExperiment(agentSecretName)
+            .findActiveExperiment(overridesKey)
             .then((experiment) =>
               experiment
                 ? abTestingService
@@ -77,6 +114,16 @@ export async function getConversationToken(req: AuthRequest, res: Response, next
               return null;
             })
         : Promise.resolve(null),
+      // Idioma global de los agentes (AppConfig). El cliente lo traduce al
+      // override `agent.language` al iniciar la sesión; si falla la lectura se
+      // cae al default ('es' = sin override) para no bloquear la práctica.
+      appConfigService.getAgentLanguage().catch((err) => {
+        getLogger({ component: 'elevenlabs', op: 'agent-language' }).warn(
+          { err },
+          'No se pudo leer el idioma de agentes; se usa el default',
+        );
+        return appConfigService.DEFAULT_AGENT_LANGUAGE;
+      }),
     ]);
 
     const scenario = scenarioData
@@ -110,16 +157,29 @@ export async function getConversationToken(req: AuthRequest, res: Response, next
     getLogger({ component: 'elevenlabs', op: 'conversation-token' }).info(
       {
         agentSecretName: agentSecretName ?? null,
+        country,
+        effectiveSecretName,
+        countryRouted,
         scenarioId: scenarioId ?? null,
         promptOverrideApplied: !!overrides?.prompt,
         promptOverrideLen: overrides?.prompt?.length ?? 0,
         firstMessageOverrideApplied: !!overrides?.firstMessage,
         variantId: variantId ?? null,
+        language,
       },
       'conversation token issued',
     );
 
-    res.json({ signedUrl, scenario, overrides, variantId });
+    res.json({
+      signedUrl,
+      scenario,
+      overrides,
+      variantId,
+      // Idioma en que debe hablar el agente ('es' | 'en'). 'es' = sin override.
+      language,
+      // Diagnóstico para el cliente/QA: a qué agente se enrutó y por qué país.
+      routing: { country, agentSecretName: agentSecretName ?? null, effectiveSecretName, countryRouted },
+    });
   } catch (error) {
     const appError = handleError(error);
     res.status(appError.statusCode).json({ error: appError.message });

@@ -19,7 +19,12 @@ interface EvaluationResult {
   checklist?: { label: string; passed: boolean }[];
 }
 
-export type LatencyEventType = "connect" | "ttfa";
+// "connect" = total hasta establecer la sesión. Se desglosa en "mic"
+// (getUserMedia) + "handshake" (resto: WS + init del agente en ElevenLabs).
+// "greeting" = connect → primera vez que el agente habla (lo que el usuario
+// percibe como "tarda en contestar" al entrar). "ttfa" = turnos posteriores,
+// desde que el usuario termina de hablar hasta que el agente responde.
+export type LatencyEventType = "connect" | "ttfa" | "mic" | "handshake" | "greeting";
 
 export interface LatencyEvent {
   type: LatencyEventType;
@@ -33,6 +38,29 @@ export interface LatencyStats {
   avgTtfaMs: number | null;
   ttfaSamples: number;
 }
+
+// Respuesta de POST /api/elevenlabs/conversation-token.
+interface ConversationTokenResponse {
+  signedUrl: string;
+  scenario?: unknown;
+  overrides?: { prompt?: string; firstMessage?: string } | null;
+  variantId?: string;
+  // Idioma global de los agentes (AppConfig.agentLanguage). "es" = sin override
+  // (comportamiento histórico); "en" = se manda `overrides.agent.language`.
+  language?: "es" | "en";
+}
+
+type AgentLanguage = "es" | "en";
+
+// Directiva que se anexa al prompt override (cuando existe uno en DB) en modo
+// inglés. El override de `language` sólo cambia ASR/TTS en ElevenLabs; el LLM
+// sigue leyendo el prompt en español, así que se le ordena explícitamente
+// conducir la conversación en inglés. Para agentes SIN prompt override en DB,
+// el idioma del LLM depende del preset "en" configurado en ElevenLabs.
+const ENGLISH_PROMPT_DIRECTIVE =
+  "\n\n[LANGUAGE OVERRIDE]\nConduct this entire conversation in English. Speak only English, " +
+  "regardless of the language used in the instructions above. Keep the same persona, scenario, " +
+  "rules and evaluation criteria; only the spoken language changes.";
 
 interface UseElevenLabsConversationOptions {
   scenarioId?: string | null;
@@ -103,6 +131,10 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
   const prefetchedUrlRef = useRef<string | null>(null);
   const prefetchedOverridesRef = useRef<{ prompt?: string; firstMessage?: string } | null>(null);
   const prefetchedVariantIdRef = useRef<string | null>(null);
+  const prefetchedLanguageRef = useRef<AgentLanguage | null>(null);
+  // Agente para el que se pre-fetcheó el URL. Sirve para NO reusar un URL
+  // pre-fetcheado si el connect pide otro agente (evita conectar al equivocado).
+  const prefetchedAgentRef = useRef<string | null>(null);
   const [variantId, setVariantId] = useState<string | null>(null);
   const memoryContextRef = useRef<string | null>(null);
 
@@ -111,6 +143,10 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
   const userSpeechEndRef = useRef<number | null>(null);
   const ttfaSamplesRef = useRef<number[]>([]);
   const connectMsRef = useRef<number | null>(null);
+  // Desglose del connect + latencia del saludo (instrumentación de diagnóstico).
+  const micMsRef = useRef<number | null>(null);
+  const connectedAtRef = useRef<number | null>(null);
+  const greetingEmittedRef = useRef(false);
   const [latencyStats, setLatencyStats] = useState<LatencyStats>({
     connectMs: null,
     lastTtfaMs: null,
@@ -125,22 +161,25 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     onLatencyRef.current?.(event);
     if (type === "connect") {
       connectMsRef.current = rounded;
-    } else {
-      ttfaSamplesRef.current.push(rounded);
+      setLatencyStats((prev) => ({ ...prev, connectMs: rounded }));
+      return;
     }
-    setLatencyStats((prev) => {
-      if (type === "connect") {
-        return { ...prev, connectMs: rounded };
-      }
-      const samples = prev.ttfaSamples + 1;
-      const total = (prev.avgTtfaMs ?? 0) * prev.ttfaSamples + rounded;
-      return {
-        ...prev,
-        lastTtfaMs: rounded,
-        avgTtfaMs: Math.round(total / samples),
-        ttfaSamples: samples,
-      };
-    });
+    if (type === "ttfa") {
+      ttfaSamplesRef.current.push(rounded);
+      setLatencyStats((prev) => {
+        const samples = prev.ttfaSamples + 1;
+        const total = (prev.avgTtfaMs ?? 0) * prev.ttfaSamples + rounded;
+        return {
+          ...prev,
+          lastTtfaMs: rounded,
+          avgTtfaMs: Math.round(total / samples),
+          ttfaSamples: samples,
+        };
+      });
+      return;
+    }
+    // mic / handshake / greeting: sólo se loguean y se emiten por callback. No
+    // contaminan las muestras de TTFA ni se persisten (diagnóstico en consola).
   }, []);
 
   const getLatencyReport = useCallback(() => ({
@@ -415,10 +454,19 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     },
     onConnect: () => {
       console.log("Connected to ElevenLabs agent");
+      const now = performance.now();
       if (connectStartRef.current !== null) {
-        emitLatency("connect", performance.now() - connectStartRef.current);
+        const total = now - connectStartRef.current;
+        emitLatency("connect", total);
+        // handshake = connect total menos el tiempo de micrófono ya medido, para
+        // ver cuánto es acceso al mic vs establecimiento de sesión en ElevenLabs.
+        if (micMsRef.current !== null) {
+          emitLatency("handshake", Math.max(0, total - micMsRef.current));
+        }
         connectStartRef.current = null;
       }
+      // Ancla para medir la latencia del saludo (primer habla del agente).
+      connectedAtRef.current = now;
       isConnectedRef.current = true;
       setIsConnecting(false);
       timerRef.current = setInterval(() => {
@@ -478,8 +526,14 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
 
   // Pre-fetch signed URL and memory context when agent changes
   const prefetchSignedUrl = useCallback(async () => {
+    // Sin agente resuelto todavía no hay nada útil que pre-cachear: pedir el token
+    // con agentSecretName=undefined misrutea al agente default (MISROUTE en el
+    // server) y el signed URL se descarta apenas se fija el agente real. Ese
+    // "Signed URL pre-fetched for agent: undefined" del log era un round-trip
+    // (y un fetch a ElevenLabs) desperdiciado. Lo evitamos.
+    if (!agentSecretNameRef.current) return;
     try {
-      const data = await api.post<{ signedUrl: string; scenario?: any; overrides?: { prompt?: string; firstMessage?: string } | null; variantId?: string }>("/api/elevenlabs/conversation-token", {
+      const data = await api.post<ConversationTokenResponse>("/api/elevenlabs/conversation-token", {
         scenarioId: scenarioIdRef.current,
         agentSecretName: agentSecretNameRef.current,
       });
@@ -487,6 +541,8 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
         prefetchedUrlRef.current = data.signedUrl;
         prefetchedOverridesRef.current = data.overrides ?? null;
         prefetchedVariantIdRef.current = data.variantId ?? null;
+        prefetchedLanguageRef.current = data.language ?? null;
+        prefetchedAgentRef.current = agentSecretNameRef.current ?? null;
         console.log("Signed URL pre-fetched for agent:", agentSecretNameRef.current);
       }
     } catch (error) {
@@ -515,44 +571,71 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     prefetchMemoryContext();
   }, [prefetchSignedUrl, prefetchMemoryContext]);
 
-  const connect = useCallback(async () => {
+  const connect = useCallback(async (overrideArgs?: { agentSecretName?: string | null; scenarioId?: string | null; resumeSession?: boolean }) => {
     if (isConnectedRef.current || isConnecting) {
       console.log("Already connected or connecting, skipping");
       return;
     }
 
+    // El agente/escenario efectivos pueden venir EXPLÍCITOS desde el llamador.
+    // Esto evita una carrera: si la página hace setSelectedAgent(agent) y llama
+    // connect() en el mismo tick, agentSecretNameRef aún no se sincronizó (el
+    // useEffect corre tras el render) y resolveríamos al agente DEFAULT (Coach).
+    // Pasar el valor fresco del clic lo arregla.
+    const effectiveAgentSecret =
+      overrideArgs?.agentSecretName !== undefined ? overrideArgs.agentSecretName : agentSecretNameRef.current;
+    const effectiveScenarioId =
+      overrideArgs?.scenarioId !== undefined ? overrideArgs.scenarioId : scenarioIdRef.current;
+
+    // resumeSession = reenganche tras un corte que NO pidio el usuario (ver el
+    // examen de Objeciones). En ese caso el cronometro y el tope de duracion no
+    // se reinician: el alumno retoma donde iba y no gana tiempo extra porque el
+    // agente colgo solo.
+    const isResume = overrideArgs?.resumeSession === true;
+
     setIsConnecting(true);
-    setSessionTime(0);
-    maxReachedRef.current = false;
+    if (!isResume) {
+      setSessionTime(0);
+      maxReachedRef.current = false;
+    }
     setIsMuted(false);
     connectStartRef.current = performance.now();
     userSpeechEndRef.current = null;
     connectMsRef.current = null;
     ttfaSamplesRef.current = [];
+    micMsRef.current = null;
+    connectedAtRef.current = null;
+    greetingEmittedRef.current = false;
     setLatencyStats({ connectMs: null, lastTtfaMs: null, avgTtfaMs: null, ttfaSamples: 0 });
 
     try {
-      // Use pre-fetched URL if available, otherwise fetch now
-      const hasPreFetched = !!prefetchedUrlRef.current;
+      // Usa el URL pre-fetcheado SÓLO si fue para el mismo agente efectivo. Si
+      // el llamador pidió otro agente (o el ref no coincidía), lo ignoramos y
+      // pedimos fresco → nunca conectamos al agente equivocado.
+      const hasPreFetched =
+        !!prefetchedUrlRef.current && prefetchedAgentRef.current === (effectiveAgentSecret ?? null);
 
-      let data: { signedUrl: string; scenario?: any; overrides?: { prompt?: string; firstMessage?: string } | null; variantId?: string };
+      let data: ConversationTokenResponse;
 
       if (hasPreFetched) {
         data = {
           signedUrl: prefetchedUrlRef.current!,
           overrides: prefetchedOverridesRef.current,
           variantId: prefetchedVariantIdRef.current ?? undefined,
+          language: prefetchedLanguageRef.current ?? undefined,
         };
       } else {
-        data = await api.post<{ signedUrl: string; scenario?: any; overrides?: { prompt?: string; firstMessage?: string } | null; variantId?: string }>("/api/elevenlabs/conversation-token", {
-          scenarioId: scenarioIdRef.current,
-          agentSecretName: agentSecretNameRef.current,
+        data = await api.post<ConversationTokenResponse>("/api/elevenlabs/conversation-token", {
+          scenarioId: effectiveScenarioId,
+          agentSecretName: effectiveAgentSecret,
         });
       }
 
       prefetchedUrlRef.current = null; // Consumed
       prefetchedOverridesRef.current = null;
       prefetchedVariantIdRef.current = null;
+      prefetchedLanguageRef.current = null;
+      prefetchedAgentRef.current = null;
 
       // Expose variant ID for A/B testing
       setVariantId(data.variantId ?? null);
@@ -566,21 +649,61 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
       if (userIdRef.current) {
         dynamicVariables.user_id = userIdRef.current;
       }
-      dynamicVariables.advisor_name = userNameRef.current || "Visitante";
+      // Nombre con el que el agente saluda al usuario. Viene de user.firstName;
+      // si está vacío cae a "Visitante". Admin/coach pueden ponerse nombre desde
+      // el menú de usuario (Editar mi nombre) → PATCH /auth/me.
+      dynamicVariables.advisor_name = userNameRef.current?.trim() || "Visitante";
       if (memoryContextRef.current) {
         dynamicVariables.advisor_context = memoryContextRef.current;
       }
+
+      // Idioma global de los agentes (toggle admin). Sólo "en" genera override:
+      // "es" deja al agente con su config nativa, exactamente como antes.
+      const language: AgentLanguage = data.language === "en" ? "en" : "es";
+      const isEnglish = language === "en";
+      // Disponible para prompts que usen {{language}} (opcional en ElevenLabs).
+      dynamicVariables.language = language;
 
       // Admin-configured prompt/firstMessage overrides for prospecting agents
       const sessionOverrides: any = {};
       if (data.overrides?.prompt || data.overrides?.firstMessage) {
         sessionOverrides.agent = {};
         if (data.overrides.prompt) {
-          sessionOverrides.agent.prompt = { prompt: data.overrides.prompt };
+          // En inglés se anexa la directiva de idioma al prompt de DB (que está
+          // en español). Ver ENGLISH_PROMPT_DIRECTIVE.
+          sessionOverrides.agent.prompt = {
+            prompt: isEnglish ? data.overrides.prompt + ENGLISH_PROMPT_DIRECTIVE : data.overrides.prompt,
+          };
         }
-        if (data.overrides.firstMessage) {
+        // El firstMessage de DB está escrito en español: en inglés NO se manda,
+        // para que aplique el preset "en" del agente en ElevenLabs (o su saludo
+        // por defecto) en vez de leer un saludo en español con voz en inglés.
+        if (data.overrides.firstMessage && !isEnglish) {
           sessionOverrides.agent.firstMessage = data.overrides.firstMessage;
         }
+      }
+      if (isEnglish) {
+        // Override soportado por el SDK (overrides.agent.language). ElevenLabs
+        // lo RECHAZA con error si el agente no tiene habilitado "Language" en
+        // Security → Overrides, así que todo agente de la app debe tenerlo.
+        sessionOverrides.agent = { ...(sessionOverrides.agent ?? {}), language: "en" };
+        console.log("[LANG] sesión en inglés: overrides.agent.language=en");
+      }
+
+      // Instrumentación: aislar el costo del micrófono (getUserMedia) del resto
+      // del connect. Pedimos acceso al mic y soltamos el track de inmediato; como
+      // el permiso queda concedido, el getUserMedia interno del SDK justo después
+      // es ~instantáneo. Así separamos `mic` de `handshake` sin cambiar el flujo.
+      const micStart = performance.now();
+      try {
+        const probe = await navigator.mediaDevices.getUserMedia({ audio: true });
+        probe.getTracks().forEach((t) => t.stop());
+        const micMs = performance.now() - micStart;
+        micMsRef.current = micMs;
+        emitLatency("mic", micMs);
+      } catch (e) {
+        // Si falla, dejamos que el SDK maneje el mic (y su error) como antes.
+        console.warn("[LATENCY] getUserMedia probe falló, se deja al SDK:", e);
       }
 
       // Let the SDK handle microphone access internally
@@ -644,9 +767,19 @@ export const useElevenLabsConversation = (options: UseElevenLabsConversationOpti
     }
   }, [sessionTime]);
 
-  // TTFA: measure from last user-transcript event to the moment the agent starts speaking
+  // Latencia del saludo + TTFA. Cuando el agente empieza a hablar:
+  //  - la PRIMERA vez tras conectar = "greeting" (connect → primera habla del
+  //    agente): esto es el "tarda en contestar" que percibe el usuario al entrar,
+  //    y hasta ahora no se medía (el array ttfa quedaba vacío en sesiones donde
+  //    el usuario sólo oía el saludo y se iba).
+  //  - las siguientes = TTFA, desde que el usuario terminó de hablar.
   useEffect(() => {
-    if (conversation.isSpeaking && userSpeechEndRef.current !== null) {
+    if (!conversation.isSpeaking) return;
+    if (!greetingEmittedRef.current && connectedAtRef.current !== null) {
+      greetingEmittedRef.current = true;
+      emitLatency("greeting", performance.now() - connectedAtRef.current);
+    }
+    if (userSpeechEndRef.current !== null) {
       emitLatency("ttfa", performance.now() - userSpeechEndRef.current);
       userSpeechEndRef.current = null;
     }

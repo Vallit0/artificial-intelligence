@@ -25,26 +25,46 @@ function timingSafeEqual(a: string, b: string): boolean {
   return crypto.timingSafeEqual(aBuf, bBuf);
 }
 
-export function requireToolSecret(req: Request, res: Response, next: NextFunction): void {
+export type ToolSecretCheck =
+  | { ok: true }
+  | { ok: false; reason: 'not-configured' | 'invalid' };
+
+// Evaluates the shared secret WITHOUT sending a response, so each caller can
+// decide how to react to a failure: hard-block (see requireToolSecret, used by
+// /save) or degrade gracefully (see the /retrieve controller, which must never
+// hang a live conversation with a 401/500).
+export function checkToolSecret(req: Request): ToolSecretCheck {
   const expected = process.env.TOOL_SHARED_SECRET;
 
   if (!expected) {
-    if (config.isProduction) {
-      res.status(500).json({ error: 'Server tool secret not configured' });
-      return;
-    }
-    // In dev, log a loud warning so the developer notices instead of silently
-    // accepting the request as the old behavior did.
-    // eslint-disable-next-line no-console
-    console.warn('[security] TOOL_SHARED_SECRET is not set — /api/memory tool endpoints are open. Set it in .env.');
-    next();
-    return;
+    // Fail-closed in production; permissive in dev for local testing.
+    return config.isProduction ? { ok: false, reason: 'not-configured' } : { ok: true };
   }
 
   const provided = req.header('x-tool-secret');
   if (!provided || !timingSafeEqual(provided, expected)) {
-    res.status(401).json({ error: 'Invalid tool secret' });
+    return { ok: false, reason: 'invalid' };
+  }
+  return { ok: true };
+}
+
+export function requireToolSecret(req: Request, res: Response, next: NextFunction): void {
+  const check = checkToolSecret(req);
+
+  if (check.ok) {
+    if (!process.env.TOOL_SHARED_SECRET) {
+      // Dev-only path (prod not-configured is already rejected below). Log a
+      // loud warning so the developer notices instead of silently accepting.
+      // eslint-disable-next-line no-console
+      console.warn('[security] TOOL_SHARED_SECRET is not set — /api/memory tool endpoints are open. Set it in .env.');
+    }
+    next();
     return;
   }
-  next();
+
+  if (check.reason === 'not-configured') {
+    res.status(500).json({ error: 'Server tool secret not configured' });
+    return;
+  }
+  res.status(401).json({ error: 'Invalid tool secret' });
 }

@@ -32,6 +32,11 @@ async function seedLearner(email: string, sedeId: string) {
       emailVerified: true,
       status: 'approved',
       sedeId,
+      // Este archivo cubre el FLUJO del examen, no su habilitación (eso vive en
+      // examEnable / practiceGateBypass). Sembramos los toggles prendidos para
+      // pasar el gate de `createSession`, que exige toggle OR tiempo de práctica.
+      examenFinalEnabled: true,
+      examenObjecionesEnabled: true,
       roles: { create: { role: 'learner' } },
     },
   });

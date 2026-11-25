@@ -9,6 +9,7 @@ import { hashPassword } from '../utils/passwordHash.js';
 import { DateRange, createdAtWhere } from '../utils/dateRange.js';
 import { AuthUser, AppRole } from '../types/index.js';
 import { canCreateCoachIn, isGlobalAdmin, getSedeScope } from '../middleware/sedeScope.js';
+import { PROSPECCION_PRACTICE_MODES, OBJECIONES_PRACTICE_MODES } from './sessions.service.js';
 
 // Todos los roles asignables vía edición de usuario (incluye admin, a
 // diferencia de CREATABLE_ROLES que es para creación masiva sin admin).
@@ -71,6 +72,11 @@ interface StudentWithStats {
   gradeNotes: string | null;
   examenFinalEnabled: boolean;
   examenObjecionesEnabled: boolean;
+  examPracticeBypass: boolean;
+  // Práctica ALL-TIME por nivel (no acotada al filtro de período), para calcular
+  // cuánto falta para el auto-desbloqueo de cada examen.
+  practiceSecondsProspeccion: number;
+  practiceSecondsObjeciones: number;
   level2Unlocked: boolean;
   courseCompleted: boolean;
   phoneNumber: string | null;
@@ -356,6 +362,39 @@ export async function updateUserPassword(userId: string, newPassword: string, ca
 // Student Management
 // ============================================
 
+// Suma, en UNA query, el tiempo de práctica por nivel de varios usuarios. Espeja
+// getPracticeSecondsByLevel() de sessions.service (mismos modos, mismo filtro de
+// examType) pero en batch, para no hacer 2 queries por estudiante en el listado.
+async function getPracticeSecondsByLevelBulk(
+  userIds: string[],
+): Promise<Map<string, { prospeccion: number; objeciones: number }>> {
+  const result = new Map<string, { prospeccion: number; objeciones: number }>();
+  if (userIds.length === 0) return result;
+
+  const rows = await prisma.practiceSession.groupBy({
+    by: ['userId', 'practiceMode'],
+    where: {
+      userId: { in: userIds },
+      // Los intentos de examen nunca cuentan como práctica.
+      examType: null,
+      practiceMode: { in: [...PROSPECCION_PRACTICE_MODES, ...OBJECIONES_PRACTICE_MODES] },
+    },
+    _sum: { durationSeconds: true },
+  });
+
+  for (const row of rows) {
+    const entry = result.get(row.userId) ?? { prospeccion: 0, objeciones: 0 };
+    const seconds = row._sum.durationSeconds ?? 0;
+    if (row.practiceMode && OBJECIONES_PRACTICE_MODES.includes(row.practiceMode)) {
+      entry.objeciones += seconds;
+    } else {
+      entry.prospeccion += seconds;
+    }
+    result.set(row.userId, entry);
+  }
+  return result;
+}
+
 export async function getAllStudents(caller: AuthUser, range?: DateRange): Promise<StudentWithStats[]> {
   // Coach/instructor ven sólo learners de su sede. Admin global ve todos
   // los learners (o todos los users si pasa override — no implementado acá
@@ -398,8 +437,15 @@ export async function getAllStudents(caller: AuthUser, range?: DateRange): Promi
     orderBy: { createdAt: 'desc' },
   });
 
+  // Práctica acumulada por nivel, para mostrar cuánto le falta a cada estudiante
+  // para el auto-desbloqueo del examen. Va en su propia query porque el gate es
+  // ALL-TIME: el include de arriba está acotado al período (`sessionDateWhere`)
+  // y reusarlo daría un "faltan X min" falso cuando hay un filtro de fecha.
+  const practiceByLevel = await getPracticeSecondsByLevelBulk(users.map(u => u.id));
+
   return users.map(user => {
     const sessions = user.practiceSessions;
+    const practiced = practiceByLevel.get(user.id);
     const scores = sessions.map(s => s.score).filter((s): s is number => s !== null);
     const examScores = sessions
       .filter(s => s.scenarioId === null && s.score !== null)
@@ -432,6 +478,9 @@ export async function getAllStudents(caller: AuthUser, range?: DateRange): Promi
       gradeNotes: user.studentGrade?.notes || null,
       examenFinalEnabled: user.examenFinalEnabled,
       examenObjecionesEnabled: user.examenObjecionesEnabled,
+      examPracticeBypass: user.examPracticeBypass,
+      practiceSecondsProspeccion: practiced?.prospeccion ?? 0,
+      practiceSecondsObjeciones: practiced?.objeciones ?? 0,
       level2Unlocked: user.level2Unlocked,
       courseCompleted: user.courseCompleted,
       phoneNumber: user.phoneNumber,
@@ -612,6 +661,7 @@ export interface UpdateUserInput {
                               // cambiar de sede.
   examenFinalEnabled?: boolean;
   examenObjecionesEnabled?: boolean;
+  examPracticeBypass?: boolean;
   level2Unlocked?: boolean;
   courseCompleted?: boolean;
   tutorialCompleted?: boolean;
@@ -655,6 +705,7 @@ export async function getEditableUser(userId: string, caller: AuthUser) {
     roles: user.roles.map((r) => r.role),
     examenFinalEnabled: user.examenFinalEnabled,
     examenObjecionesEnabled: user.examenObjecionesEnabled,
+    examPracticeBypass: user.examPracticeBypass,
     level2Unlocked: user.level2Unlocked,
     courseCompleted: user.courseCompleted,
     tutorialCompleted: user.tutorialCompleted,
@@ -786,6 +837,7 @@ export async function updateUser(userId: string, input: UpdateUserInput, caller:
   if (input.phoneNumber !== undefined) data.phoneNumber = input.phoneNumber?.trim() || null;
   if (input.examenFinalEnabled !== undefined) data.examenFinalEnabled = input.examenFinalEnabled;
   if (input.examenObjecionesEnabled !== undefined) data.examenObjecionesEnabled = input.examenObjecionesEnabled;
+  if (input.examPracticeBypass !== undefined) data.examPracticeBypass = input.examPracticeBypass;
   if (input.level2Unlocked !== undefined) data.level2Unlocked = input.level2Unlocked;
   if (input.courseCompleted !== undefined) data.courseCompleted = input.courseCompleted;
   if (input.tutorialCompleted !== undefined) data.tutorialCompleted = input.tutorialCompleted;

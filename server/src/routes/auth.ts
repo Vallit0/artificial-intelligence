@@ -310,3 +310,45 @@ authRouter.post('/update-password', authMiddleware, async (req: any, res: Respon
     res.status(appError.statusCode).json({ error: appError.message });
   }
 });
+
+// ============================================
+// PATCH /auth/me (authenticated) — editar mi nombre
+// ============================================
+// Permite a un admin o coach ponerse nombre y apellido a sí mismo. El motivo
+// original: el agente de ElevenLabs recibe `advisor_name = firstName` como
+// variable dinámica; las cuentas de admin se crean sin nombre y el agente
+// terminaba saludando "Visitante". Los learners NO pueden auto-editarse: su
+// nombre lo administra el admin/coach (sale en los certificados).
+authRouter.patch('/me', authMiddleware, async (req: any, res: Response) => {
+  try {
+    const roles: string[] = req.user?.roles ?? [];
+    if (!roles.includes('admin') && !roles.includes('coach')) {
+      res.status(403).json({ error: 'Sólo administradores y coaches pueden editar su propio nombre' });
+      return;
+    }
+
+    const { firstName, lastName } = req.body ?? {};
+    if (typeof firstName !== 'string' || !firstName.trim()) {
+      throw new BadRequestError('El nombre es obligatorio');
+    }
+    if (lastName !== undefined && lastName !== null && typeof lastName !== 'string') {
+      throw new BadRequestError('Apellido inválido');
+    }
+    const cleanFirst = firstName.trim();
+    const cleanLast = typeof lastName === 'string' ? lastName.trim() : '';
+    if (cleanFirst.length > 50 || cleanLast.length > 50) {
+      throw new BadRequestError('Nombre y apellido deben tener como máximo 50 caracteres');
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: req.user.id },
+      data: { firstName: cleanFirst, lastName: cleanLast || null },
+      select: { id: true, firstName: true, lastName: true },
+    });
+
+    res.json({ user: updated });
+  } catch (error) {
+    const appError = handleError(error);
+    res.status(appError.statusCode).json({ error: appError.message });
+  }
+});

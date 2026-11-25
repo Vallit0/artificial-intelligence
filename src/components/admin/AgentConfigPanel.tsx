@@ -4,8 +4,26 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Bot, Check, Key, Loader2, Save, Trash2 } from "lucide-react";
+import { Bot, Check, Globe, Key, Loader2, Save, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { COUNTRIES, DEFAULT_COUNTRY_CODE } from "@/lib/countries";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+// Enrutamiento por país (espeja server/src/services/elevenlabs.service.ts):
+// el país por defecto usa el secret name tal cual (ELEVENLABS_AGENT_COACH);
+// los demás países usan sufijo ISO2 (ELEVENLABS_AGENT_COACH_MX). Si un país
+// no tiene agente configurado, sus usuarios caen al agente base.
+const COUNTRY_SUFFIX_RE = new RegExp(`_(${COUNTRIES.map((c) => c.code).join("|")})$`);
+
+const secretNameForCountry = (base: string, country: string) =>
+  country === DEFAULT_COUNTRY_CODE ? base : `${base}_${country}`;
+
+// Separa "ELEVENLABS_AGENT_COACH_MX" → { base: "ELEVENLABS_AGENT_COACH", country: "MX" }.
+const splitSecretName = (secretName: string): { base: string; country: string } => {
+  const m = secretName.match(COUNTRY_SUFFIX_RE);
+  if (!m) return { base: secretName, country: DEFAULT_COUNTRY_CODE };
+  return { base: secretName.slice(0, -m[0].length), country: m[1] };
+};
 
 const API_KEY_CONFIG = { secretName: "ELEVENLABS_API_KEY", label: "API Key de ElevenLabs" };
 
@@ -35,6 +53,11 @@ export default function AgentConfigPanel() {
   const { configs, isLoading, saveConfig, deleteConfig } = useAgentConfigs();
   const { toast } = useToast();
 
+  // País cuyos agentes se están editando. El default muestra los secret names
+  // base; los demás, los mismos agentes con sufijo (_MX, ...).
+  const [country, setCountry] = useState<string>(DEFAULT_COUNTRY_CODE);
+  const isDefaultCountry = country === DEFAULT_COUNTRY_CODE;
+
   // Merge known agents with DB configs
   const [rows, setRows] = useState<Record<string, { agentId: string; label: string; dbId?: string }>>({});
   const [apiKeyRow, setApiKeyRow] = useState<{ value: string; dbId?: string }>({ value: "" });
@@ -42,24 +65,30 @@ export default function AgentConfigPanel() {
 
   useEffect(() => {
     const merged: typeof rows = {};
-    // Start with known agents
+    // Start with known agents (secret name según el país seleccionado)
     for (const known of KNOWN_AGENTS) {
-      merged[known.secretName] = { agentId: "", label: known.label, dbId: undefined };
+      merged[secretNameForCountry(known.secretName, country)] = { agentId: "", label: known.label, dbId: undefined };
     }
-    // Override with DB values
+    // Override with DB values — sólo las del país seleccionado. Las filas con
+    // sufijo de otro país se muestran al cambiar el selector.
     for (const cfg of configs) {
       if (cfg.secretName === API_KEY_CONFIG.secretName) {
         setApiKeyRow({ value: cfg.agentId, dbId: cfg.id });
         continue;
       }
+      const parts = splitSecretName(cfg.secretName);
+      if (parts.country !== country) continue;
+      const knownLabel = KNOWN_AGENTS.find((k) => k.secretName === parts.base)?.label;
       merged[cfg.secretName] = {
         agentId: cfg.agentId,
-        label: cfg.label || merged[cfg.secretName]?.label || cfg.secretName,
+        label: cfg.label || knownLabel || merged[cfg.secretName]?.label || cfg.secretName,
         dbId: cfg.id,
       };
     }
     setRows(merged);
-  }, [configs]);
+  }, [configs, country]);
+
+  const configuredCount = Object.values(rows).filter((r) => r.dbId).length;
 
   const handleSaveApiKey = async () => {
     if (!apiKeyRow.value.trim()) {
@@ -130,6 +159,33 @@ export default function AgentConfigPanel() {
         </CardTitle>
         <p className="text-sm text-muted-foreground">
           Configura los Agent IDs de ElevenLabs para cada funcionalidad. Los cambios aplican inmediatamente.
+        </p>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 pt-2">
+          <div className="flex items-center gap-2">
+            <Globe className="w-4 h-4 text-primary" />
+            <span className="text-sm font-medium">País</span>
+          </div>
+          <Select value={country} onValueChange={setCountry}>
+            <SelectTrigger className="h-9 w-full sm:w-56">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {COUNTRIES.map((c) => (
+                <SelectItem key={c.code} value={c.code}>
+                  {c.name}
+                  {c.code === DEFAULT_COUNTRY_CODE ? " (default)" : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Badge variant="secondary" className="text-[10px] w-fit">
+            {configuredCount} configurado{configuredCount === 1 ? "" : "s"}
+          </Badge>
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          {isDefaultCountry
+            ? "Agentes base: los usan todos los usuarios cuyo país no tiene su propio agente configurado."
+            : `Agentes para usuarios cuya sede es de ${COUNTRIES.find((c) => c.code === country)?.name ?? country}. Si un agente queda vacío, esos usuarios usan el agente base (${COUNTRIES.find((c) => c.code === DEFAULT_COUNTRY_CODE)?.name}). Los prompts override del panel de prospección se configuran aparte por país (secret name con sufijo _${country}).`}
         </p>
       </CardHeader>
       <CardContent>

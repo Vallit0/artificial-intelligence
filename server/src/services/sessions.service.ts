@@ -10,8 +10,8 @@ import { getAppConfig } from './appConfig.service.js';
 // Modos de práctica (practiceMode) que cuentan como práctica de cada nivel.
 // Los intentos de examen (examType != null) NUNCA cuentan. 'asesor' y 'coach'
 // son modos auxiliares que no gatean ningún examen.
-const PROSPECCION_PRACTICE_MODES = ['cliente', 'cliente_prospeccion'];
-const OBJECIONES_PRACTICE_MODES = ['objeciones'];
+export const PROSPECCION_PRACTICE_MODES = ['cliente', 'cliente_prospeccion'];
+export const OBJECIONES_PRACTICE_MODES = ['objeciones'];
 
 // Suma el tiempo de práctica (segundos) acumulado por el usuario en cada nivel.
 export async function getPracticeSecondsByLevel(
@@ -33,17 +33,48 @@ export async function getPracticeSecondsByLevel(
   };
 }
 
-// Gate por tiempo de práctica: si hay un mínimo configurado para ese examen y
-// el estudiante no lo alcanzó, rechaza. 0 = sin requisito.
-async function assertPracticeTimeMet(userId: string, examType: string): Promise<void> {
-  const cfg = await getAppConfig();
-  const required =
-    examType === 'objeciones'
-      ? cfg.minPracticeSecondsObjeciones
-      : cfg.minPracticeSecondsProspeccion;
-  if (!required || required <= 0) return;
+// Gate de habilitación del examen. Un estudiante puede rendir por CUALQUIERA de
+// estas vías (OR, no AND — espeja src/lib/exam-gate.ts en el frontend):
+//
+//   1. Un admin/coach le prendió el toggle del examen a mano.
+//   2. Bypass QA (examPracticeBypass): cuenta como práctica cumplida.
+//   3. Acumuló el mínimo de práctica del nivel configurado en AppConfig.
+//
+// El mínimo en 0 significa "auto-desbloqueo NO configurado" (es el default), no
+// "requisito cumplido": con 0 sólo desbloquean el toggle o el bypass. Tratarlo
+// como cumplido abriría el examen a todos los estudiantes de la plataforma.
+async function assertExamUnlocked(userId: string, examType: string): Promise<void> {
+  const isObjeciones = examType === 'objeciones';
+  const [cfg, user] = await Promise.all([
+    getAppConfig(),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        examPracticeBypass: true,
+        examenFinalEnabled: true,
+        examenObjecionesEnabled: true,
+      },
+    }),
+  ]);
+
+  // Vía 1: habilitación manual del instructor.
+  if (isObjeciones ? user?.examenObjecionesEnabled : user?.examenFinalEnabled) return;
+
+  // Vía 2: bypass por-usuario (QA/testing).
+  if (user?.examPracticeBypass) return;
+
+  // Vía 3: auto-desbloqueo por tiempo de práctica acumulado.
+  const required = isObjeciones
+    ? cfg.minPracticeSecondsObjeciones
+    : cfg.minPracticeSecondsProspeccion;
+  if (!required || required <= 0) {
+    throw new ForbiddenError(
+      'Tu examen aún no fue habilitado. Pedile acceso a tu instructor o administrador.',
+    );
+  }
+
   const practiced = await getPracticeSecondsByLevel(userId);
-  const have = examType === 'objeciones' ? practiced.objeciones : practiced.prospeccion;
+  const have = isObjeciones ? practiced.objeciones : practiced.prospeccion;
   if (have < required) {
     const faltanMin = Math.ceil((required - have) / 60);
     throw new ForbiddenError(
@@ -75,11 +106,11 @@ export async function createSession(
   input: CreateSessionInput,
   opts?: { bypassExamGate?: boolean },
 ): Promise<PracticeSession> {
-  // Sesión de EXAMEN: verifica el tiempo mínimo de práctica configurado, salvo
-  // que el caller sea privilegiado (admin/coach global) — espeja el bypass del
-  // frontend. Las sesiones de práctica normales no se gatean.
+  // Sesión de EXAMEN: verifica que el examen esté habilitado (por toggle o por
+  // tiempo de práctica), salvo que el caller sea privilegiado (admin/coach
+  // global) — espeja el bypass del frontend. Las prácticas normales no se gatean.
   if (input.examType && !opts?.bypassExamGate) {
-    await assertPracticeTimeMet(userId, input.examType);
+    await assertExamUnlocked(userId, input.examType);
   }
 
   const session = await prisma.practiceSession.create({

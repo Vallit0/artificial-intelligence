@@ -3,9 +3,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Award, Clock, Eye, EyeOff, GraduationCap, Loader2, Save, Settings } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Award, Clock, Eye, EyeOff, GraduationCap, Languages, Loader2, Save, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { usePlatformConfig, APP_CONFIG_DEFAULTS, type AppConfigPatch } from "@/hooks/useAppConfig";
+import {
+  usePlatformConfig,
+  APP_CONFIG_DEFAULTS,
+  type AgentLanguage,
+  type AppConfigPatch,
+} from "@/hooks/useAppConfig";
 import CertificatePreview from "./CertificatePreview";
 
 // Estado local del formulario. Las duraciones se editan en MINUTOS (la DB
@@ -18,6 +24,8 @@ interface FormState {
   // Tiempo mínimo de práctica requerido antes de rendir cada examen (minutos).
   minPracticeProspeccionMin: number;
   minPracticeObjecionesMin: number;
+  // Idioma de los agentes de voz ("es" | "en").
+  agentLanguage: AgentLanguage;
   certificateInstructorName: string;
   certificateDirectorName: string;
   certificateCourseName: string;
@@ -38,6 +46,7 @@ const EMPTY: FormState = {
   passThresholdObjeciones: APP_CONFIG_DEFAULTS.passThresholdObjeciones,
   minPracticeProspeccionMin: APP_CONFIG_DEFAULTS.minPracticeSecondsProspeccion / 60,
   minPracticeObjecionesMin: APP_CONFIG_DEFAULTS.minPracticeSecondsObjeciones / 60,
+  agentLanguage: APP_CONFIG_DEFAULTS.agentLanguage,
   certificateInstructorName: "",
   certificateDirectorName: "",
   certificateCourseName: "",
@@ -194,6 +203,7 @@ export default function ConfigPanel() {
       passThresholdObjeciones: config.passThresholdObjeciones,
       minPracticeProspeccionMin: Math.round((config.minPracticeSecondsProspeccion ?? 0) / 60),
       minPracticeObjecionesMin: Math.round((config.minPracticeSecondsObjeciones ?? 0) / 60),
+      agentLanguage: config.agentLanguage === "en" ? "en" : "es",
       certificateInstructorName: config.certificateInstructorName ?? "",
       certificateDirectorName: config.certificateDirectorName ?? "",
       certificateCourseName: config.certificateCourseName ?? "",
@@ -225,6 +235,7 @@ export default function ConfigPanel() {
       passThresholdObjeciones: clampPct(form.passThresholdObjeciones),
       minPracticeSecondsProspeccion: minToSecMin0(form.minPracticeProspeccionMin),
       minPracticeSecondsObjeciones: minToSecMin0(form.minPracticeObjecionesMin),
+      agentLanguage: form.agentLanguage,
       certificateInstructorName: form.certificateInstructorName.trim() || null,
       certificateDirectorName: form.certificateDirectorName.trim() || null,
       certificateCourseName: form.certificateCourseName.trim() || null,
@@ -266,6 +277,34 @@ export default function ConfigPanel() {
         </p>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Idioma de los agentes */}
+        <section className="space-y-3">
+          <h3 className="flex items-center gap-2 text-sm font-semibold">
+            <Languages className="w-4 h-4 text-muted-foreground" />
+            Idioma de los agentes de voz
+          </h3>
+          <div className="flex items-start justify-between gap-4 rounded-lg border p-3">
+            <div className="space-y-1">
+              <Label htmlFor="agent-language-switch" className="text-sm">
+                Agentes en inglés
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Aplica a <strong>todos</strong> los agentes (coach, role-plays, escenarios y exámenes)
+                en las próximas conversaciones; las llamadas en curso no cambian. Al activarlo, la app
+                le pide a ElevenLabs la sesión en inglés (reconocimiento de voz y voz del agente).
+                Cada agente debe tener habilitado el override de <em>Language</em> en su pestaña
+                Security de ElevenLabs; si no, la llamada no conecta.
+              </p>
+            </div>
+            <Switch
+              id="agent-language-switch"
+              checked={form.agentLanguage === "en"}
+              onCheckedChange={(on) => set("agentLanguage", on ? "en" : "es")}
+              aria-label="Agentes en inglés"
+            />
+          </div>
+        </section>
+
         {/* Duración de llamadas */}
         <section className="space-y-3">
           <h3 className="flex items-center gap-2 text-sm font-semibold">
@@ -333,9 +372,11 @@ export default function ConfigPanel() {
             Tiempo mínimo de práctica antes del examen (minutos)
           </h3>
           <p className="text-xs text-muted-foreground">
-            El estudiante debe acumular este tiempo de práctica del nivel para poder rendir el
-            examen (se suma a la habilitación por estudiante). <strong>0 = sin requisito.</strong>{" "}
-            No cuenta el tiempo de los intentos de examen.
+            Al acumular este tiempo de práctica del nivel, el examen se habilita{" "}
+            <strong>automáticamente</strong>, sin que un instructor tenga que hacer nada. El toggle
+            por estudiante sigue funcionando como atajo para habilitarlo antes de tiempo.{" "}
+            <strong>0 = sin auto-habilitación</strong> (sólo abre el toggle manual). No cuenta el
+            tiempo de los intentos de examen.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">

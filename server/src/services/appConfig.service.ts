@@ -6,6 +6,23 @@ import prisma from '../db/index.js';
 
 const SINGLETON_ID = 'singleton';
 
+// Idiomas soportados para los agentes de voz. 'es' es el comportamiento
+// histórico (sin override). 'en' hace que el cliente mande
+// `overrides.agent.language = "en"` a ElevenLabs al iniciar cada conversación.
+export const AGENT_LANGUAGES = ['es', 'en'] as const;
+export type AgentLanguage = (typeof AGENT_LANGUAGES)[number];
+export const DEFAULT_AGENT_LANGUAGE: AgentLanguage = 'es';
+
+export function isAgentLanguage(v: unknown): v is AgentLanguage {
+  return typeof v === 'string' && (AGENT_LANGUAGES as readonly string[]).includes(v);
+}
+
+// Idioma efectivo de los agentes (sanea valores raros guardados en DB).
+export async function getAgentLanguage(): Promise<AgentLanguage> {
+  const cfg = await getAppConfig();
+  return isAgentLanguage(cfg.agentLanguage) ? cfg.agentLanguage : DEFAULT_AGENT_LANGUAGE;
+}
+
 export interface AppConfigPatch {
   callDurationProspeccionSec?: number;
   callDurationObjecionesSec?: number;
@@ -13,6 +30,7 @@ export interface AppConfigPatch {
   passThresholdObjeciones?: number;
   minPracticeSecondsProspeccion?: number;
   minPracticeSecondsObjeciones?: number;
+  agentLanguage?: AgentLanguage;
   certificateInstructorName?: string | null;
   certificateDirectorName?: string | null;
   certificateCourseName?: string | null;
@@ -69,6 +87,8 @@ export async function updateAppConfig(patch: AppConfigPatch) {
     // Tiempo mínimo de práctica: 0 (sin requisito) hasta 10h.
     minPracticeSecondsProspeccion: clampInt(patch.minPracticeSecondsProspeccion, 0, 36000),
     minPracticeSecondsObjeciones: clampInt(patch.minPracticeSecondsObjeciones, 0, 36000),
+    // Sólo 'es' | 'en'; cualquier otro valor se ignora (no se toca la columna).
+    agentLanguage: isAgentLanguage(patch.agentLanguage) ? patch.agentLanguage : undefined,
     certificateInstructorName: cleanStr(patch.certificateInstructorName),
     certificateDirectorName: cleanStr(patch.certificateDirectorName),
     certificateCourseName: cleanStr(patch.certificateCourseName),

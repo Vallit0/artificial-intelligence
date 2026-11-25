@@ -16,6 +16,10 @@ import LeftSidebar from "@/components/scenarios/LeftSidebar";
 import MobileNavigation from "@/components/MobileNavigation";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { api } from "@/lib/api-client";
+import { evaluateExamGate } from "@/lib/exam-gate";
+import { useExamGateSync } from "@/hooks/useExamGateSync";
+import { aggregateTimeByMode } from "@/lib/time-by-mode";
+import ExamTimeSourcesDialog from "@/components/ExamTimeSourcesDialog";
 
 interface TranscriptMessage {
   id: string;
@@ -47,7 +51,8 @@ export default function ExamenFinal() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, isAdmin, refreshUser, patchUser } = useAuth();
-  const { sessions, savePracticeSession, evaluateSession } = usePracticeSessions();
+  const { sessions, savePracticeSession, evaluateSession, refetch: refetchSessions } =
+    usePracticeSessions();
   const [examState, setExamState] = useState<ExamState>("idle");
   const [transcriptMessages, setTranscriptMessages] = useState<TranscriptMessage[]>([]);
   const [evaluation, setEvaluation] = useState<EvaluationResult | null>(null);
@@ -56,29 +61,48 @@ export default function ExamenFinal() {
 
   // Duración y umbral configurables por el admin (AppConfig); fallback a los
   // defaults históricos de Prospección mientras la config carga.
-  const { config: platformConfig } = usePlatformConfig();
+  const { config: platformConfig, refetch: refetchConfig } = usePlatformConfig();
   const examMaxSeconds = platformConfig?.callDurationProspeccionSec ?? EXAM_MAX_SECONDS;
   const passThreshold = platformConfig?.passThresholdProspeccion ?? 75;
 
-  // Tiempo de práctica de Prospección acumulado por el alumno (excluye intentos
-  // de examen). Debe alcanzar el mínimo configurable para poder rendir.
-  const practiceSeconds = useMemo(
+  // Desglose por modo, para saber cuánto suma a este examen y poder explicarle
+  // al alumno qué escenarios cuentan (ver ExamTimeSourcesDialog).
+  const timeByMode = useMemo(
     () =>
-      sessions
-        .filter(
-          (s) =>
-            !s.exam_type &&
-            (s.practice_mode === "cliente" || s.practice_mode === "cliente_prospeccion"),
-        )
-        .reduce((acc, s) => acc + (s.duration_seconds || 0), 0),
+      aggregateTimeByMode(
+        sessions.map((s) => ({
+          durationSeconds: s.duration_seconds,
+          practiceMode: s.practice_mode,
+          examType: s.exam_type,
+        })),
+      ),
     [sessions],
   );
+  // Tiempo de práctica de Prospección acumulado por el alumno (excluye intentos
+  // de examen). Debe alcanzar el mínimo configurable para poder rendir.
+  // roleplayClienteSeconds = cliente + cliente_prospeccion, los mismos modos que
+  // cuenta el gate del backend para este examen.
+  const practiceSeconds = timeByMode.roleplayClienteSeconds;
   const minPracticeSeconds = platformConfig?.minPracticeSecondsProspeccion ?? 0;
-  const needsMorePractice = !isAdmin && practiceSeconds < minPracticeSeconds;
-  const missingPracticeMin = Math.ceil((minPracticeSeconds - practiceSeconds) / 60);
 
-  // Bloqueado si el admin no lo habilitó O si aún no cumplió el tiempo de práctica.
-  const isLocked = !isAdmin && (!user?.examenFinalEnabled || needsMorePractice);
+  // Se habilita por el toggle del instructor O automáticamente al alcanzar el
+  // mínimo de práctica. Ver src/lib/exam-gate.ts para el detalle del OR.
+  const gate = evaluateExamGate({
+    isAdmin,
+    examEnabled: !!user?.examenFinalEnabled,
+    practiceBypass: !!user?.examPracticeBypass,
+    practiceSeconds,
+    minPracticeSeconds,
+  });
+  const { isLocked, hasAutoUnlock, remainingMinutes: missingPracticeMin } = gate;
+
+  // Mientras esté bloqueado, revalida el gate para que el examen se destrabe sin
+  // recargar (el instructor lo habilitó, o el alumno ya cumplió el tiempo). Una
+  // vez desbloqueado se apaga: no queremos requests de fondo durante el examen.
+  useExamGateSync(
+    () => Promise.all([refetchSessions(), refetchConfig(), refreshUser()]).then(() => undefined),
+    { enabled: isLocked },
+  );
 
   const handleTranscript = useCallback((text: string, isUser: boolean) => {
     setTranscriptMessages((prev) => [
@@ -331,10 +355,15 @@ export default function ExamenFinal() {
                   </div>
                   <CardTitle className="text-2xl">Examen Final Bloqueado</CardTitle>
                   <CardDescription className="text-base max-w-lg mx-auto">
-                    {user?.examenFinalEnabled && needsMorePractice
-                      ? `Necesitás acumular más tiempo de práctica de Prospección antes de rendir. Te faltan aproximadamente ${missingPracticeMin} min de práctica.`
+                    {hasAutoUnlock
+                      ? `Se habilita solo cuando acumules ${missingPracticeMin} min más de práctica de Prospección. También podés pedirle a tu instructor que te lo habilite antes.`
                       : "Tu examen final aún no ha sido habilitado. Contacta a tu instructor o administrador para que te habilite el acceso cuando estés listo."}
                   </CardDescription>
+                  {hasAutoUnlock && (
+                    <div className="flex justify-center">
+                      <ExamTimeSourcesDialog data={timeByMode} />
+                    </div>
+                  )}
                 </CardHeader>
                 <CardContent className="flex flex-col items-center gap-4">
                   <div className="bg-muted/50 rounded-lg p-4 w-full max-w-md">

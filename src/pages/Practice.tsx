@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import VoiceControls from "@/components/VoiceControls";
 import logoSenoriales from "@/assets/logo-senoriales.png";
@@ -15,6 +15,8 @@ import { usePracticeSessions, type PracticeMode } from "@/hooks/usePracticeSessi
 import { useAuth } from "@/hooks/useAuth";
 import { useLevelMode, useDidLevelJustChange } from "@/hooks/useLevelMode";
 import { usePlatformConfig } from "@/hooks/useAppConfig";
+import { aggregateTimeByMode } from "@/lib/time-by-mode";
+import ExamUnlockCountdown from "@/components/practice/ExamUnlockCountdown";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useCallSounds } from "@/hooks/useCallSounds";
 import { useConnectionQuality } from "@/hooks/useConnectionQuality";
@@ -32,7 +34,18 @@ import {
   UserCheck,
   MapPin,
   GraduationCap,
+  Search,
+  HelpCircle,
 } from "lucide-react";
+import CremacionCampaignBanner from "@/components/cremacion/CremacionCampaignBanner";
+import {
+  CREMACION_ACCENT_BG,
+  CREMACION_AGENT_SUFFIX,
+  CREMACION_BADGE_CLASS,
+  CREMACION_CARD_COLORS,
+  CREMACION_CARD_FALLBACK,
+  CREMACION_ORB_GRADIENT,
+} from "@/lib/cremacion-theme";
 import { useToast } from "@/hooks/use-toast";
 import LeftSidebar from "@/components/scenarios/LeftSidebar";
 import AICompanionOrb from "@/components/AICompanionOrb";
@@ -90,7 +103,7 @@ const practiceAgentSuggestions: AgentSuggestion[] = [
   {
     id: "roleplay-cliente",
     label: "Role-Play Cliente",
-    description: "Álvaro es un Cliente",
+    description: "Margarita es un Cliente",
     icon: Swords,
     agentSecretName: "ELEVENLABS_AGENT_ROLEPLAY_CLIENTE",
     color: "from-secondary/15 to-secondary/5 border-secondary/30 hover:border-secondary/60",
@@ -99,7 +112,7 @@ const practiceAgentSuggestions: AgentSuggestion[] = [
   {
     id: "roleplay-asesor",
     label: "Role-Play Asesor",
-    description: "Álvaro es un Asesor",
+    description: "Margarita es un Asesor",
     icon: UserCheck,
     agentSecretName: "ELEVENLABS_AGENT_ROLEPLAY_ASESOR",
     color: "from-orange-500/15 to-orange-500/5 border-orange-500/30 hover:border-orange-500/60",
@@ -134,13 +147,11 @@ const objectionsAgentSuggestions: AgentSuggestion[] = practiceAgentSuggestions
   // llamada (Coach, Roleplay) y los enruta a agentes ElevenLabs distintos vía
   // secret name (sufijo _NIVEL2). El Examen Final se conserva pero apunta a su
   // propia página de objeciones (no a la compuerta del Nivel 1). También
-  // sustituye el persona "Álvaro" por "Alvaro" en las descripciones y unifica
-  // el orbe a un tono morado para diferenciar visualmente el nivel.
+  // unifica el orbe a un tono morado para diferenciar visualmente el nivel.
   .filter((agent) => !LEVEL2_HIDDEN_IDS.has(agent.id))
   .map((agent) => {
     const next: AgentSuggestion = {
       ...agent,
-      description: agent.description.replace(/Álvaro/g, "Alvaro"),
       orbGradient: LEVEL2_ORB_GRADIENT,
     };
     if (agent.agentSecretName) {
@@ -155,6 +166,57 @@ const objectionsAgentSuggestions: AgentSuggestion[] = practiceAgentSuggestions
     return next;
   });
 
+// ---------------------------------------------------------------------------
+// Pista Cremación: mismas tarjetas de llamada (coach, role plays) en paleta
+// naranja, con agentes propios (sufijo _CREMACION), más dos tarjetas de apoyo:
+// el buscador de productos y las dudas frecuentes. Examen Final y Escenarios
+// de Prospección NO aplican a esta campaña y se ocultan.
+// ---------------------------------------------------------------------------
+const CREMACION_DESCRIPTIONS: Record<string, string> = {
+  coach: "Feedback y tips en tiempo real para presentar la cremación",
+  "roleplay-cliente": "Margarita es un Cliente que considera la cremación",
+  "roleplay-asesor": "Margarita es un Asesor de planes de cremación",
+};
+
+const CREMACION_HIDDEN_IDS = new Set(["prospeccion-fisica", "examen"]);
+
+const PRODUCTOS_CREMACION_CARD: AgentSuggestion = {
+  id: "productos",
+  label: "Buscador de Productos",
+  description: "Planes, urnas, nichos y servicios de cremación con argumentos y objeciones",
+  icon: Search,
+  color: CREMACION_CARD_COLORS.productos,
+  orbGradient: CREMACION_ORB_GRADIENT,
+  redirectTo: "/productos",
+};
+
+const DUDAS_CREMACION_CARD: AgentSuggestion = {
+  id: "dudas",
+  label: "Dudas Frecuentes",
+  description: "Qué responder ante dudas religiosas, legales, de costo, proceso y familia",
+  icon: HelpCircle,
+  color: CREMACION_CARD_COLORS.dudas,
+  orbGradient: CREMACION_ORB_GRADIENT,
+  redirectTo: "/cremacion/dudas",
+};
+
+const toCremacionSuggestions = (list: AgentSuggestion[]): AgentSuggestion[] => [
+  ...list.filter((agent) => !CREMACION_HIDDEN_IDS.has(agent.id)).map((agent) => ({
+    ...agent,
+    color: CREMACION_CARD_COLORS[agent.id] ?? CREMACION_CARD_FALLBACK,
+    orbGradient: CREMACION_ORB_GRADIENT,
+    description: CREMACION_DESCRIPTIONS[agent.id] ?? agent.description,
+    agentSecretName: agent.agentSecretName
+      ? `${agent.agentSecretName}${CREMACION_AGENT_SUFFIX}`
+      : undefined,
+  })),
+  PRODUCTOS_CREMACION_CARD,
+  DUDAS_CREMACION_CARD,
+];
+
+const cremacionProspeccionSuggestions = toCremacionSuggestions(practiceAgentSuggestions);
+const cremacionObjecionesSuggestions = toCremacionSuggestions(objectionsAgentSuggestions);
+
 // Tope de duración por módulo. Toda llamada se cierra automáticamente al
 // alcanzarlo: Prospección 5 min, Objeciones 10 min.
 const PROSPECCION_MAX_SECONDS = 5 * 60;
@@ -164,13 +226,26 @@ const Practice = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, isAdmin } = useAuth();
-  const { currentLevel } = useLevelMode();
+  const { currentLevel, currentTrack, isCremacion } = useLevelMode();
   const animateLevelChange = useDidLevelJustChange();
   const isMobile = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const isLevel2 = currentLevel === 2;
-  const agentSuggestions = isLevel2 ? objectionsAgentSuggestions : practiceAgentSuggestions;
+  const agentSuggestions = isCremacion
+    ? isLevel2
+      ? cremacionObjecionesSuggestions
+      : cremacionProspeccionSuggestions
+    : isLevel2
+      ? objectionsAgentSuggestions
+      : practiceAgentSuggestions;
+  // Gradiente del orbe forzado por módulo/pista (Objeciones morado, Cremación
+  // naranja). undefined = usar el gradiente de la tarjeta elegida.
+  const moduleOrbGradient = isCremacion
+    ? CREMACION_ORB_GRADIENT
+    : isLevel2
+      ? LEVEL2_ORB_GRADIENT
+      : undefined;
   // Tope de duración configurable por el admin (AppConfig); cae a los defaults
   // históricos mientras la config carga.
   const { config: platformConfig } = usePlatformConfig();
@@ -203,7 +278,20 @@ const Practice = () => {
   const [demoSecs, setDemoSecs] = useState(0);
   const sessionDurationRef = useRef<number>(0);
 
-  const { savePracticeSession, evaluateSession } = usePracticeSessions();
+  const { sessions, savePracticeSession, evaluateSession } = usePracticeSessions();
+  // Práctica ya guardada por modo — base del contador "tiempo para habilitar
+  // examen" que se muestra durante la llamada (el tramo en vivo se suma aparte).
+  const timeByMode = useMemo(
+    () =>
+      aggregateTimeByMode(
+        sessions.map((s) => ({
+          durationSeconds: s.duration_seconds,
+          practiceMode: s.practice_mode,
+          examType: s.exam_type,
+        })),
+      ),
+    [sessions],
+  );
   const { playStartCall, playConnected, playEndCall } = useCallSounds();
 
   const [greetingIndex, setGreetingIndex] = useState(0);
@@ -400,43 +488,54 @@ const Practice = () => {
     console.log("[TRACE] handleStart called, agent:", agent?.id, agent?.agentSecretName);
     if (agent) setSelectedAgent(agent);
 
-    // Step 1: change orb color and grow
+    // Step 1: change orb color and grow. La animación del orb (crecer + guiño)
+    // es puramente estética y ahora corre EN PARALELO: ya no bloquea la conexión.
     if (agent) setOrbGradient(agent.orbGradient);
     setOrbGrowing(true);
-
-    // Step 2: wink after it grows
     setTimeout(() => setOrbWinking(true), 400);
-
-    // Step 3: after wink completes, transition to connecting
-    setTimeout(async () => {
-      console.log("[TRACE] setTimeout fired, calling connect()...");
-      setSessionState("connecting");
-      setConnectionStatus("Solicitando permisos de microfono...");
-      setTranscriptMessages([]);
-      setAgentEvaluation(null);
-
-      if (user) {
-        const practiceMode = derivePracticeMode(agent);
-        const sessionId = await savePracticeSession(
-          0,
-          undefined,
-          scenarioId || undefined,
-          variantId || undefined,
-          undefined,
-          practiceMode,
-        );
-        setCurrentSessionId(sessionId);
-      } else {
-        setCurrentSessionId(null);
-      }
-
-      playStartCall();
-      console.log("[TRACE] About to call connect()");
-      connect();
-      console.log("[TRACE] connect() called");
+    setTimeout(() => {
       setOrbGrowing(false);
       setOrbWinking(false);
     }, 1200);
+
+    // Step 2: conectar de inmediato. Antes esto vivía dentro de un setTimeout de
+    // 1200ms (esperaba a que terminara la animación) y encima AWAITaba
+    // savePracticeSession, así que el usuario perdía ~1.5s antes de que el SDK
+    // siquiera empezara a conectar con ElevenLabs.
+    console.log("[TRACE] calling connect() immediately (sin delay de animación)");
+    setSessionState("connecting");
+    setConnectionStatus("Solicitando permisos de microfono...");
+    setTranscriptMessages([]);
+    setAgentEvaluation(null);
+
+    // La fila de sesión se persiste en segundo plano: el sessionId sólo se
+    // necesita al EVALUAR (fin de la llamada), no para conectar. Tenerlo en
+    // await bloqueaba el connect() un round-trip completo sin razón.
+    if (user) {
+      const practiceMode = derivePracticeMode(agent);
+      savePracticeSession(
+        0,
+        undefined,
+        scenarioId || undefined,
+        variantId || undefined,
+        undefined,
+        practiceMode,
+      )
+        .then((sessionId) => setCurrentSessionId(sessionId))
+        .catch((err) => console.error("[TRACE] savePracticeSession falló:", err));
+    } else {
+      setCurrentSessionId(null);
+    }
+
+    playStartCall();
+    // Pasamos el agentSecretName FRESCO del clic: setSelectedAgent(agent) aún no
+    // propagó a activeAgentSecret ni al ref del hook en este mismo tick, así que
+    // sin esto connect() resolvería al agente DEFAULT (Coach). scenarioId viene
+    // de la URL (estable), se deja al ref.
+    const freshAgentSecret = agent?.agentSecretName ?? activeAgentSecret ?? null;
+    console.log("[TRACE] About to call connect() con agente:", freshAgentSecret);
+    connect({ agentSecretName: freshAgentSecret });
+    console.log("[TRACE] connect() called");
   };
 
   const autoStartedRef = useRef(false);
@@ -608,15 +707,29 @@ const Practice = () => {
           </div>
         )}
 
-        {/* User menu / Free tier timer */}
-        <div className="absolute top-6 right-6 z-10">
+        {/* User menu / Free tier timer / contador de habilitación del examen */}
+        <div className="absolute top-6 right-6 z-10 flex flex-col items-end gap-2">
           {sessionState === "active" ? (
-            <FreeTierTimer
-              maxSeconds={callMaxSeconds}
-              currentSeconds={sessionTime}
-              onTimeUp={handleTimeUp}
-              showUpgrade={isFreeTier}
-            />
+            <>
+              <FreeTierTimer
+                maxSeconds={callMaxSeconds}
+                currentSeconds={sessionTime}
+                onTimeUp={handleTimeUp}
+                showUpgrade={isFreeTier}
+              />
+              {/* Cuánto falta para que el examen de ESTE nivel se habilite solo,
+                  descontando en vivo los segundos de la llamada en curso. */}
+              <ExamUnlockCountdown
+                practiceMode={derivePracticeMode(selectedAgent ?? undefined)}
+                timeByMode={timeByMode}
+                liveSeconds={demoCall ? demoSecs : sessionTime}
+                minPracticeSecondsProspeccion={platformConfig?.minPracticeSecondsProspeccion ?? 0}
+                minPracticeSecondsObjeciones={platformConfig?.minPracticeSecondsObjeciones ?? 0}
+                examenFinalEnabled={!!user?.examenFinalEnabled}
+                examenObjecionesEnabled={!!user?.examenObjecionesEnabled}
+                practiceBypass={!!user?.examPracticeBypass}
+              />
+            </>
           ) : user ? (
             <span data-tour="user-menu" className="inline-block">
               <UserMenu />
@@ -683,7 +796,7 @@ const Practice = () => {
                   listening
                   winkOut={orbWinking}
                   onWinkOutDone={() => {}}
-                  gradient={isLevel2 ? LEVEL2_ORB_GRADIENT : orbGradient}
+                  gradient={moduleOrbGradient ?? orbGradient}
                   interactive
                   onPoke={handleOrbPoke}
                 />
@@ -699,12 +812,21 @@ const Practice = () => {
             <div className="mb-4">
               <span
                 className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-[0.18em] border ${
-                  isLevel2
-                    ? "bg-purple-500/10 text-purple-600 dark:text-purple-300 border-purple-500/30"
-                    : "bg-primary/10 text-primary border-primary/30"
+                  isCremacion
+                    ? CREMACION_BADGE_CLASS
+                    : isLevel2
+                      ? "bg-purple-500/10 text-purple-600 dark:text-purple-300 border-purple-500/30"
+                      : "bg-primary/10 text-primary border-primary/30"
                 }`}
               >
+                {isCremacion && (
+                  <span
+                    className="w-1.5 h-1.5 rounded-full"
+                    style={{ background: CREMACION_ACCENT_BG }}
+                  />
+                )}
                 {isLevel2 ? "Módulo · Manejo de Objeciones" : "Módulo · Prospección"}
+                {isCremacion && " · Cremación"}
               </span>
             </div>
 
@@ -727,9 +849,24 @@ const Practice = () => {
               </p>
             </div>
 
+            {/* Campaña Cremación: banner animado (sin llamas) */}
+            {isCremacion && (
+              <div
+                key={`campaign-${currentLevel}`}
+                className="w-full mb-4"
+                style={
+                  animateLevelChange
+                    ? { animation: "cardPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both" }
+                    : undefined
+                }
+              >
+                <CremacionCampaignBanner level={currentLevel} />
+              </div>
+            )}
+
             {/* Suggestion bubbles grid */}
             <div
-              key={`agent-grid-${currentLevel}`}
+              key={`agent-grid-${currentLevel}-${currentTrack}`}
               data-tour="practice-modes"
               className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full mb-8"
             >
@@ -762,8 +899,8 @@ const Practice = () => {
               })}
             </div>
 
-            {/* Quick scenario access — solo en Nivel 1 */}
-            {user && !isLevel2 && (
+            {/* Quick scenario access — solo en Nivel 1 tradicional */}
+            {user && !isLevel2 && !isCremacion && (
               <div className="flex gap-2">
                 <Button
                   variant="outline"
@@ -801,7 +938,7 @@ const Practice = () => {
                 energy
                 speaking={false}
                 listening={isConnecting}
-                gradient={isLevel2 ? LEVEL2_ORB_GRADIENT : selectedAgent?.orbGradient}
+                gradient={moduleOrbGradient ?? selectedAgent?.orbGradient}
               />
             </button>
             {sessionState === "connecting" && (
@@ -814,13 +951,13 @@ const Practice = () => {
         {sessionState === "active" && (
           <div className="flex flex-col items-center justify-center w-full h-full px-4 pb-32 lg:pb-24 animate-fade-in">
             <div className="flex flex-col items-center gap-3 sm:gap-6">
-              {/* Persona name (Álvaro / Nelson) */}
+              {/* Persona name (Margarita / Nelson) */}
               {selectedAgent && (
                 <p
                   className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.25em] text-muted-foreground/70"
                   style={{ fontFamily: "'Nunito', 'DIN Rounded', -apple-system, sans-serif" }}
                 >
-                  Personaje · {currentLevel === 1 ? "Álvaro" : "Alvaro"}
+                  Personaje · Margarita
                 </p>
               )}
               {/* Agent label */}
@@ -840,7 +977,7 @@ const Practice = () => {
 
               {!isFreeTier && <PracticeTimer totalSeconds={demoCall ? demoSecs : sessionTime} />}
 
-              <AICompanionOrb speaking={demoCall ? demoSpeaking : isSpeaking} listening={demoCall ? !demoSpeaking : !isMuted} size={isMobile ? "sm" : "lg"} energy gradient={isLevel2 ? LEVEL2_ORB_GRADIENT : selectedAgent?.orbGradient} />
+              <AICompanionOrb speaking={demoCall ? demoSpeaking : isSpeaking} listening={demoCall ? !demoSpeaking : !isMuted} size={isMobile ? "sm" : "lg"} energy gradient={moduleOrbGradient ?? selectedAgent?.orbGradient} />
             </div>
 
             <div className="fixed left-1/2 -translate-x-1/2 z-40 bottom-24 lg:bottom-8">

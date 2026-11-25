@@ -135,6 +135,12 @@ model User {
   // Gatea el examen final de Objeciones (Nivel 2). Mismo control que Prospección.
   // Default false = bloqueado para todos hasta que admin/coach lo habilite.
   examenObjecionesEnabled Boolean @default(false) @map("examen_objeciones_enabled")
+  // Bypass del tiempo mínimo de práctica requerido para rendir los exámenes
+  // (min_practice_seconds_* de AppConfig). Pensado para QA/testing: permite a un
+  // estudiante puntual rendir el examen SIN haber acumulado los minutos de
+  // práctica. NO otorga acceso al examen por sí solo (eso lo dan los
+  // examen*Enabled); sólo salta el gate de tiempo de práctica. Default false.
+  examPracticeBypass Boolean  @default(false) @map("exam_practice_bypass")
   level2Unlocked     Boolean  @default(false) @map("level2_unlocked")
   // Se marca al aprobar el examen final de Nivel 2 (Manejo de Objeciones).
   // Habilita la descarga del certificado de finalización del programa.
@@ -520,6 +526,10 @@ model AppConfig {
   // histórico). Sólo cuenta tiempo de práctica del nivel, no intentos de examen.
   minPracticeSecondsProspeccion Int   @default(0) @map("min_practice_seconds_prospeccion")
   minPracticeSecondsObjeciones  Int   @default(0) @map("min_practice_seconds_objeciones")
+  // Idioma de los agentes de voz: "es" (default histórico) o "en". Con "en" el
+  // cliente manda `overrides.agent.language = "en"` a ElevenLabs al conectar.
+  // Requiere que cada agente permita el override de Language (Security tab).
+  agentLanguage                 String @default("es") @map("agent_language")
   // Datos del certificado de NIVEL 2 / Objeciones (vacío = línea sin nombre, como
   // hoy). Históricamente era el único certificado, por eso conserva el prefijo
   // `certificate*` sin sufijo de nivel para no romper compatibilidad.
