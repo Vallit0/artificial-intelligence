@@ -1,0 +1,171 @@
+src/pages/ExamenFinalObjeciones.tsx
+  s_72d46d9bb58f6e::t_13ac9845720b5c 74-76,78-84,87-89
+  s_72d46d9bb58f6e::t_632e3873bb766e 20
+  s_72d46d9bb58f6e::t_3b4ae80515be12 92-103,177,651-652
+  s_741ae0dfc65e2b::t_582c78075fd2f1 308-325,603-650
+  s_741ae0dfc65e2b::t_3da9bad3ea6a12 3,47-50,135-142,145,149-176,198-199,203,213-216,226-228,301-304
+  s_72d46d9bb58f6e::t_cbb7fd891ccfae 21-22
+  s_72d46d9bb58f6e::t_e47757c07a1a2e 19
+  s_72d46d9bb58f6e::t_ae6fca385d39ce 515-516
+  s_72d46d9bb58f6e::t_a605a9ee8b9126 519-523
+  s_72d46d9bb58f6e::t_7cf13ebe320ed0 104-110
+  s_72d46d9bb58f6e::t_91e729a11370ff 70
+  s_72d46d9bb58f6e::t_3cd9e3d7b4fec6 59-60
+server/tests/integration/profileName.test.ts
+  s_e60b9deee8a467::t_7c16f8cf5a55ca 1-120
+src/components/admin/ConfigPanel.tsx
+  s_72d46d9bb58f6e::t_321a773032ecc2 375-379
+  s_53e15075fa5f9c::t_82ff97fb0e023e 6-7,9-14
+  s_53e15075fa5f9c::t_f4e66591f6cb88 238
+  s_53e15075fa5f9c::t_c841fc9230f4a1 206
+  s_53e15075fa5f9c::t_f0c150ee356e0c 27-28
+  s_53e15075fa5f9c::t_e0ee7305ccd435 280-307
+  s_53e15075fa5f9c::t_b26ad7a69fdf4a 49
+src/components/practice/ExamUnlockCountdown.tsx
+  s_72d46d9bb58f6e::t_c312f36cbdf469 1-140
+src/hooks/useExamGateSync.ts
+  s_72d46d9bb58f6e::t_970377d365b8aa 1-59
+src/components/ExamTimeSourcesDialog.tsx
+  s_72d46d9bb58f6e::t_031fe3f86f2a36 1-118,122,124-160
+  s_72d46d9bb58f6e::t_987b7321766a85 119-121,123
+src/components/auth/EditMyNameModal.tsx
+  s_e60b9deee8a467::t_36228fa887dbb1 1-186
+server/src/services/sessions.service.ts
+  s_72d46d9bb58f6e::t_fcfe0fa1e6336f 13-14
+  s_72d46d9bb58f6e::t_e8567e7f2e83fa 36-47,50-57,59-63,65-75,77
+  s_72d46d9bb58f6e::t_7687b3ba55b751 109-111,113
+src/lib/exam-gate.ts
+  s_72d46d9bb58f6e::t_39daaabc0ff5fb 1-60
+server/src/services/admin.service.ts
+  s_72d46d9bb58f6e::t_378f07cb2f1aa4 481-483
+  s_72d46d9bb58f6e::t_0bbaf86e9877d5 365-397
+  s_72d46d9bb58f6e::t_78676b0d5bee7a 440-445,448
+  s_72d46d9bb58f6e::t_ba961711e46dba 12
+  s_72d46d9bb58f6e::t_3b27194d2ccbb1 75-79
+server/tests/integration/agentCountryRouting.test.ts
+  s_e60b9deee8a467::t_4019ee55ba8934 1-173
+server/prisma/migrations/20260811000000_add_agent_language/migration.sql
+  s_53e15075fa5f9c::t_fe9ffcc328eedb 1-7
+.env.example
+  s_e60b9deee8a467::t_b8bd89a76bb832 38-44
+src/hooks/useElevenLabsConversation.ts
+  s_53e15075fa5f9c::t_5f221fd8f76394 134
+  s_53e15075fa5f9c::t_519c4ae44d0d37 618,625,628,637
+  s_53e15075fa5f9c::t_da35999a435777 660-666,672-676,678-681,685-690
+  s_53e15075fa5f9c::t_4e220e4bc2a426 536,544
+  s_53e15075fa5f9c::t_849d730fb0d8b9 42-64
+  s_e60b9deee8a467::t_db22610ec79925 574,590-595,597-600,652-655,691
+server/src/routes/auth.ts
+  s_e60b9deee8a467::t_7c16f8cf5a55ca 313-349
+  s_e60b9deee8a467::t_bb6c7af6eb78cd 350-352
+  s_c7abdcd159792a::t_c0a83dd3394ba1 353-354
+src/components/admin/StudentList.tsx
+  s_72d46d9bb58f6e::t_f24d1387ae9e0b 77-78
+  s_72d46d9bb58f6e::t_c6286e7fd97a99 427-431
+  s_72d46d9bb58f6e::t_19f724a2f00421 173-225
+  s_72d46d9bb58f6e::t_c9e3d399c93f77 390-392,426
+  s_72d46d9bb58f6e::t_10068de41c03c1 39-40
+src/pages/Progress.tsx
+  s_72d46d9bb58f6e::t_e9c2d5439448ee 22,24
+  s_72d46d9bb58f6e::t_e557c27b058a42 28-29,32-38
+  s_72d46d9bb58f6e::t_94dc048ac126e0 122
+  s_72d46d9bb58f6e::t_f3edef67dab534 75,77-109,111-112,114
+  s_72d46d9bb58f6e::t_88d2619d8cb2aa 30-31,76,393
+  s_72d46d9bb58f6e::t_8992faa806fa0a 23
+  s_72d46d9bb58f6e::t_d1c150dc304500 184-189
+  s_72d46d9bb58f6e::t_f8fd3c9ff92687 379,385,396-437
+  s_72d46d9bb58f6e::t_7ee72fea8d6767 382,389-392
+  s_72d46d9bb58f6e::t_43fac086a7ba09 9
+src/pages/ExamenFinal.tsx
+  s_72d46d9bb58f6e::t_9835b78a62185c 20
+  s_72d46d9bb58f6e::t_fc5713a5d19f50 88-98
+  s_72d46d9bb58f6e::t_eca567933c23c1 21-22
+  s_72d46d9bb58f6e::t_c08f8615a54443 68-70,72-78,81-85
+  s_72d46d9bb58f6e::t_a2e272684074ec 19
+  s_72d46d9bb58f6e::t_9f30043e15dab4 54-55
+  s_72d46d9bb58f6e::t_15c5aa0e6bceeb 99-105
+  s_72d46d9bb58f6e::t_03cd94d39da6a4 358-359
+  s_72d46d9bb58f6e::t_7a72c4f2cb5372 362-366
+  s_72d46d9bb58f6e::t_c2668efc50f723 64
+server/tests/integration/examFlow.test.ts
+  s_72d46d9bb58f6e::t_c1ea36f380488f 35-39
+src/components/UserMenu.tsx
+  s_e60b9deee8a467::t_db22610ec79925 2,14,17,20-26,34-36,59,67-72,89
+src/hooks/useStudents.ts
+  s_72d46d9bb58f6e::t_a46884e7d0b709 36-40
+  s_72d46d9bb58f6e::t_d71b01e05f47d6 116-118
+server/src/services/elevenlabs.service.ts
+  s_e60b9deee8a467::t_b8bd89a76bb832 42-85,88,93-96,100-109,113-120,137-141,148-155,157,159
+  s_e60b9deee8a467::t_3e8dd7150d045d 160-162,164-171
+src/hooks/useAppConfig.ts
+  s_53e15075fa5f9c::t_ce65ea11580c88 4-5
+  s_53e15075fa5f9c::t_4bc9dc5fd000b1 18-20
+  s_53e15075fa5f9c::t_6cb3f13effeba8 44
+  s_53e15075fa5f9c::t_a998d1c6135d99 56
+server/src/services/appConfig.service.ts
+  s_53e15075fa5f9c::t_df99e17d0de369 9-25
+  s_53e15075fa5f9c::t_393b8b2613e415 90-91
+  s_53e15075fa5f9c::t_bb0f0ee84e523d 33
+server/prisma/schema.prisma
+  s_53e15075fa5f9c::t_fe9ffcc328eedb 529-532
+src/components/admin/AgentConfigPanel.tsx
+  s_e60b9deee8a467::t_3e8dd7150d045d 7,9-26,56-60,68,70,72-73,79-81,84,89-91,163-188
+  s_e60b9deee8a467::t_94d89527eaa9ca 189
+server/src/controllers/elevenlabs.controller.ts
+  s_53e15075fa5f9c::t_cd4d4772138767 168,178-179
+  s_53e15075fa5f9c::t_88c27d42da47ad 117-126
+  s_e60b9deee8a467::t_b8bd89a76bb832 18-35,70-74,83-86,96-97,99,101,160-162,173-177,180-182
+  s_e60b9deee8a467::t_3e8dd7150d045d 75-82,87-89,92
+  s_53e15075fa5f9c::t_a724034bde0f45 14
+  s_53e15075fa5f9c::t_7c883fb1f22f59 91
+server/tests/integration/agentLanguage.test.ts
+  s_53e15075fa5f9c::t_1aa3af1ad866af 1-122
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3e7ad2229340b8a43bddf28437605cce03e8427d",
+  "prompts": {},
+  "sessions": {
+    "s_53e15075fa5f9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bd529c77-a9eb-4295-b066-65ba91674e40",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "vallit0 <evallecyt@gmail.com>"
+    },
+    "s_72d46d9bb58f6e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5588eba1-8ddf-4fb0-bf98-d356a567f9b0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "vallit0 <evallecyt@gmail.com>"
+    },
+    "s_741ae0dfc65e2b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1db21efc-2e82-4368-a26d-e5bb120a3423",
+        "model": "claude-opus-5"
+      },
+      "human_author": "vallit0 <evallecyt@gmail.com>"
+    },
+    "s_c7abdcd159792a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84430494-ef4e-4c2f-bb7c-7a67b3a19a54",
+        "model": "unknown"
+      },
+      "human_author": "vallit0 <evallecyt@gmail.com>"
+    },
+    "s_e60b9deee8a467": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "95596577-5453-4b30-83ed-b31f4aad0f59",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "vallit0 <evallecyt@gmail.com>"
+    }
+  }
+}
