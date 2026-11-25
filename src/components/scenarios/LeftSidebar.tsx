@@ -12,10 +12,13 @@ import {
   Boxes,
   GraduationCap,
   HelpCircle,
+  Search,
+  MessageCircleQuestion,
 } from "lucide-react";
+import { CREMACION_ACCENT_BG, CremacionIcon } from "@/lib/cremacion-theme";
 import logoSenoriales from "@/assets/logo-senoriales.png";
 import { useAuth } from "@/hooks/useAuth";
-import { useLevelMode, useDidLevelJustChange, levelLabel } from "@/hooks/useLevelMode";
+import { useLevelMode, useDidLevelJustChange, levelLabel, moduleLabel } from "@/hooks/useLevelMode";
 import { startTutorial } from "@/lib/tutorial";
 
 interface NavItem {
@@ -32,7 +35,7 @@ const LeftSidebar = () => {
   const isCoach = roles.includes("coach");
   const isLearner = roles.includes("learner");
   const canSeePanel = isAdmin || isCoach;
-  const { currentLevel, toggle, canSwitchLevel } = useLevelMode();
+  const { currentLevel, toggle, canSwitchLevel, currentTrack, isCremacion, toggleTrack } = useLevelMode();
   const animateLevelChange = useDidLevelJustChange();
 
   const isLevel2 = currentLevel === 2;
@@ -50,7 +53,16 @@ const LeftSidebar = () => {
     { icon: TrendingUp, label: "Mi Progreso", href: "/progress" },
   ];
 
-  const baseItems = isLevel2 ? level2Items : level1Items;
+  // Pista Cremación (campaña): sin Examen Final ni Escenarios de Prospección.
+  // Se agregan el buscador de productos y las dudas frecuentes.
+  const cremacionItems: NavItem[] = [
+    { icon: Phone, label: "Llamada", href: "/practice" },
+    { icon: Search, label: "Productos", href: "/productos" },
+    { icon: MessageCircleQuestion, label: "Dudas Frecuentes", href: "/cremacion/dudas" },
+    { icon: TrendingUp, label: "Mi Progreso", href: "/progress" },
+  ];
+
+  const baseItems = isCremacion ? cremacionItems : isLevel2 ? level2Items : level1Items;
   const navItems: NavItem[] = [
     ...baseItems,
     ...(canSeePanel
@@ -62,9 +74,12 @@ const LeftSidebar = () => {
 
   // Theme tokens — Level 2 uses a violet/pink accent palette while keeping
   // the same overall structure so the user can tell they're in a new "world".
-  const accentBg = isLevel2
-    ? "linear-gradient(135deg, #a855f7, #ec4899)"
-    : "linear-gradient(135deg, hsl(var(--sidebar-primary)), hsl(var(--sidebar-accent)))";
+  // Cremación pinta todo en naranja, sin importar el módulo.
+  const accentBg = isCremacion
+    ? CREMACION_ACCENT_BG
+    : isLevel2
+      ? "linear-gradient(135deg, #a855f7, #ec4899)"
+      : "linear-gradient(135deg, hsl(var(--sidebar-primary)), hsl(var(--sidebar-accent)))";
 
   const handleLogout = async () => {
     await signOut();
@@ -101,7 +116,7 @@ const LeftSidebar = () => {
           </span>
         </Link>
         <div
-          key={`level-badge-${currentLevel}`}
+          key={`level-badge-${currentLevel}-${currentTrack}`}
           className="mt-3 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest text-center"
           style={{
             background: accentBg,
@@ -111,7 +126,7 @@ const LeftSidebar = () => {
               : undefined,
           }}
         >
-          {levelLabel(currentLevel)}
+          {moduleLabel(currentLevel, currentTrack)}
         </div>
       </div>
 
@@ -142,8 +157,42 @@ const LeftSidebar = () => {
         </div>
       )}
 
+      {/* Pista Cremación: se activa encima del módulo actual (Prospección u
+          Objeciones). Cambia coach/role plays, paleta y habilita Productos. */}
+      {canSwitchLevel && (
+        <div className="px-3 pt-2">
+          <button
+            onClick={toggleTrack}
+            className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-200 hover:bg-white/[0.06]"
+            style={{
+              color: isCremacion ? "#fdba74" : "hsl(var(--sidebar-foreground) / 0.7)",
+              border: isCremacion ? "1px solid rgba(249,115,22,0.45)" : "1px dashed hsl(var(--sidebar-border))",
+              background: isCremacion ? "rgba(249,115,22,0.08)" : undefined,
+            }}
+            title={isCremacion ? "Volver al producto tradicional" : "Entrenar la línea Cremación"}
+            aria-pressed={isCremacion}
+          >
+            <span className="flex items-center gap-2">
+              <CremacionIcon className="w-3.5 h-3.5" />
+              Cremación
+            </span>
+            <span
+              className="relative inline-flex h-5 w-9 items-center rounded-full transition-colors"
+              style={{
+                background: isCremacion ? CREMACION_ACCENT_BG : "hsl(var(--sidebar-border))",
+              }}
+            >
+              <span
+                className="inline-block h-4 w-4 rounded-full bg-white shadow transition-transform"
+                style={{ transform: isCremacion ? "translateX(18px)" : "translateX(2px)" }}
+              />
+            </span>
+          </button>
+        </div>
+      )}
+
       {/* Navigation */}
-      <nav key={`nav-items-${currentLevel}`} className="flex-1 px-3 py-4 space-y-1">
+      <nav key={`nav-items-${currentLevel}-${currentTrack}`} className="flex-1 px-3 py-4 space-y-1">
         {navItems.map((item, i) => {
           const isActive = location.pathname === item.href;
           const Icon = item.icon;

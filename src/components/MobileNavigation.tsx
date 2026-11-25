@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { Users, Phone, TrendingUp, Settings, Lock, ArrowRightLeft, Building2, GraduationCap } from "lucide-react";
+import { Users, Phone, TrendingUp, Settings, Lock, ArrowRightLeft, Building2, GraduationCap, Search, MessageCircleQuestion } from "lucide-react";
+import { CREMACION_ACCENT_BG, CremacionIcon } from "@/lib/cremacion-theme";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useLevelMode, useDidLevelJustChange, levelLabel } from "@/hooks/useLevelMode";
@@ -17,7 +18,7 @@ const MobileNavigation = () => {
   const isCoach = roles.includes("coach");
   const isLearner = roles.includes("learner");
   const canSeePanel = isAdmin || isCoach;
-  const { currentLevel, toggle, canSwitchLevel } = useLevelMode();
+  const { currentLevel, toggle, canSwitchLevel, currentTrack, isCremacion, toggleTrack } = useLevelMode();
   const animateLevelChange = useDidLevelJustChange();
 
   const isLevel2 = currentLevel === 2;
@@ -42,7 +43,15 @@ const MobileNavigation = () => {
       : []),
   ];
 
-  const baseItems = isLevel2 ? level2Items : level1Items;
+  // Cremación (campaña): sin Examen ni Prospectar; con Productos y Dudas.
+  const cremacionItems: NavItem[] = [
+    { icon: <Phone className="w-5 h-5" />, label: "Llamada", href: "/practice" },
+    { icon: <Search className="w-5 h-5" />, label: "Productos", href: "/productos" },
+    { icon: <MessageCircleQuestion className="w-5 h-5" />, label: "Dudas", href: "/cremacion/dudas" },
+    ...(user ? [{ icon: <TrendingUp className="w-5 h-5" />, label: "Progreso", href: "/progress" }] : []),
+  ];
+
+  const baseItems = isCremacion ? cremacionItems : isLevel2 ? level2Items : level1Items;
   const navItems: NavItem[] = [
     ...baseItems,
     ...(canSeePanel
@@ -52,9 +61,11 @@ const MobileNavigation = () => {
       : []),
   ];
 
-  const accentBg = isLevel2
-    ? "linear-gradient(135deg, #a855f7, #ec4899)"
-    : "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))";
+  const accentBg = isCremacion
+    ? CREMACION_ACCENT_BG
+    : isLevel2
+      ? "linear-gradient(135deg, #a855f7, #ec4899)"
+      : "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))";
 
   return (
     <nav
@@ -67,8 +78,24 @@ const MobileNavigation = () => {
         borderTop: "1px solid rgba(0,0,0,0.06)",
       }}
     >
-      {user && (user.sede || user.coach || isLearner) && (
+      {user && (user.sede || user.coach || isLearner || canSwitchLevel) && (
         <div className="flex items-center justify-center gap-3 pb-1.5 text-[11px] text-muted-foreground">
+          {canSwitchLevel && (
+            <button
+              onClick={toggleTrack}
+              aria-pressed={isCremacion}
+              className={`flex items-center gap-1 px-2 py-0.5 rounded-full border font-bold uppercase tracking-wider text-[10px] transition-colors ${
+                isCremacion
+                  ? "text-white border-transparent"
+                  : "text-muted-foreground border-border bg-white/60"
+              }`}
+              style={isCremacion ? { background: CREMACION_ACCENT_BG } : undefined}
+              title={isCremacion ? "Volver al producto tradicional" : "Entrenar la línea Cremación"}
+            >
+              <CremacionIcon className="w-3 h-3 shrink-0" />
+              Cremación {isCremacion ? "ON" : "OFF"}
+            </button>
+          )}
           {user.sede && (
             <span className="flex items-center gap-1 truncate max-w-[45%]">
               <Building2 className="w-3 h-3 shrink-0" />
@@ -83,7 +110,7 @@ const MobileNavigation = () => {
           )}
         </div>
       )}
-      <div key={`mobile-nav-${currentLevel}`} className="flex items-center justify-around">
+      <div key={`mobile-nav-${currentLevel}-${currentTrack}`} className="flex items-center justify-around">
         {navItems.map((item, i) => {
           const isActive = location.pathname === item.href;
           return (

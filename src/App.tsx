@@ -17,6 +17,8 @@ import Admin from "./pages/Admin";
 import ResetPassword from "./pages/ResetPassword";
 import CoachCenter from "./pages/CoachCenter";
 import IntroMargarita from "./pages/IntroMargarita";
+import ProductosCremacion from "./pages/ProductosCremacion";
+import DudasCremacion from "./pages/DudasCremacion";
 import TourRunner from "@/components/onboarding/TourRunner";
 import TutorialCenter from "@/components/onboarding/TutorialCenter";
 
@@ -83,6 +85,24 @@ const AppRoutes = () => (
       }
     />
     
+    {/* Módulo Cremación: buscador de productos y dudas frecuentes */}
+    <Route
+      path="/productos"
+      element={
+        <ProtectedRoute>
+          <ProductosCremacion />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/cremacion/dudas"
+      element={
+        <ProtectedRoute>
+          <DudasCremacion />
+        </ProtectedRoute>
+      }
+    />
+
     {/* Protected routes */}
     <Route
       path="/scenarios"
