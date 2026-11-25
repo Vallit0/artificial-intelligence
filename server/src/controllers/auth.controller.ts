@@ -93,7 +93,7 @@ export async function getMe(req: AuthRequest, res: Response, next: NextFunction)
     const profile = await prisma.user.findUnique({
       where: { id: req.user!.id },
       select: {
-        sede: { select: { id: true, name: true } },
+        sede: { select: { id: true, name: true, country: true } },
         coach: { select: { id: true, firstName: true, lastName: true, email: true } },
         division: { select: { id: true, name: true } },
       },
