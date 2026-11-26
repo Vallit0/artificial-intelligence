@@ -1,0 +1,19 @@
+src/components/admin/AgentConfigPanel.tsx
+  s_af15d7ec770355::t_8285301152b2aa 38-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7b3bbf5bd072d3652ff7004ac37046403028ad84",
+  "prompts": {},
+  "sessions": {
+    "s_af15d7ec770355": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cf928338-4db2-4902-a56c-be622e60a08b",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "vallit0 <evallecyt@gmail.com>"
+    }
+  }
+}
