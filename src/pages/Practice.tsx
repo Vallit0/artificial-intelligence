@@ -34,8 +34,6 @@ import {
   UserCheck,
   MapPin,
   GraduationCap,
-  Search,
-  HelpCircle,
 } from "lucide-react";
 import CremacionCampaignBanner from "@/components/cremacion/CremacionCampaignBanner";
 import {
@@ -168,9 +166,10 @@ const objectionsAgentSuggestions: AgentSuggestion[] = practiceAgentSuggestions
 
 // ---------------------------------------------------------------------------
 // Pista Cremación: mismas tarjetas de llamada (coach, role plays) en paleta
-// naranja, con agentes propios (sufijo _CREMACION), más dos tarjetas de apoyo:
-// el buscador de productos y las dudas frecuentes. Examen Final y Escenarios
-// de Prospección NO aplican a esta campaña y se ocultan.
+// naranja, con agentes propios (sufijo _CREMACION). Examen Final y Escenarios
+// de Prospección NO aplican a esta campaña y se ocultan. El buscador de
+// productos y las dudas frecuentes NO van como tarjetas en esta pantalla
+// (petición del cliente); se llega a ellos sólo desde el menú lateral.
 // ---------------------------------------------------------------------------
 const CREMACION_DESCRIPTIONS: Record<string, string> = {
   coach: "Feedback y tips en tiempo real para presentar la cremación",
@@ -180,28 +179,8 @@ const CREMACION_DESCRIPTIONS: Record<string, string> = {
 
 const CREMACION_HIDDEN_IDS = new Set(["prospeccion-fisica", "examen"]);
 
-const PRODUCTOS_CREMACION_CARD: AgentSuggestion = {
-  id: "productos",
-  label: "Buscador de Productos",
-  description: "Planes, urnas, nichos y servicios de cremación con argumentos y objeciones",
-  icon: Search,
-  color: CREMACION_CARD_COLORS.productos,
-  orbGradient: CREMACION_ORB_GRADIENT,
-  redirectTo: "/productos",
-};
-
-const DUDAS_CREMACION_CARD: AgentSuggestion = {
-  id: "dudas",
-  label: "Dudas Frecuentes",
-  description: "Qué responder ante dudas religiosas, legales, de costo, proceso y familia",
-  icon: HelpCircle,
-  color: CREMACION_CARD_COLORS.dudas,
-  orbGradient: CREMACION_ORB_GRADIENT,
-  redirectTo: "/cremacion/dudas",
-};
-
-const toCremacionSuggestions = (list: AgentSuggestion[]): AgentSuggestion[] => [
-  ...list.filter((agent) => !CREMACION_HIDDEN_IDS.has(agent.id)).map((agent) => ({
+const toCremacionSuggestions = (list: AgentSuggestion[]): AgentSuggestion[] =>
+  list.filter((agent) => !CREMACION_HIDDEN_IDS.has(agent.id)).map((agent) => ({
     ...agent,
     color: CREMACION_CARD_COLORS[agent.id] ?? CREMACION_CARD_FALLBACK,
     orbGradient: CREMACION_ORB_GRADIENT,
@@ -209,10 +188,7 @@ const toCremacionSuggestions = (list: AgentSuggestion[]): AgentSuggestion[] => [
     agentSecretName: agent.agentSecretName
       ? `${agent.agentSecretName}${CREMACION_AGENT_SUFFIX}`
       : undefined,
-  })),
-  PRODUCTOS_CREMACION_CARD,
-  DUDAS_CREMACION_CARD,
-];
+  }));
 
 const cremacionProspeccionSuggestions = toCremacionSuggestions(practiceAgentSuggestions);
 const cremacionObjecionesSuggestions = toCremacionSuggestions(objectionsAgentSuggestions);
