@@ -35,6 +35,15 @@ const KNOWN_AGENTS = [
   { secretName: "ELEVENLABS_AGENT_COACH_NIVEL2", label: "Nivel 2 · Coach (Manejo de Objeciones)" },
   { secretName: "ELEVENLABS_AGENT_ROLEPLAY_CLIENTE_NIVEL2", label: "Nivel 2 · Role-Play Clientes (Pareja, multi-voice)" },
   { secretName: "ELEVENLABS_AGENT_ROLEPLAY_ASESOR_NIVEL2", label: "Nivel 2 · Role-Play Asesor (Manejo de Objeciones)" },
+  // Pista Cremacion: mismos roles que N1/N2 con sufijo _CREMACION (ver
+  // CREMACION_AGENT_SUFFIX en src/lib/cremacion-theme.ts). Mientras no esten
+  // configurados, resolveAgent cae al agente default y lo registra como MISROUTE.
+  { secretName: "ELEVENLABS_AGENT_COACH_CREMACION", label: "Cremacion N1 · Coach" },
+  { secretName: "ELEVENLABS_AGENT_ROLEPLAY_CLIENTE_CREMACION", label: "Cremacion N1 · Role-Play Cliente" },
+  { secretName: "ELEVENLABS_AGENT_ROLEPLAY_ASESOR_CREMACION", label: "Cremacion N1 · Role-Play Asesor" },
+  { secretName: "ELEVENLABS_AGENT_COACH_NIVEL2_CREMACION", label: "Cremacion N2 · Coach (Objeciones)" },
+  { secretName: "ELEVENLABS_AGENT_ROLEPLAY_CLIENTE_NIVEL2_CREMACION", label: "Cremacion N2 · Role-Play Cliente (Objeciones)" },
+  { secretName: "ELEVENLABS_AGENT_ROLEPLAY_ASESOR_NIVEL2_CREMACION", label: "Cremacion N2 · Role-Play Asesor (Objeciones)" },
   { secretName: "ELEVENLABS_AGENT_PROSPECTING_PAREJA", label: "Prospeccion: Pareja en Caja" },
   { secretName: "ELEVENLABS_AGENT_PROSPECTING_FRUTAS", label: "Prospeccion: Frutas y Verduras" },
   { secretName: "ELEVENLABS_AGENT_PROSPECTING_NEUMATICOS", label: "Prospeccion: Neumaticos" },
